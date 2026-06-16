@@ -1,0 +1,28 @@
+services:
+  aim:
+    build: .
+    container_name: aim
+    tty: true
+    stdin_open: true
+    ports:
+      - "11434:11434"
+    volumes:
+      - .:/app
+      - ollama_data:/root/.ollama
+    env_file:
+      - .env
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "http://localhost:11434/api/tags" ]
+      interval: 10s
+      retries: 5
+
+volumes:
+  ollama_data:

@@ -1,0 +1,106 @@
+
+providers:
+  ollama:
+    type: ollama
+    base_url:
+      env: OLLAMA_BASE_URL
+      default: http://localhost:11434
+    supports_model_discovery: true
+
+  openai:
+    type: openai
+    api_key:
+      env: OPENAI_API_KEY
+    base_url:
+      env: OPENAI_BASE_URL
+      default: https://api.openai.com/v1
+
+  anthropic:
+    type: anthropic
+    api_key:
+      env: ANTHROPIC_API_KEY
+    base_url:
+      env: ANTHROPIC_BASE_URL
+      default: https://api.anthropic.com/v1
+
+  gemini:
+    type: gemini
+    api_key:
+      env: GEMINI_API_KEY
+    base_url:
+      env: GEMINI_BASE_URL
+      default: https://generativelanguage.googleapis.com/v1beta
+
+profiles:
+  local-static:
+    provider: ollama
+    model: gemma4:e2b
+    temperature: 0.1
+    max_tokens: 4096
+    response_format: json
+
+  local-report:
+    provider: ollama
+    model: gemma4:e2b
+    temperature: 0.2
+    max_tokens: 12000
+    response_format: text
+
+  local-enrichment:
+    provider: ollama
+    model: gemma4:e2b
+    temperature: 0.2
+    max_tokens: 12000
+    response_format: text
+
+  openai-static:
+    provider: openai
+    model:
+      env: OPENAI_STATIC_MODEL
+      default: ""
+    temperature: 0.1
+    max_tokens: 4096
+
+  openai-report:
+    provider: openai
+    model:
+      env: OPENAI_REPORT_MODEL
+      default: ""
+    temperature: 0.3
+    max_tokens: 12000
+
+  openai-enrichment:
+    provider: openai
+    model:
+      env: OPENAI_ENRICHMENT_MODEL
+      default: ""
+    temperature: 0.3
+    max_tokens: 12000
+
+  anthropic-static:
+    provider: anthropic
+    model:
+      env: ANTHROPIC_STATIC_MODEL
+      default: ""
+    temperature: 0.1
+    max_tokens: 4096
+
+  gemini-static:
+    provider: gemini
+    model:
+      env: GEMINI_STATIC_MODEL
+      default: ""
+    temperature: 0.1
+    max_tokens: 4096
+
+agents:
+  static:
+    default_profile: local-static
+
+tasks:
+  report:
+    default_profile: local-report
+  enrichment:
+    default_profile: local-enrichment
+
+
