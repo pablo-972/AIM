@@ -1,4 +1,5 @@
 import requests
+
 from ai.providers.base import BaseLLMProvider, LLMResponse
 
 
@@ -9,14 +10,13 @@ class OpenAICompatibleProvider(BaseLLMProvider):
         self.model = model
         self.temperature = temperature
         self.max_tokens = max_tokens
-
-
-    def chat(self, system_prompt: str, user_prompt: str) -> LLMResponse:
-        headers = {
+        self.headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
         }
 
+
+    def chat(self, system_prompt: str, user_prompt: str) -> LLMResponse:
         payload = {
             "model": self.model,
             "messages": [
@@ -24,16 +24,33 @@ class OpenAICompatibleProvider(BaseLLMProvider):
                 {"role": "user", "content": user_prompt},
             ],
             "stream": False,
-            "options": {
-                "temperature": self.temperature,
-                "max_tokens": self.max_tokens,
-            },
+            "temperature": self.temperature,
+            "max_tokens": self.max_tokens,
         }
         
-        response = requests.post(f"{self.base_url}/chat/completions", headers=headers, json=payload, timeout=120)
+        response = requests.post(f"{self.base_url}/chat/completions", headers=self.headers, json=payload, timeout=120)
         response.raise_for_status()
         data = response.json()
 
-        return LLMResponse(
-            content=data["choices"][0]["message"]["content"]
-        )
+        return LLMResponse(content=data["choices"][0]["message"]["content"])
+    
+
+
+    def chat_with_assistant(self, system_prompt: str, assistant_prompt: str, user_prompt: str) -> LLMResponse:
+        payload = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "assistant", "content": assistant_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            "stream": False,
+            "temperature": self.temperature,
+            "max_tokens": self.max_tokens,
+        }
+
+        response = requests.post(f"{self.base_url}/chat/completions", headers=self.headers, json=payload,timeout=120)
+        response.raise_for_status()
+        data = response.json()
+
+        return LLMResponse(content=data["message"]["content"])

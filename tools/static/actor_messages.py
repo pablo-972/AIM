@@ -1,38 +1,73 @@
-import os
 import json
+from pathlib import Path
+from typing import Any
 from datetime import datetime, timezone
 
 from utils.io.files import save_json
+
+
+DEFAULT_ARTIFACT = {
+    "artifact_type": "threat_actor_messages",
+    "source": "static_agent",
+    "items": [],
+}
 
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _load_existing_blocks(path: str, filename: str) -> dict:
-    output_path = os.path.join(path, filename)
+def _default_artifact() -> dict[str, Any]:
+    return {
+        **DEFAULT_ARTIFACT,
+        "items": [],
+    }
+
+
+def _load_existing_blocks(path: str, filename: str) -> dict[str, Any]:
+    output_path = Path(path) / filename
     try:
-        with open(output_path, "r", encoding="utf-8") as file:
-            return json.load(file)
-    except (OSError, ValueError):
-        return {
-            "schema_version": "1.0",
-            "artifact_type": "threat_actor_messages",
-            "source": "static_agent",
-            "items": [],
-        }
+        with output_path.open("r", encoding="utf-8") as file:
+            data = json.load(file)
+        
+        if isinstance(data, dict):
+            data.setdefault("items", [])
+            return data
+    except (OSError, json.JSONDecodeError):
+        pass
+
+    return _default_artifact()
 
 
-def save_threat_actor_messages(path: str, filename: str, parameters: dict) -> dict:
+def _message_exists(items: list[dict[str, Any]], message_block: str) -> bool:
+    return any(
+        item.get("message_block") == message_block
+        for item in items
+    )
+
+
+def save_threat_actor_messages(path: str, filename: str, parameters: dict[str, Any]) -> dict[str, Any]:
     message_block = parameters.get("message_block")
-    if not message_block:
+    if not isinstance(message_block, str) or not message_block.strip():
         return {
+            "success": False,
+            "saved": False,
+            "reason": "missing_message_block",
             "saved_count": 0,
-            "items": [],
         }
 
     data = _load_existing_blocks(path, filename)
     items = data.setdefault("items", [])
+
+    if _message_exists(items, message_block):
+        save_json(path, filename, data)
+        return {
+            "success": True,
+            "saved": False,
+            "reason": "duplicate",
+            "saved_count": len(items),
+        }
+
     item = {
         "id": len(items) + 1,
         "created_at": _now_iso(),
@@ -40,15 +75,12 @@ def save_threat_actor_messages(path: str, filename: str, parameters: dict) -> di
         "message_block": message_block,
     }
 
-    if item["message_block"] not in [
-        existing.get("message_block")
-        for existing in items
-    ]:
-        items.append(item)
-
+    items.append(item)
     save_json(path, filename, data)
 
     return {
+        "success": True,
+        "saved": True,
         "saved_count": len(items),
         "item": item,
     }

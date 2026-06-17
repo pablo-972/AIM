@@ -15,21 +15,13 @@ providers:
       env: OPENAI_BASE_URL
       default: https://api.openai.com/v1
 
-  anthropic:
-    type: anthropic
-    api_key:
-      env: ANTHROPIC_API_KEY
-    base_url:
-      env: ANTHROPIC_BASE_URL
-      default: https://api.anthropic.com/v1
-
   gemini:
     type: gemini
     api_key:
       env: GEMINI_API_KEY
     base_url:
       env: GEMINI_BASE_URL
-      default: https://generativelanguage.googleapis.com/v1beta
+      default: https://generativelanguage.googleapis.com/v1beta/openai
 
 profiles:
   local-static:
@@ -39,14 +31,14 @@ profiles:
     max_tokens: 4096
     response_format: json
 
-  local-report:
+  local-enrichment:
     provider: ollama
     model: gemma4:e2b
     temperature: 0.2
     max_tokens: 12000
     response_format: text
 
-  local-enrichment:
+  local-report:
     provider: ollama
     model: gemma4:e2b
     temperature: 0.2
@@ -61,14 +53,6 @@ profiles:
     temperature: 0.1
     max_tokens: 4096
 
-  openai-report:
-    provider: openai
-    model:
-      env: OPENAI_REPORT_MODEL
-      default: ""
-    temperature: 0.3
-    max_tokens: 12000
-
   openai-enrichment:
     provider: openai
     model:
@@ -77,21 +61,37 @@ profiles:
     temperature: 0.3
     max_tokens: 12000
 
-  anthropic-static:
-    provider: anthropic
+  openai-report:
+    provider: openai
     model:
-      env: ANTHROPIC_STATIC_MODEL
+      env: OPENAI_REPORT_MODEL
       default: ""
-    temperature: 0.1
-    max_tokens: 4096
+    temperature: 0.3
+    max_tokens: 12000
 
   gemini-static:
     provider: gemini
     model:
       env: GEMINI_STATIC_MODEL
-      default: ""
+      default: "gemini-2.5-flash"
     temperature: 0.1
-    max_tokens: 4096
+    max_tokens: 12000
+
+  gemini-enrichment:
+    provider: gemini
+    model:
+      env: GEMINI_ENRICHMENT_MODEL
+      default: "gemini-2.5-flash"
+    temperature: 0.1
+    max_tokens: 12000
+
+  gemini-report:
+    provider: gemini
+    model:
+      env: GEMINI_REPORT_MODEL
+      default: "gemini-2.5-flash"
+    temperature: 0.1
+    max_tokens: 12000
 
 agents:
   static:

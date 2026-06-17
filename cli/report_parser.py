@@ -1,12 +1,24 @@
+import argparse
 
 
-def add_report_module(subparsers, common):
-    report_parser = subparsers.add_parser("report", parents=[common], help="Generate a report based on the analysis data using an AI model")
-    
-    report_parser.add_argument("--module", choices=["static"], default="static", help="Module report")
-    report_parser.add_argument("--profile", choices=["local-report", "openai-report"], default="local-report", help="AI model")
+def add_report_module(subparsers: argparse._SubParsersAction, common: argparse.ArgumentParser) -> None:
+    parser = subparsers.add_parser(
+        "report",
+        parents=[common],
+        help="Generate a report using an AI model",
+    )
 
-    report_parser.set_defaults(func="run_report")
+    parser.add_argument(
+        "--profile",
+        choices=["local-report", "openai-report", "gemini-report"],
+        default="local-report",
+        help="AI model profile",
+    )
+
+    parser.set_defaults(
+        func="run_report",
+        validator=None,
+    )
     
    
 

@@ -1,4 +1,4 @@
-from utils.artifacts import get_threat_actor_message_blocks, get_tool_data
+
 from utils.preprocessing.chunks import prepare_generic_report_chunks
 from utils.preprocessing.pe import prepare_pe_enrichment_sources, prepare_pe_report_chunks
 from utils.preprocessing.virustotal import prepare_vt_enrichment_data, prepare_vt_report_chunks

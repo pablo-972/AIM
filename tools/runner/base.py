@@ -1,31 +1,37 @@
 from abc import ABC
+from typing import Any
 
-from exceptions import ToolError
-from tools.static import is_pe
 from core.context import AnalysisContext
+from exceptions import ToolError
+
 
 
 class BaseToolRunner(ABC):
-    def __init__(self, context: AnalysisContext):
+    ALLOWED_RUNNERS: set[str] = set()
+
+    def __init__(self, context: AnalysisContext) -> None:
         self.context = context
         self.sample = context.sample
-        self.is_pe = is_pe(str(context.sample))
-        
+
 
     def _selected_runner_name(self) -> str:
         func_name = self.context.func
-        if func_name is None:
-            raise ToolError("No function selected")
+        if not func_name:
+            raise ToolError("No runner function selected")
+        if func_name not in self.ALLOWED_RUNNERS:
+            raise ToolError(f"Runner function not allowed: {func_name}")
+
         return func_name
 
 
-    def _run_selected(self):
+    def _run_selected(self) -> Any:
         func_name = self._selected_runner_name()
         func = getattr(self, func_name, None)
-        if func is None:
+        if func is None or not callable(func):
             raise ToolError(f"Unknown runner function: {func_name}")
+
         return func()
 
 
-    def run(self):
+    def run(self) -> Any:
         return self._run_selected()

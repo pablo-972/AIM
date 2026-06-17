@@ -35,7 +35,7 @@ class ProviderFactory:
             base_url = resolve_value(provider_config["base_url"])
             return OllamaProvider(base_url=base_url, model=model, temperature=temperature, response_format=response_format)
 
-        if provider_type in {"openai", "openai_compatible"}:
+        if provider_type in {"openai", "gemini"}:
             base_url = resolve_value(provider_config["base_url"])
             api_key = resolve_value(provider_config["api_key"])
 
