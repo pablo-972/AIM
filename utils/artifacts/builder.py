@@ -23,10 +23,18 @@ class JsonBuilder:
 
 
     def add_phase(self, phase_name: str, tools: dict[str, Any], status: str = "completed") -> None:
-        self.data["phases"][phase_name] = {
-            "status": status, 
-            "tools": tools
-        }
+        phase = self.data["phases"].get(phase_name)
+        if not isinstance(phase, dict):
+            phase = {}
+
+        existing_tools = phase.get("tools")
+        if not isinstance(existing_tools, dict):
+            existing_tools = {}
+
+        existing_tools.update(tools)
+        phase["status"] = status
+        phase["tools"] = existing_tools
+        self.data["phases"][phase_name] = phase
 
 
     def save_phase(self, phase_name: str, tools: dict[str, Any], status: str = "completed") -> None:
