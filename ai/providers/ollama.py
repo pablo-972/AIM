@@ -20,11 +20,13 @@ class OllamaProvider(BaseLLMProvider):
             "model": self.model,
             "messages": messages,
             "stream": False,
-            "format": self.response_format,
             "options": {
                 "temperature": self.temperature,
             },
         }
+
+        if self.response_format == "json":
+            payload["format"] = "json"
 
         try:
             response = requests.post( f"{self.base_url}/api/chat", json=payload, timeout=REQUEST_TIMEOUT)

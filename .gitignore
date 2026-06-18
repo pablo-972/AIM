@@ -185,3 +185,6 @@ samples/
 
 # Output data
 output/
+
+# Logs
+logs/

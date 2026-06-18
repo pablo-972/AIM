@@ -21,20 +21,14 @@ class Logger:
     @classmethod
     def _log(cls, level: str, color: str, message: str) -> None:
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        file_line = f"[{timestamp}] [{color}{level}{cls.RESET}] {message}"
+        file_line = f"[{timestamp}] [{level}] {message}"
         console_line = (
             f"[{timestamp}] "
-            f"{color}[{level:<7}] "
-            f"{cls.RESET}"
+            f"[{color}{level}{cls.RESET}] "
             f"{message}"
         )
         print(console_line)
         cls._write_file(file_line)
-
-    @staticmethod
-    def _log(level: str, color: str, message: str) -> None:
-        timestamp = datetime.now().strftime("%H:%M:%S")
-        print(f"[{timestamp}] [{color}{level}{Logger.RESET}] {message}")
 
     @classmethod
     def info(cls, message: str) -> None:
