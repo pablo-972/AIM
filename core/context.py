@@ -14,6 +14,7 @@ class AnalysisContext:
     phase: str
     func: str | None
     static_modes: list[str]
+    reversing_modes: list[str]
     profile: str | None
     static_agent: bool
     
@@ -40,6 +41,7 @@ class AnalysisContext:
             func=getattr(args, "func", None),
             profile=getattr(args, "profile", None),
             static_modes=getattr(args, "static_modes", []),
+            reversing_modes=getattr(args, "reversing_modes", []),
             static_agent=getattr(args, "static_agent", False),
             sample_sha256=sample_sha256,
         )
