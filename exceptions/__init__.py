@@ -26,3 +26,8 @@ class ConfigurationError(AIMError):
 class ProviderError(AIMError):
     """LLM provider error."""
     pass
+
+
+class FileReadError(Exception):
+    """File error."""
+    pass

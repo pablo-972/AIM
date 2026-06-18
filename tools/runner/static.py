@@ -87,7 +87,7 @@ class StaticToolRunner(BaseToolRunner):
                 "error": f"Unknown static agent tool: {tool_name}",
             }
 
-        payload = {**(context or {}), **(parameters or {})}
+        payload = {**(parameters or {}), **(context or {})}
 
         try:
             return tool(path=self.context.output, filename=THREAT_ACTOR_MESSAGES_FILENAME, parameters=payload)

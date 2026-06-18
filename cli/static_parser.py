@@ -3,7 +3,7 @@ import argparse
 from exceptions import CLIValidationError
 
 
-STATIC_MODES = (
+STATIC_MODES = [
     "file",
     "hash",
     "metadata",
@@ -12,7 +12,7 @@ STATIC_MODES = (
     "vt",
     "pe",
     "full",
-)
+]
 
 
 def validate_static_args(args: argparse.Namespace) -> None:
@@ -50,7 +50,7 @@ def add_static_module(subparsers: argparse._SubParsersAction, common: argparse.A
     )
     parser.add_argument(
         "--profile",
-        choices=["local-static", "openai-static"],
+        choices=["local-static", "openai-static", "gemini-static"],
         default="local-static",
         help="Model profile to use with --agent",
     )

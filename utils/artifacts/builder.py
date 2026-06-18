@@ -6,12 +6,13 @@ from utils.io.files import save_json
 
 
 class JsonBuilder:
-    def __init__(self, output_path: str, sample_path: Path):
+    def __init__(self, output_path: str, sample_path: Path, sample_sha256: str):
         self.output_path = output_path
         self.sample_path = sample_path
         self.data = {
             "sample": {
                 "path": str(sample_path),
+                "sha256": sample_sha256,
                 "size": sample_path.stat().st_size,
             },
             "phases": {},

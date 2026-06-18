@@ -2,9 +2,8 @@ from typing import Any
 
 from config import ENRICHMENT_FILENAME, RESULT_FILENAME, THREAT_ACTOR_MESSAGES_FILENAME
 from utils.io.files import load_json
-from utils.io.path import resolve_path
 from utils.logger import Logger
-from utils.documents import ENRICHMENT_TITLE, MarkdownDocument
+from utils.artifacts.documents import ENRICHMENT_TITLE, MarkdownDocument
 from utils.preprocessing import prepare_static_agent_sources, prepare_static_enrichment_sources
 from ai.generators.enrichment import EnrichmentGenerator
 from ai.runner.base import BaseAIRunner
@@ -14,7 +13,7 @@ class EnrichmentAIRunner(BaseAIRunner):
     def __init__(self, context: Any, model_registry: Any) -> None:
         super().__init__(context)
 
-        enrichment_path = resolve_path(self.context.output, ENRICHMENT_FILENAME)
+        enrichment_path = self.context.output / ENRICHMENT_FILENAME
         self.document = MarkdownDocument(enrichment_path, ENRICHMENT_TITLE)
 
         llm = model_registry.create_task_client("enrichment", profile_override=self.context.profile)

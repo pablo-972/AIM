@@ -1,43 +1,52 @@
 import json
+import os
+from pathlib import Path
+from typing import Any
 
 import yaml
 
-from utils.logger import Logger
-from utils.io.path import resolve_path, ensure_dir
+from exceptions import FileReadError
 
 
-def save_json(path: str, filename: str, data: dict):
-    output_path = resolve_path(path, filename)
-    ensure_dir(output_path.parent)
-
-    with open(output_path, "w", encoding="utf-8") as file:
-        json.dump(data, file, indent=4)
-
-    Logger.success(f"JSON data saved to {output_path}")
+def ensure_dir(path: str | Path) -> None:
+    Path(path).mkdir(parents=True, exist_ok=True)
 
 
-def load_json(path: str, filename: str):
-    output_path = resolve_path(path, filename)
-    if not output_path.exists():
+def save_json(path: str | Path, filename: str, data: dict[str, Any]) -> None:
+    directory = Path(path)
+    ensure_dir(directory)
+
+    target = directory / filename
+    tmp = target.with_suffix(target.suffix + ".tmp")
+
+    with tmp.open("w", encoding="utf-8") as file:
+        json.dump(data, file, indent=4, ensure_ascii=False)
+
+    os.replace(tmp, target)
+
+
+def load_json(path: str | Path, filename: str) -> dict[str, Any] | None:
+    target = Path(path) / filename
+    if not target.exists():
         return None
-    
-    with open(output_path, "r", encoding="utf-8", errors="replace") as file:
-        try:
+
+    try:
+        with target.open("r", encoding="utf-8") as file:
             return json.load(file)
-        except json.JSONDecodeError:
-            return None
+    except json.JSONDecodeError as exc:
+        raise FileReadError(f"Invalid JSON file: {target}") from exc
 
 
-def load_yaml(path: str, filename: str):
-    output_path = resolve_path(path, filename)
-    if not output_path.exists():
+def load_yaml(path: str | Path, filename: str) -> dict[str, Any] | None:
+    target = Path(path) / filename if path else Path(filename)
+    if not target.exists():
         return None
-    
-    with open(output_path, "r", encoding="utf-8", errors="replace") as file:
-        try:
+
+    try:
+        with target.open("r", encoding="utf-8") as file:
             return yaml.safe_load(file)
-        except yaml.YAMLError:
-            return None
+    except yaml.YAMLError as exc:
+        raise FileReadError(f"Invalid YAML file: {target}") from exc
 
 
 

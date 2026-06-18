@@ -7,14 +7,13 @@ from config import (
     THREAT_ACTOR_MESSAGES_FILENAME,
 )
 from utils.artifacts.extractor import JsonExtractor
-from utils.documents import (
+from utils.artifacts.documents import (
     EMPTY_DOCUMENT_BODY,
     ENRICHMENT_TITLE,
     MarkdownDocument,
     REPORT_TITLE,
 )
 from utils.io.files import load_json
-from utils.io.path import resolve_path
 from utils.io.text import read_text
 from utils.logger import Logger
 from utils.preprocessing import prepare_report_chunks
@@ -26,10 +25,10 @@ class ReportAIRunner(BaseAIRunner):
     def __init__(self, context: Any, model_registry: Any) -> None:
         super().__init__(context)
 
-        report_path = resolve_path(self.context.output, REPORT_FILENAME)
+        report_path = self.context.output / REPORT_FILENAME
         self.document = MarkdownDocument(report_path, REPORT_TITLE)
 
-        enrichment_path = resolve_path(self.context.output, ENRICHMENT_FILENAME)
+        enrichment_path = self.context.output / ENRICHMENT_FILENAME
         self.enrichment_document = MarkdownDocument(enrichment_path, ENRICHMENT_TITLE)
 
         llm = model_registry.create_task_client("report", profile_override=self.context.profile)

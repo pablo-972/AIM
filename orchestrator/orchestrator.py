@@ -34,9 +34,23 @@ class Orchestrator:
         }
     
 
+    def _get_strings_for_static_agent(self) -> list[str]:
+        strings = (
+            self.static_tools_results
+            .get("strings", {})
+            .get("data", {})
+            .get("parsed_strings", [])
+        )
+
+        if isinstance(strings, list):
+            return strings
+
+        return []
+
+
     def _get_json_builder(self) -> JsonBuilder:
         if self.json_builder is None:
-            self.json_builder = JsonBuilder(self.context.output, self.context.sample)
+            self.json_builder = JsonBuilder(self.context.output, self.context.sample, self.context.sample_sha256)
 
         return self.json_builder
 
@@ -60,8 +74,7 @@ class Orchestrator:
         if not self.context.static_agent:
             return
 
-        data = load_json(self.context.output, RESULT_FILENAME)
-        strings = JsonExtractor(data).get_static_strings()
+        strings = self._get_strings_for_static_agent()
         if not strings:
             Logger.warning("No parsed strings found. Skipping static agent.")
             return

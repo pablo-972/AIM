@@ -1,27 +1,45 @@
 from dataclasses import dataclass
 from pathlib import Path
 
+from exceptions import CLIValidationError
+from utils.crypto import sha256_file
+
 
 @dataclass(frozen=True)
 class AnalysisContext:
     sample: Path
+    sample_sha256: str
     output: Path
-    phase: str
     output_format: str
-    func: str | None = None
-    profile: str | None = None
-    static_modes: tuple[str, ...] = ()
-    static_agent: bool = False
+    phase: str
+    func: str | None
+    static_modes: list[str]
+    profile: str | None
+    static_agent: bool
+    
 
     @classmethod
-    def from_args(cls, args) -> "AnalysisContext":
+    def from_args(cls, args):
+        sample = Path(args.sample).expanduser().resolve()
+
+        if not sample.exists():
+            raise CLIValidationError(f"Sample does not exist: {sample}")
+
+        if not sample.is_file():
+            raise CLIValidationError(f"Sample is not a file: {sample}")
+
+        sample_sha256 = sha256_file(sample)
+        base_output = Path(args.output).expanduser().resolve()
+        output = base_output / sample_sha256
+
         return cls(
-            sample=Path(args.sample),
-            output=Path(args.output),
-            phase=args.phase,
+            sample=sample,
+            output=output,
             output_format=args.format,
+            phase=args.phase,
             func=getattr(args, "func", None),
             profile=getattr(args, "profile", None),
-            static_modes=tuple(getattr(args, "static_modes", ())),
+            static_modes=getattr(args, "static_modes", []),
             static_agent=getattr(args, "static_agent", False),
+            sample_sha256=sample_sha256,
         )

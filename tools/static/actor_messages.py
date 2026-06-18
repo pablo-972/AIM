@@ -48,7 +48,7 @@ def _message_exists(items: list[dict[str, Any]], message_block: str) -> bool:
 
 def save_threat_actor_messages(path: str, filename: str, parameters: dict[str, list[str]]) -> dict[str, Any]:
     message_block = parameters.get("message_block")
-    if not isinstance(message_block, str) or not message_block.strip():
+    if not isinstance(message_block, list) or not message_block:
         return {
             "success": False,
             "saved": False,
