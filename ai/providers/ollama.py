@@ -15,6 +15,36 @@ class OllamaProvider(BaseLLMProvider):
         self.response_format = response_format
 
 
+    def _chat(self, messages: list[dict]) -> LLMResponse:
+        payload = {
+            "model": self.model,
+            "messages": messages,
+            "stream": False,
+            "format": self.response_format,
+            "options": {
+                "temperature": self.temperature,
+            },
+        }
+
+        try:
+            response = requests.post( f"{self.base_url}/api/chat", json=payload, timeout=REQUEST_TIMEOUT)
+            response.raise_for_status()
+            data = response.json()
+
+            content = data.get("message", {}).get("content")
+            if not content:
+                raise ProviderError("Ollama response does not contain message.content")
+
+            return LLMResponse(content=content)
+
+        except requests.RequestException as exc:
+            raise ProviderError(f"Ollama request failed: {exc}") from exc
+
+        except ValueError as exc:
+            raise ProviderError("Invalid JSON response from Ollama") from exc
+
+
+
     def chat(self, system_prompt: str, user_prompt: str) -> LLMResponse:
         return self._chat(
             [
@@ -34,32 +64,3 @@ class OllamaProvider(BaseLLMProvider):
         )
 
 
-    def _chat(self, messages: list[dict]) -> LLMResponse:
-        payload = {
-            "model": self.model,
-            "messages": messages,
-            "stream": False,
-            "options": {
-                "temperature": self.temperature,
-            },
-        }
-
-        if self.response_format == "json":
-            payload["format"] = "json"
-
-        try:
-            response = requests.post( f"{self.base_url}/api/chat", json=payload, timeout=REQUEST_TIMEOUT)
-            response.raise_for_status()
-            data = response.json()
-
-            content = data.get("message", {}).get("content")
-            if not content:
-                raise ProviderError("Ollama response does not contain message.content")
-
-            return LLMResponse(content=content)
-
-        except requests.RequestException as exc:
-            raise ProviderError(f"Ollama request failed: {exc}") from exc
-
-        except ValueError as exc:
-            raise ProviderError("Invalid JSON response from Ollama") from exc

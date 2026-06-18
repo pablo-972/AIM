@@ -44,32 +44,6 @@ class OpenAICompatibleProvider(BaseLLMProvider):
         }
 
 
-    def chat(self, system_prompt: str, user_prompt: str) -> LLMResponse:
-        return self._chat(
-            [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ]
-        )
-
-    def chat_with_assistant(self, system_prompt: str, assistant_prompt: str, user_prompt: str) -> LLMResponse:
-        return self._chat(
-            [
-                {"role": "system", "content": system_prompt},
-                {"role": "assistant", "content": assistant_prompt},
-                {"role": "user", "content": user_prompt},
-            ]
-        )
-
-
-    def _chat(self, messages: list[dict[str, str]]) -> LLMResponse:
-        payload = self._build_payload(messages)
-        data = self._post_with_retries(payload)
-        content = self._extract_content(data)
-
-        return LLMResponse(content=content)
-
-
     def _build_payload(self, messages: list[dict[str, str]]) -> dict[str, Any]:
         payload: dict[str, Any] = {
             "model": self.model,
@@ -150,3 +124,30 @@ class OpenAICompatibleProvider(BaseLLMProvider):
             raise ProviderError(f"{self.provider_type} response content is empty")
 
         return content
+    
+
+    def _chat(self, messages: list[dict[str, str]]) -> LLMResponse:
+        payload = self._build_payload(messages)
+        data = self._post_with_retries(payload)
+        content = self._extract_content(data)
+
+        return LLMResponse(content=content)
+
+
+    def chat(self, system_prompt: str, user_prompt: str) -> LLMResponse:
+        return self._chat(
+            [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ]
+        )
+    
+
+    def chat_with_assistant(self, system_prompt: str, assistant_prompt: str, user_prompt: str) -> LLMResponse:
+        return self._chat(
+            [
+                {"role": "system", "content": system_prompt},
+                {"role": "assistant", "content": assistant_prompt},
+                {"role": "user", "content": user_prompt},
+            ]
+        )
