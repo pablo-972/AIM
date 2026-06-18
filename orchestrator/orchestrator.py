@@ -1,20 +1,17 @@
 import json
 from typing import Any, Callable
 
-from config import MODEL_PROFILES_PATH, RESULT_FILENAME
+from config import MODEL_PROFILES_PATH
 from utils.logger import Logger 
-from utils.io.files import load_yaml, load_json
-from utils.artifacts.extractor import JsonExtractor
+from utils.io.files import load_yaml
 from utils.artifacts.builder import JsonBuilder
 from core.context import AnalysisContext
 from tools.runner.static import StaticToolRunner
+from tools.runner.reversing import ReversingToolRunner
 from ai.model_registry import ModelRegistry
 from ai.runner.static import StaticAgentRunner
 from ai.runner.enrichment import EnrichmentAIRunner
 from ai.runner.report import ReportAIRunner
-
-
-
 
 
 class Orchestrator:
@@ -22,7 +19,9 @@ class Orchestrator:
         self.context = AnalysisContext.from_args(args)
         self.json_builder: JsonBuilder | None = None
         self.static_tools_results: dict[str, Any] = {}
+        self.reversing_tools_results: dict[str, Any] = {}
         self.static_tool_runner: StaticToolRunner | None = None
+        self.reversing_tool_runner: ReversingToolRunner | None = None
         self._model_registry: ModelRegistry | None = None
         
     
@@ -30,6 +29,7 @@ class Orchestrator:
         return {
             "static": self.run_static_phase,
             "enrichment": self.run_enrichment_phase,
+            "reversing": self.run_reversing_phase,
             "report": self.run_report_phase
         }
     
@@ -70,6 +70,13 @@ class Orchestrator:
         return self.static_tool_runner
 
 
+    def _get_reversing_tool_runner(self) -> ReversingToolRunner:
+        if self.reversing_tool_runner is None:
+            self.reversing_tool_runner = ReversingToolRunner(self.context)
+        
+        return self.reversing_tool_runner
+
+
     def _run_static_agent(self) -> None:
         if not self.context.static_agent:
             return
@@ -85,26 +92,30 @@ class Orchestrator:
         static_agent_runner.run()
 
 
-    def _save_static_tools_results(self) -> None:
+    def _run_tools(self, phase_name: str, runner: Any) -> dict[str, Any]:
+        Logger.info(f"Executing {phase_name} tools")
+        results = runner.run()
+
         if self.context.output_format == "json":
-            json_builder = self._get_json_builder()
-            json_builder.add_phase("static", self.static_tools_results)
-            json_builder.build()
+            self._get_json_builder().save_phase(phase_name, results)
 
         elif self.context.output_format == "text":
-            print(json.dumps(self.static_tools_results, indent=4))
+            print(json.dumps(results, indent=4))
+
+        return results
 
 
     def _run_static_tools(self) -> None:
-        Logger.info("Executing static tools")
-        self.static_tools_results = self._get_static_tool_runner().run()
+        self.static_tools_results = self._run_tools("static", self._get_static_tool_runner())
 
+
+    def _run_reversing_tools(self) -> None:
+        self.reversing_tools_results = self._run_tools("reversing", self._get_reversing_tool_runner())
 
 
     def run_static_phase(self) -> None:
         Logger.info("Running static phase")
         self._run_static_tools()
-        self._save_static_tools_results()
         self._run_static_agent()
         Logger.success("Static phase finished")
 
@@ -112,6 +123,12 @@ class Orchestrator:
     def run_enrichment_phase(self) -> None:
         Logger.info("Running enrichment phase")
         EnrichmentAIRunner(self.context, self._get_model_registry()).run()
+
+
+    def run_reversing_phase(self) -> None:
+        Logger.info("Running reversing phase")
+        self._run_reversing_tools()
+        Logger.success("Reversing phase finished")
 
 
     def run_report_phase(self) -> None:

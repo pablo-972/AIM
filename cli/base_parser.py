@@ -1,8 +1,10 @@
 import argparse
 
 from cli.static_parser import add_static_module
-from cli.report_parser import add_report_module
 from cli.enrichment_parser import add_enrichment_module
+from cli.reversing_parser import add_reversing_module
+from cli.report_parser import add_report_module
+
 
 
 def create_common_parser() -> argparse.ArgumentParser:
@@ -35,6 +37,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     add_static_module(subparsers, common)
     add_enrichment_module(subparsers, common)
+    add_reversing_module(subparsers, common)
     add_report_module(subparsers, common)
 
     return parser

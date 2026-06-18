@@ -37,7 +37,6 @@ STATIC_AGENT_TOOL_RUNNERS: dict[str, AgentTool] = {
 }
 
 
-
 class StaticToolRunner(BaseToolRunner):
     ALLOWED_RUNNERS = {"run_static"}
 
