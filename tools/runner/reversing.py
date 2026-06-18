@@ -25,7 +25,7 @@ REVERSING_TOOL_RUNNERS: dict[str, ReverseTool] = {
     "strings": run_reversing_strings,
     "disasm": run_disasm,
     "xrefs": run_xrefs,
-    "string_xrefs": run_string_xrefs,
+    "string-xrefs": run_string_xrefs,
 }
 
 
@@ -53,7 +53,7 @@ class ReversingToolRunner(BaseToolRunner):
         if mode == "xrefs":
             return {"value": getattr(self.context, "value", None)}
 
-        if mode == "string_xrefs":
+        if mode == "string-xrefs":
             return {"string_value": getattr(self.context, "value", None)}
 
         return {}

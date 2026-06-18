@@ -16,10 +16,10 @@ REVERSING_MODES = [
 
 
 def validate_reversing_args(args: argparse.Namespace) -> None:
-    if args.agent and args.reversing_modes:
+    if args.reversing_agent and args.reversing_modes:
         raise CLIValidationError("--agent cannot be combined with manual reverse modes")
 
-    if not args.agent and not args.reversing_modes:
+    if not args.reversing_agent and not args.reversing_modes:
         raise CLIValidationError("Select at least one reverse mode or use --agent")
 
     if "disasm" in args.reversing_modes and not args.function:
@@ -62,6 +62,7 @@ def add_reversing_module(subparsers: argparse._SubParsersAction, common: argpars
     )
     parser.add_argument(
         "--agent",
+        dest="reversing_agent",
         action="store_true",
         help="Run assisted reverse-engineering agent",
     )
