@@ -1,89 +1,139 @@
-# from utils.logger import Logger
-# from utils.io.files import load_json
-# from utils.io.path import resolve_path
-# from utils.io.text import write_text, append_text
-# from utils.preprocessing import prepare_report_chunks
-# from utils.artifacts.extractor import get_static_tools, get_threat_actor_message_blocks
-# from config import REPORT_FILENAME, RESULT_FILENAME, THREAT_ACTOR_MESSAGES_FILENAME
-# from ai.runner.base import BaseAIRunner
-# from ai.generators.report import AIReport
+from typing import Any
+
+from config import (
+    ENRICHMENT_FILENAME,
+    REPORT_FILENAME,
+    RESULT_FILENAME,
+    THREAT_ACTOR_MESSAGES_FILENAME,
+)
+from utils.artifacts.extractor import JsonExtractor
+from utils.documents import (
+    EMPTY_DOCUMENT_BODY,
+    ENRICHMENT_TITLE,
+    MarkdownDocument,
+    REPORT_TITLE,
+)
+from utils.io.files import load_json
+from utils.io.path import resolve_path
+from utils.io.text import read_text
+from utils.logger import Logger
+from utils.preprocessing import prepare_report_chunks
+from ai.generators.report import AIReport
+from ai.runner.base import BaseAIRunner
 
 
-# class ReportAIRunner(BaseAIRunner):
-#     def __init__(self, context, model_registry):
-#         super().__init__(context)
+class ReportAIRunner(BaseAIRunner):
+    def __init__(self, context: Any, model_registry: Any) -> None:
+        super().__init__(context)
 
-#         self.report_path = resolve_path(self.context.output, REPORT_FILENAME)
+        report_path = resolve_path(self.context.output, REPORT_FILENAME)
+        self.document = MarkdownDocument(report_path, REPORT_TITLE)
 
-#         self.model_registry = model_registry
-#         llm = self.model_registry.create_task_client("report", profile_override=self.context.profile)
-#         self.report_generator = AIReport(llm)
+        enrichment_path = resolve_path(self.context.output, ENRICHMENT_FILENAME)
+        self.enrichment_document = MarkdownDocument(enrichment_path, ENRICHMENT_TITLE)
 
-
-#     def _get_static_tools(self) -> dict:
-#         result = load_json(self.context.output, RESULT_FILENAME)
-#         if not result:
-#             Logger.warning("No static analysis data found. Skipping static report section.")
-#             return {}
-
-#         return get_static_tools(result)
+        llm = model_registry.create_task_client("report", profile_override=self.context.profile)
+        self.generator = AIReport(llm)
 
 
-#     def _append_report(self, report: str):
-#         if report:
-#             append_text(self.report_path, report.strip())
-#         append_text(self.report_path, "\n")
+    def _get_static_extractor(self) -> JsonExtractor | None:
+        result = load_json(self.context.output, RESULT_FILENAME)
+        if not result:
+            Logger.warning("No static analysis data found. Skipping static report section.")
+            return None
+
+        return JsonExtractor(result)
 
 
-#     def _save_static_data(self):
-#         Logger.info("Reporting static analysis data")
-#         self._append_report("\n## Static Analysis\n")
-#         static_tools_data = self._get_static_tools()
+    def _build_source_name(self, tool_name: str, chunk_data: dict[str, Any], chunk_index: int, total_chunks: int) -> str:
+        section = chunk_data.get("section") if isinstance(chunk_data, dict) else None
+        if section:
+            return f"static.{tool_name}.{section}"
 
-#         for tool_name, tool_result in static_tools_data.items():
-#             Logger.info(f"Reporting {tool_name} data")
-#             if tool_result["status"] != "ok":
-#                 continue
-            
-#             tool_data = tool_result.get("data", {})
-#             chunks = prepare_report_chunks(tool_name, tool_data)
+        if total_chunks > 1:
+            return f"static.{tool_name}.{chunk_index}"
 
-#             for chunk_index, chunk_data in enumerate(chunks, start=1):
-#                 section = chunk_data.get("section") if isinstance(chunk_data, dict) else None
-#                 if section:
-#                     title = f"\n## {tool_name}: {section}"
-#                 elif len(chunks) > 1:
-#                     title = f"\n## {tool_name} {chunk_index}"
-#                 else:
-#                     title = f"\n## {tool_name}"
-
-#                 self._append_report(title)
-#                 report_tool_name = f"{tool_name}.{section}" if section else tool_name
-#                 report = self.report_generator.analyze_and_report("Static", report_tool_name, chunk_data)
-#                 self._append_report(report)
-        
-#         Logger.success("Static tools report finished")
+        return f"static.{tool_name}"
 
 
-#     def _save_static_agent_data(self):
-#         Logger.info("Reporting static agent findings")
-#         static_agent_data = load_json(self.context.output, THREAT_ACTOR_MESSAGES_FILENAME)
-#         if not static_agent_data:
-#             return
-        
-#         self._append_report("\n## Static Agent Findings\n")
-#         blocks = get_threat_actor_message_blocks(static_agent_data)
+    def _get_static_sources(self) -> list[tuple[str, Any]]:
+        extractor = self._get_static_extractor()
+        if extractor is None:
+            return []
 
-#         for block in blocks:
-#             report = self.report_generator.analyze_and_report("Static Agent", "static_agent", block)
-#             self._append_report(report)
+        sources = []
+        for tool_name in extractor.get_static_tools():
+            tool_data = extractor.get_tool_data(tool_name)
+            if tool_data is None:
+                continue
 
-#         Logger.success("Static agent report finished")
+            chunks = prepare_report_chunks(tool_name, tool_data)
+            for chunk_index, chunk_data in enumerate(chunks, start=1):
+                source_name = self._build_source_name(
+                    tool_name,
+                    chunk_data,
+                    chunk_index,
+                    len(chunks),
+                )
+                sources.append((source_name, chunk_data))
+
+        return sources
 
 
-#     def run(self):
-#         Logger.info("Running AI mode")
-#         write_text(self.report_path, "# Malware Analysis Report\n")
-#         self._save_static_data()
-#         self._save_static_agent_data()
-#         Logger.success("Finish report")
+    def _get_static_agent_sources(self) -> list[tuple[str, Any]]:
+        data = load_json(self.context.output, THREAT_ACTOR_MESSAGES_FILENAME)
+        blocks = JsonExtractor(data).get_threat_actor_message_blocks()
+
+        return [
+            (f"static_agent.threat_actor_messages.{index}", block)
+            for index, block in enumerate(blocks, start=1)
+        ]
+
+
+    def _get_enrichment_sources(self) -> list[tuple[str, Any]]:
+        content = self.enrichment_document.sanitize(
+            read_text(self.enrichment_document.path)
+        )
+        if not content:
+            return []
+
+        body = self.enrichment_document.extract_body(content)
+        if not body or body == EMPTY_DOCUMENT_BODY:
+            return []
+
+        return [("reverse_engineering_enrichment", body)]
+
+
+    def _get_sources(self) -> list[tuple[str, Any]]:
+        return [
+            *self._get_static_sources(),
+            *self._get_static_agent_sources(),
+            *self._get_enrichment_sources(),
+        ]
+
+
+    def run(self) -> None:
+        Logger.info("Running AI report")
+
+        current_body = self.document.load_body()
+        for source_name, source_data in self._get_sources():
+            Logger.info(f"Reporting from {source_name}")
+            try:
+                updated_body = self.generator.update_report(
+                    current_report=current_body,
+                    source_name=source_name,
+                    source_data=source_data,
+                )
+            except Exception as exc:
+                Logger.error(f"Report failed for {source_name}: {exc}")
+                continue
+
+            updated_body = self.document.sanitize(updated_body)
+            if not updated_body:
+                Logger.warning(f"Empty report response from {source_name}. Keeping previous content.")
+                continue
+
+            current_body = self.document.extract_body(updated_body)
+            self.document.save_body(current_body)
+
+        Logger.success("Report finished")

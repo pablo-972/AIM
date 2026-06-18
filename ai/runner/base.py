@@ -1,14 +1,15 @@
 from abc import ABC, abstractmethod
+from typing import Any
 
 from core.context import AnalysisContext
 
 
 class BaseAIRunner(ABC):
-    def __init__(self, context: AnalysisContext):
+    def __init__(self, context: AnalysisContext) -> None:
         self.context = context
-        self.sample = context.sample
 
 
     @abstractmethod
-    def run(self):
-        pass
+    def run(self) -> Any:
+        """Execute the AI workflow."""
+        raise NotImplementedError

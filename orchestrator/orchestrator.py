@@ -10,8 +10,9 @@ from core.context import AnalysisContext
 from tools.runner.static import StaticToolRunner
 from ai.model_registry import ModelRegistry
 from ai.runner.static import StaticAgentRunner
-# from ai.runner.report import ReportAIRunner
 from ai.runner.enrichment import EnrichmentAIRunner
+from ai.runner.report import ReportAIRunner
+
 
 
 
@@ -84,6 +85,7 @@ class Orchestrator:
     def _run_static_tools(self) -> None:
         Logger.info("Executing static tools")
         self.static_tools_results = self._get_static_tool_runner().run()
+
 
 
     def run_static_phase(self) -> None:

@@ -2,6 +2,7 @@
 from utils.preprocessing.chunks import prepare_generic_report_chunks
 from utils.preprocessing.pe import prepare_pe_enrichment_sources, prepare_pe_report_chunks
 from utils.preprocessing.virustotal import prepare_vt_enrichment_data, prepare_vt_report_chunks
+from utils.artifacts.extractor import JsonExtractor
 
 
 ACTOR_MESSAGE_KEYWORDS = [
@@ -73,34 +74,35 @@ def prepare_report_chunks(tool_name: str, tool_data) -> list[dict]:
 
 def prepare_static_enrichment_sources(result: dict) -> list[tuple[str, dict]]:
     sources = []
+    extractor = JsonExtractor(result)
 
-    file_data = get_tool_data(result, "file")
+    file_data = extractor.get_tool_data("file")
     if file_data:
         sources.append(("static.file", {"file_type": file_data}))
 
-    metadata = get_tool_data(result, "metadata")
+    metadata = extractor.get_tool_data("metadata")
     if metadata:
         sources.append(("static.metadata", metadata))
 
-    packer = get_tool_data(result, "packer")
+    packer = extractor.get_tool_data("packer")
     if packer:
         sources.append(("static.packer", packer))
 
-    strings = get_tool_data(result, "strings")
+    strings = extractor.get_tool_data("strings")
     if strings:
         strings_data = dict(strings)
         parsed_strings = strings_data.pop("parsed_strings", [])
         strings_data["parsed_strings_count"] = len(parsed_strings)
         sources.append(("static.strings.filtered", strings_data))
 
-    pe = get_tool_data(result, "pe")
+    pe = extractor.get_tool_data("pe")
     if pe:
         sources.extend(
             (f"static.pe.{source_name}", source_data)
             for source_name, source_data in prepare_pe_enrichment_sources(pe)
         )
 
-    vt = get_tool_data(result, "vt") or get_tool_data(result, "virustotal")
+    vt = extractor.get_tool_data("vt") or extractor.get_tool_data("virustotal")
     if vt:
         sources.append(("static.virustotal", prepare_vt_enrichment_data(vt)))
 
@@ -111,9 +113,10 @@ def prepare_static_agent_sources(static_agent_data: dict) -> list[tuple[str, dic
     if not static_agent_data:
         return []
 
+    extractor = JsonExtractor(static_agent_data)
     message_blocks = [
         filtered_block
-        for block in get_threat_actor_message_blocks(static_agent_data)
+        for block in extractor.get_threat_actor_message_blocks()
         if (filtered_block := _filter_actor_message_block(block))
     ]
     if not message_blocks:
@@ -128,10 +131,20 @@ def prepare_static_agent_sources(static_agent_data: dict) -> list[tuple[str, dic
     ]
 
 
-def _filter_actor_message_block(message_block: list[str]) -> list[str]:
+def _filter_actor_message_block(message_block: str | list[str]) -> list[str]:
+    if isinstance(message_block, str):
+        lines = message_block.splitlines()
+    elif isinstance(message_block, list):
+        lines = message_block
+    else:
+        return []
+
     filtered = []
 
-    for line in message_block:
+    for line in lines:
+        if not isinstance(line, str):
+            continue
+
         normalized = line.strip()
         if not normalized:
             continue

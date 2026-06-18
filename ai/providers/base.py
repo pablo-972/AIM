@@ -10,8 +10,9 @@ class LLMResponse:
 class BaseLLMProvider(ABC):
     @abstractmethod
     def chat(self, system_prompt: str, user_prompt: str) -> LLMResponse:
-        pass
+        raise NotImplementedError
+
 
     @abstractmethod
-    def chat_with_assistant(self, system_prompt: str, assitant_prompt: str, user_prompt: str) -> LLMResponse:
-        pass
+    def chat_with_assistant(self, system_prompt: str, assistant_prompt: str, user_prompt: str) -> LLMResponse:
+        raise NotImplementedError

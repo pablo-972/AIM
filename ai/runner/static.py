@@ -1,57 +1,76 @@
-from utils.logger import Logger
-from utils.io.files import load_json
+from collections.abc import Iterator
+from typing import Any
+
 from config import STATIC_AGENT_RESULT_FILENAME, STATIC_AGENT_TOOLS_PATH
-from ai.runner.base import BaseAIRunner
+from utils.io.files import load_json
+from utils.logger import Logger
 from ai.agents.static import StaticAgent
-from ai.runtime.memory import AgentMemory
 from ai.runtime.executor import AgentStepExecutor
+from ai.runtime.memory import AgentMemory
+from ai.runner.base import BaseAIRunner
 
 
 STRING_CHUNK_SIZE = 80
 
 
 class StaticAgentRunner(BaseAIRunner):
-    def __init__(self, context, model_registry, strings, tool_runner):
+    def __init__(self, context: Any, model_registry: Any, strings: list[str], tool_runner: Any) -> None:
         super().__init__(context)
 
-        self.strings = strings
         self.model_registry = model_registry
+        self.strings = strings
         self.tool_runner = tool_runner
         self.available_static_tools = load_json(self.context.output, STATIC_AGENT_TOOLS_PATH) or {}
+        
+
+    def _iter_string_chunks(self, chunk_size: int = STRING_CHUNK_SIZE) -> Iterator[list[str]]:
+        for index in range(0, len(self.strings), chunk_size):
+            yield self.strings[index:index + chunk_size]
 
 
-    def _break_strings_into_chunks(self, strings: list[str], chunk_size: int):
-        for i in range(0, len(strings), chunk_size):
-            yield strings[i:i + chunk_size]
+    def _execute_tool_for_chunk(self, tool_name: str, parameters: dict[str, Any], chunk_index: int, strings_chunk: list[str]) -> dict[str, Any]:
+        tool_context = {
+            "chunk_index": chunk_index,
+            "message_block": strings_chunk,
+        }
+        return self.tool_runner.execute_agent_tool(tool_name, parameters, tool_context)
 
 
-    def _execute_tool(self, tool_name: str, parameters: dict, chunk_index: int, strings_chunk: list[str]) -> dict:
-        context = {"chunk_index": chunk_index, "message_block": strings_chunk}
-        return self.tool_runner.execute_agent_tool(tool_name, parameters, context)
+    def _analyze_chunk(self, agent: StaticAgent, strings_chunk: list[str], chunk_index: int) -> dict[str, Any] | None:
+        try:
+            decision = agent.analyze_strings_chunk(strings_chunk, self.available_static_tools)
+        except Exception as exc:
+            Logger.error(f"Static agent failed on chunk {chunk_index}: {exc}")
+            return None
+        decision.setdefault("chunk_index", chunk_index)
+        return decision
 
 
-    def run(self):
+    def run(self) -> None:
         Logger.info("Running AI static agent")
+
         llm = self.model_registry.create_agent_client("static", profile_override=self.context.profile)
-        static_agent = StaticAgent(llm)
-        memory = AgentMemory(output_dir=self.context.output, filename=STATIC_AGENT_RESULT_FILENAME)
+        agent = StaticAgent(llm)
+        memory = AgentMemory(output_dir=self.context.output, filename=STATIC_AGENT_RESULT_FILENAME, flush_interval=1)
         step_executor = AgentStepExecutor(available_tools=self.available_static_tools)
 
+        try:
+            for chunk_index, strings_chunk in enumerate(self._iter_string_chunks(), start=1):
+                decision = self._analyze_chunk(agent, strings_chunk, chunk_index)
+                if decision is None:
+                    continue
 
-        for chunk_index, strings_chunk in enumerate(self._break_strings_into_chunks(self.strings, STRING_CHUNK_SIZE), start=1):
-            try:
-                decision = static_agent.analyze_strings_chunk(strings_chunk, self.available_static_tools)
-            except Exception as e:
-                Logger.error(f"Static agent failed on chunk {chunk_index}: {e}")
-                continue
-            
-            decision.setdefault("chunk_index", chunk_index)
+                tool_name, tool_output = step_executor.execute(
+                    decision,
+                    lambda name, params: self._execute_tool_for_chunk(
+                        name,
+                        params,
+                        chunk_index,
+                        strings_chunk,
+                    ),
+                )
+                memory.record(decision, tool_name, tool_output)
+        finally:
+            memory.close()
 
-            tool_name, tool_output = step_executor.execute(
-                decision,
-                lambda tool_name, parameters: self._execute_tool(tool_name, parameters, chunk_index, strings_chunk),
-            )
-            memory.record(decision, tool_name, tool_output)
-
-        memory.flush()
-        Logger.success("Finish static agent")
+        Logger.success("Static agent finished")

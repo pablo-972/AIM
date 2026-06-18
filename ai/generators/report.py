@@ -1,7 +1,7 @@
 from ai.providers.base import BaseLLMProvider
 
 
-SYSTEM_PROMPT = r"""
+SYSTEM_PROMPT = """
 You are a Malware Analyst.
 
 Build and maintain a malware analysis report from tool outputs provided by the user.
@@ -78,8 +78,14 @@ IPs, domains, URLs, hashes, files, paths, processes, DLLs, registry keys, servic
 
 Output:
 
-* Return only new or updated sections.
+* Return the full updated report body.
+* Do not include the "# Malware Analysis Report" title.
+* Do not wrap the response in triple backticks or any code fence.
 * Use Markdown headings.
+* Organize findings under semantic report sections such as Static Analysis,
+  Behavior, IOCs, or Conclusions.
+* Never create headings named after tools or evidence sources such as
+  "file", "pe", "strings", "metadata", "packer", or "virustotal".
 * Be concise and technical.
 * Focus on analysis, not raw tool output.
 
@@ -95,22 +101,35 @@ class AIReport:
         self.llm = llm
 
 
-    def analyze_and_report(self, section: str, tool_name: str, analysis_data) -> str:
+    def update_report(self, current_report: str, source_name: str, source_data) -> str:
         prompt = f"""
-        Task:
-        Write a concise report subsection for this malware-analysis data.
+        New evidence source:
 
-        Report section:
-        {section}
+        {source_name}
 
-        Tool or data source:
-        {tool_name}
+        Evidence:
 
-        Data:
-        {analysis_data}
+        {source_data}
 
-        Output Markdown. Keep it short and grounded in the data.
+        Update the malware-analysis report using this new evidence.
+
+        Requirements:
+
+        - Integrate useful findings into the existing report.
+        - Correlate the new evidence with existing findings.
+        - Strengthen, weaken, or remove conclusions when justified.
+        - Avoid duplicating information already present.
+        - Preserve useful existing information.
+        - Integrate evidence into semantic report sections.
+        - Do not create headings named after the tool or source.
+        - Do not create headings such as "file", "pe", "strings", "metadata", "packer", or "virustotal".
+        - Keep the report concise and grounded in evidence.
+        - Do not invent capabilities, behavior, attribution, or indicators.
+        - Return the FULL updated Markdown body.
+        - Do not include the "# Malware Analysis Report" title.
+        - Do not wrap the response in triple backticks or any code fence.
+        - If the evidence adds nothing useful, return the existing report unchanged.
         """
 
-        response = self.llm.chat(SYSTEM_PROMPT, prompt)
+        response = self.llm.chat_with_assistant(SYSTEM_PROMPT, current_report, prompt)
         return response.content

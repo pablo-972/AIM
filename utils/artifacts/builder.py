@@ -1,3 +1,4 @@
+from typing import Any
 from pathlib import Path
 
 from config import RESULT_FILENAME
@@ -17,8 +18,11 @@ class JsonBuilder:
         }
 
 
-    def add_phase(self, phase_name: str, phase_data: dict) -> None:
-        self.data["phases"][phase_name] = phase_data
+    def add_phase(self, phase_name: str, tools: dict[str, Any], status: str = "completed") -> None:
+        self.data["phases"][phase_name] = {
+            "status": status, 
+            "tools": tools
+        }
 
 
     def build(self) -> None:
