@@ -21,7 +21,6 @@ else
 fi
 
 
-
 system_update_and_dependencies(){
     echo "Updating and upgrading the system"
     apt update -y && apt upgrade -y
@@ -29,28 +28,6 @@ system_update_and_dependencies(){
     echo "Installing dependencies"
     apt install -y curl git cmake make g++ zstd python3 python3-venv python3-pip p7zip-full binutils file exiftool upx \
         libboost-filesystem-dev libboost-program-options-dev libboost-regex-dev libboost-system-dev libssl-dev libyara-dev yara
-}
-
-
-install_manalyze(){
-    if command -v manalyze &> /dev/null; then
-        echo "Manalyze already installed"
-    else
-        read -p "Manalyze is not installed. Do you want to install it? (y/n):" confirm
-        if [[ $confirm == [yY] ]]; then
-            echo "Installing Manalyze"    
-            BUILD_DIR=$(mktemp -d)
-            (
-                cd "$BUILD_DIR" || exit 1
-                git clone https://github.com/JusticeRage/Manalyze.git .
-                cmake .
-                make -j"$(nproc)"
-                make install
-                ldconfig
-                rm -rf "$BUILD_DIR"
-            )
-        fi
-    fi
 }
 
 
@@ -79,11 +56,8 @@ install_ollama_and_model(){
 }
 
 
-
 system_update_and_dependencies
-install_manalyze
 install_ollama_and_model
-
 
 
 echo ""
