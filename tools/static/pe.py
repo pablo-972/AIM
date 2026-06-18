@@ -23,6 +23,7 @@ def get_pe_sections(pe: pefile) -> dict:
     for section in pe.sections:
         data["sections"].append({
             "name": section.Name.decode().rstrip("\x00"),
+            "virtual_address": hex(section.VirtualAddress),
             "raw_size": section.SizeOfRawData,
             "virtual_size": section.Misc_VirtualSize,
             "entropy": section.get_entropy(),
