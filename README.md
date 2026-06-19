@@ -1,55 +1,90 @@
 # AIM - AI Malware Analysis
 
-AIM is an AI-assisted malware analysis framework. It runs deterministic analysis tools, stores normalized artifacts, and then lets AI runners generate enrichment notes or a technical report from those artifacts.
+AIM is a modular malware-analysis CLI that combines deterministic tooling with
+AI-assisted analysis.
 
-The current implementation focuses on static analysis, a static strings agent, reverse-engineering enrichment, and report generation.
+Each sample is identified by its SHA-256 hash and receives an isolated artifact
+directory. Static and reverse-engineering tools produce normalized JSON results,
+while AI workflows maintain enrichment and report documents from the available
+evidence.
 
-Run malware samples only in an isolated environment. AIM reads and enriches potentially malicious artifacts and depends on external analysis binaries.
+> Run untrusted samples only inside an isolated analysis environment. AIM reads
+> potentially malicious files and invokes external analysis tools.
 
-## Project Layout
+## Current Capabilities
+
+- Static analysis with file identification, hashes, metadata, packer heuristics,
+  strings, PE inspection, and VirusTotal.
+- AI-assisted inspection of extracted strings for victim-facing threat actor
+  messages.
+- Manual reverse-engineering queries backed by radare2 through `r2pipe`.
+- Incremental reverse-engineering enrichment generated from saved static
+  artifacts.
+- Incremental malware report generation from static results, actor messages,
+  and enrichment notes.
+- Local models through Ollama.
+- OpenAI and Gemini through OpenAI-compatible chat-completions endpoints.
+
+Dynamic analysis is not implemented.
+
+## Project Structure
 
 ```text
 .
 |-- main.py                         # CLI entry point
-|-- cli/                            # Argument parsers and validation
-|-- orchestrator/                   # Analysis context and phase coordinator
+|-- cli/                            # Phase parsers and argument validation
+|-- orchestrator/
+|   |-- context.py                  # Validated, normalized execution context
+|   `-- orchestrator.py             # Phase coordination
 |-- tools/
-|   |-- static/                     # Static core, manual API, and agent API
-|   |-- reversing/                  # Reversing core, manual API, and agent API
-|   `-- runner/                     # Manual and agent tool runners
+|   |-- results.py                  # ToolResult and CommandResult contracts
+|   |-- runner/                     # Static and reversing tool runners
+|   |-- static/
+|   |   |-- analyzers/              # Deterministic static analyzers
+|   |   |-- manual.py               # Manual static-tool registry
+|   |   |-- agent.py                # Static agent-callable operations
+|   |   `-- agent_tools.json        # Static agent tool definitions
+|   `-- reversing/
+|       |-- analyzers/              # r2pipe session and reversing operations
+|       |-- manual.py               # Manual reversing-tool registry
+|       |-- agent.py                # Reversing agent-callable operations
+|       `-- agent_tools.json        # Reversing agent tool definitions
 |-- ai/
-|   |-- agents/                     # Agent prompts and agent logic
-|   |-- generators/                 # Non-agentic AI generators
-|   |-- providers/                  # LLM provider clients
-|   |-- runner/                     # AI runners for agents, reports, enrichment
-|   |-- runtime/                    # Agent executor, memory, validators
-|   `-- model_profiles.yaml         # Provider/profile/task configuration
+|   |-- agents/                     # Agent prompts and decisions
+|   |-- generators/                 # Report and enrichment generators
+|   |-- providers/                  # Ollama and cloud provider clients
+|   |-- runner/                     # AI workflow runners
+|   |-- runtime/                    # Agent execution, validation, and memory
+|   |-- model_registry.py           # Agent/task to profile/provider resolution
+|   `-- model_profiles.yaml         # Providers, profiles, agents, and tasks
 |-- utils/
-|   |-- artifacts/                  # Artifact builders and readers
-|   |-- io/                         # Files, text, paths, command execution
-|   |-- preprocessing/              # Report/enrichment input preparation
-|   `-- logger.py
-|-- config/                         # Settings and environment access
-|-- samples/                        # Local samples
-`-- output/                         # Generated artifacts
+|   |-- artifacts/                  # JSON builder, extractor, Markdown document
+|   |-- io/                         # JSON, YAML, text, and command helpers
+|   `-- preprocessing/              # Model-friendly evidence preparation
+|-- config/                         # Paths, filenames, and environment loading
+|-- samples/                        # Optional local sample directory
+`-- output/                         # Generated artifacts, grouped by sample hash
 ```
 
 ## Installation
 
-Install Python dependencies:
+Install the Python dependencies:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Static analysis also expects these system tools to be available:
+Static analysis expects these external programs to be available when their
+corresponding analyzer is used:
 
 - `file`
 - `strings`
 - `exiftool`
 - `upx`
 
-The repository includes Docker files for a prepared environment:
+Reverse-engineering commands require radare2 and the Python `r2pipe` package.
+
+The repository also includes a Docker environment:
 
 ```bash
 docker compose up -d --build
@@ -58,16 +93,20 @@ docker exec -it aim bash
 
 ## Configuration
 
-Model providers and profiles are configured in `ai/model_profiles.yaml`.
+Copy the environment template and configure the providers you intend to use:
 
-Supported provider implementations:
+```bash
+cp .env.example .env
+```
 
-- `ollama`
-- `openai` / OpenAI-compatible APIs
+Model configuration lives in `ai/model_profiles.yaml` and is divided into:
 
-The YAML also contains placeholder provider entries for Anthropic and Gemini, but those providers are not implemented in `ai.providers.factory.ProviderFactory` yet.
+- `providers`: connection and credential configuration.
+- `profiles`: provider, model, temperature, token budget, and response format.
+- `agents`: default profiles for agentic workflows.
+- `tasks`: default profiles for report and enrichment generation.
 
-Common environment variables:
+Relevant environment variables include:
 
 - `OLLAMA_BASE_URL`
 - `OPENAI_API_KEY`
@@ -75,86 +114,231 @@ Common environment variables:
 - `OPENAI_STATIC_MODEL`
 - `OPENAI_REPORT_MODEL`
 - `OPENAI_ENRICHMENT_MODEL`
+- `GEMINI_API_KEY`
+- `GEMINI_BASE_URL`
+- `GEMINI_STATIC_MODEL`
+- `GEMINI_REPORT_MODEL`
+- `GEMINI_ENRICHMENT_MODEL`
 - `VT_API_BASE_URL`
 - `VT_API_KEY`
 
-## Usage
+Empty cloud model values are rejected when the selected profile is created.
 
-Show CLI help:
+## CLI
+
+General command shape:
+
+```text
+python main.py <phase> <sample> [phase options]
+```
+
+Available phases:
+
+- `static`
+- `reversing`
+- `enrichment`
+- `report`
+
+Show the global or phase-specific help:
 
 ```bash
 python main.py -h
+python main.py static -h
+python main.py reversing -h
+python main.py enrichment -h
+python main.py report -h
 ```
 
-Run full static analysis:
+Common options:
+
+- `--output`: base artifact directory. Defaults to `output`.
+- `--format json|text`: persist JSON results or print tool results as formatted
+  JSON text. Defaults to `json`.
+
+The actual output directory is always:
+
+```text
+<output>/<sample-sha256>/
+```
+
+## Static Analysis
+
+Run every registered static analyzer:
 
 ```bash
-python main.py static /path/to/sample full
+python main.py static samples/sample.exe full
 ```
 
-Run selected static tools:
+Run selected analyzers:
 
 ```bash
-python main.py static /path/to/sample file hash strings pe
+python main.py static samples/sample.exe file hash strings pe
 ```
 
-Write artifacts to a custom output directory:
+Available static modes:
 
-```bash
-python main.py static /path/to/sample full --output output
-```
+- `file`
+- `hash`
+- `metadata`
+- `packer`
+- `strings`
+- `vt`
+- `pe`
+- `full`
+
+`full` cannot be combined with other modes.
 
 Run the static strings agent:
 
 ```bash
-python main.py static /path/to/sample strings --agent --profile local-static
+python main.py static samples/sample.exe strings --agent --profile local-static
 ```
 
-The static agent requires `strings` or `full`, because it consumes extracted `parsed_strings`.
+The static agent requires `strings` or `full`, because it consumes
+`parsed_strings` generated during the same execution. Supported profiles are:
 
-Generate reverse-engineering enrichment from existing artifacts:
+- `local-static`
+- `openai-static`
+- `gemini-static`
+
+## Reverse Engineering
+
+Run basic reverse-engineering collection:
 
 ```bash
-python main.py enrichment /path/to/sample --profile local-enrichment
+python main.py reversing samples/sample.exe full
 ```
 
-Generate a report from existing static analysis artifacts:
+`full` currently runs:
+
+- `info`
+- `imports`
+- `strings`
+
+Run individual operations:
 
 ```bash
-python main.py report /path/to/sample --module static --profile local-report
+python main.py reversing samples/sample.exe functions
+python main.py reversing samples/sample.exe disasm --function main
+python main.py reversing samples/sample.exe xrefs --value 0x401000
+python main.py reversing samples/sample.exe string-xrefs --value "example.com"
+python main.py reversing samples/sample.exe callers --function sym.main
+python main.py reversing samples/sample.exe callees --function sym.main
 ```
 
-## Architecture
+Available reversing modes:
 
-`main.py` builds the CLI parser, validates CLI arguments when a phase provides a validator, and passes the parsed arguments to `Orchestrator`.
+- `info`
+- `imports`
+- `functions`
+- `strings`
+- `disasm`
+- `xrefs`
+- `string-xrefs`
+- `callers`
+- `callees`
+- `full`
 
-The orchestrator is the central coordinator:
+The reversing agent tool definitions and dispatcher exist, but the
+`reversing --agent` workflow is not yet connected to an AI runner in the
+orchestrator.
 
-1. Converts CLI arguments into `orchestrator.context.AnalysisContext`.
-2. Dispatches the selected phase via `PHASE_HANDLERS`.
-3. Creates shared dependencies such as `ModelRegistry` and `StaticToolRunner`.
-4. Runs deterministic tools, AI agents, enrichment, or reporting as needed.
+## Enrichment
 
-The implemented phases are:
+Generate or update reverse-engineering enrichment from previously saved static
+results and threat actor messages:
 
-- `static`: runs static tools, persists `analysis.json`, and optionally runs the static agent.
-- `enrichment`: consumes previous artifacts and updates `enrichment.md`.
-- `report`: consumes previous artifacts and writes `report.md`.
+```bash
+python main.py enrichment samples/sample.exe --profile local-enrichment
+```
 
-## Contracts
+Supported profiles:
 
-`AnalysisContext` contains the normalized execution context:
+- `local-enrichment`
+- `openai-enrichment`
+- `gemini-enrichment`
 
-- sample path
-- output directory
-- phase
-- output format
-- selected profile
-- selected static modes
-- static-agent flag
+The runner treats `enrichment.md` as a living document. For each prepared
+evidence source, the model receives the current body and returns the complete
+updated body. The fixed top-level title is:
 
-`ToolResult` lives in `tools/results.py` and normalizes deterministic tool
-outputs:
+```markdown
+# Reverse Engineering Enrichment
+```
+
+The current enrichment runner does not consume saved reversing-phase results.
+
+## Report Generation
+
+Generate or update the malware report:
+
+```bash
+python main.py report samples/sample.exe --profile local-report
+```
+
+Supported profiles:
+
+- `local-report`
+- `openai-report`
+- `gemini-report`
+
+The report consumes sources in this order:
+
+1. Saved static tool results.
+2. Saved threat actor message blocks.
+3. The current reverse-engineering enrichment document, when available.
+
+Large PE and VirusTotal results are reduced or divided into bounded chunks
+before being sent to the model. Raw extracted strings are omitted from normal
+report input.
+
+Like enrichment, `report.md` is a living document. The model updates the
+complete report body after each source while the application preserves the
+top-level title:
+
+```markdown
+# Malware Analysis Report
+```
+
+## Execution Architecture
+
+The runtime flow is:
+
+```text
+CLI arguments
+    |
+    v
+AnalysisContext
+    |
+    v
+Orchestrator
+    |
+    +-- StaticToolRunner ------> analysis.json
+    |       |
+    |       `-- StaticAgentRunner
+    |               +---------> static_agent_steps.json
+    |               `---------> threat_actor_messages.json
+    |
+    +-- ReversingToolRunner ---> analysis.json
+    |
+    +-- EnrichmentAIRunner ----> enrichment.md
+    |
+    `-- ReportAIRunner --------> report.md
+```
+
+`AnalysisContext` validates that the sample exists, calculates its SHA-256, and
+normalizes all CLI values before execution.
+
+`Orchestrator` selects one phase handler and creates shared dependencies lazily.
+Tool execution remains in tool runners, model construction remains in
+`ModelRegistry`, and artifact-specific behavior remains under
+`utils/artifacts`.
+
+## Tool Result Contract
+
+Deterministic tools are normalized through `tools.results.ToolResult`.
+
+Successful result:
 
 ```json
 {
@@ -164,7 +348,7 @@ outputs:
 }
 ```
 
-Failures use the same shape:
+Failed result:
 
 ```json
 {
@@ -174,88 +358,32 @@ Failures use the same shape:
 }
 ```
 
-`CommandResult` also lives in `tools/results.py` and normalizes stdout, stderr,
-exit status, and timeout state for external commands.
-
-## Static Tools
-
-Static implementations live in `tools/static/core/`. The manual CLI surface is
-registered in `tools.static.manual.STATIC_MANUAL_TOOLS` and executed by
-`tools.runner.static.StaticToolRunner`.
-
-Available modes:
-
-- `file`: identifies the file type using `file`.
-- `hash`: computes `md5`, `sha1`, `sha256`, and PE `imphash` when available.
-- `metadata`: extracts metadata with `exiftool -j`.
-- `packer`: applies PE packer and entropy heuristics.
-- `strings`: extracts strings, filters noise, and extracts IOCs.
-- `pe`: extracts PE architecture, sizes, subsystem, sections, imports, exports, delay imports, version info, and resources.
-- `vt`: queries VirusTotal for the sample SHA256.
-- `full`: runs all registered static tools.
-
-External commands go through `utils.io.commands.run_command`, which adds timeout handling and a shared command-result contract.
-
-## Static Agent
-
-The static agent searches extracted strings for victim-facing threat actor messages, such as:
-
-- ransom notes
-- payment instructions
-- wallet addresses
-- negotiation contact details
-- decryption instructions
-- threats or anti-law-enforcement instructions
-
-Components:
-
-- `ai.agents.static.StaticAgent`: agent prompt and LLM call.
-- `ai.runner.static.StaticAgentRunner`: chunks strings and runs the agent.
-- `ai.runtime.executor.AgentStepExecutor`: validates and dispatches tool calls.
-- `ai.runtime.memory.AgentMemory`: records agent steps.
-- `tools.runner.static.StaticAgentToolRunner`: executes static agent tools.
-
-Agent-callable tools are declared in:
-
-```text
-tools/static/agent_tools.json
-```
-
-The static agent writes:
-
-```text
-output/static_agent_steps.json
-output/threat_actor_messages.json
-```
-
-## Preprocessing
-
-AI inputs are prepared under `utils/preprocessing/`.
-
-The goal is to avoid sending large raw tool outputs directly to the model.
-
-Current preprocessing behavior:
-
-- `strings`: removes the raw string list from report input and keeps counts/IOCs.
-- `pe`: splits report/enrichment input into `summary`, `sections`, and grouped import chunks such as `imports.1`, `imports.2`.
-- `vt`: keeps high-signal report chunks and reduces enrichment input to essential classification, sandbox verdicts, tags, meaningful name, and detection stats.
-- `threat_actor_messages`: extracts only `items[*].message_block`, filters noisy runtime/error strings, and sends clean actor-message blocks as separate enrichment sources.
+A failing tool does not discard successful results from other selected tools.
 
 ## Generated Artifacts
 
-The main artifact is:
+For a sample with SHA-256 `<sha256>`, the default artifact layout is:
 
 ```text
-output/analysis.json
+output/<sha256>/
+|-- analysis.json
+|-- static_agent_steps.json
+|-- threat_actor_messages.json
+|-- enrichment.md
+`-- report.md
 ```
 
-Shape:
+Only artifacts produced by the executed workflows are created.
+
+### `analysis.json`
+
+Static and reversing results share the same phase-based document:
 
 ```json
 {
-  "schema_version": "1.0",
   "sample": {
-    "path": "/path/to/sample",
+    "path": "/absolute/path/to/sample.exe",
+    "sha256": "<sha256>",
     "size": 12345
   },
   "phases": {
@@ -265,97 +393,132 @@ Shape:
         "hash": {
           "status": "ok",
           "data": {
-            "sha256": "..."
+            "sha256": "<sha256>"
           },
           "error": null
         }
-      },
-      "findings": []
+      }
+    },
+    "reversing": {
+      "status": "completed",
+      "tools": {}
     }
   }
 }
 ```
 
-Additional artifacts:
+`JsonBuilder` loads an existing document and merges incoming tools into the
+selected phase. Running one tool later does not replace previously stored tools
+or other phases.
 
-- `output/static_agent_steps.json`: static-agent decisions and tool outputs.
-- `output/threat_actor_messages.json`: selected victim-facing actor messages.
-- `output/enrichment.md`: reverse-engineering enrichment notes.
-- `output/report.md`: final report generated from saved artifacts.
+### `static_agent_steps.json`
 
-`threat_actor_messages.json` shape:
+Records each static-agent decision and any tool execution result:
 
 ```json
 {
-  "schema_version": "1.0",
-  "artifact_type": "threat_actor_messages",
-  "source": "static_agent",
-  "items": [
+  "steps": [
     {
-      "id": 1,
-      "created_at": "2026-06-14T00:00:00+00:00",
-      "chunk_index": 1,
-      "message_block": []
+      "step": 1,
+      "decision": {
+        "thought": "...",
+        "action": "save_threat_actor_messages",
+        "confidence": "high",
+        "parameters": {},
+        "chunk_index": 1
+      },
+      "tool_executed": "save_threat_actor_messages",
+      "tool_output": {}
     }
   ]
 }
 ```
 
-## Report Generation
+### `threat_actor_messages.json`
 
-`ai.runner.report.ReportAIRunner` reads existing artifacts and sends preprocessed chunks to `ai.generators.report.AIReport`.
+When the static agent identifies victim-facing communication, AIM stores the
+entire original strings chunk rather than reconstructed line-level findings:
 
-The report runner writes:
+```json
+{
+  "artifact_type": "threat_actor_messages",
+  "source": "static_agent",
+  "items": [
+    {
+      "id": 1,
+      "created_at": "2026-06-19T00:00:00+00:00",
+      "chunk_index": 1,
+      "message_block": [
+        "Your files have been encrypted.",
+        "Contact us to recover your data."
+      ]
+    }
+  ]
+}
+```
+
+Duplicate blocks are not added again.
+
+## Adding a Static Tool
+
+1. Implement the analyzer under `tools/static/analyzers/`.
+2. Register it in `STATIC_MANUAL_TOOLS` inside `tools/static/manual.py`.
+3. Add its CLI mode to `STATIC_MODES` in `cli/static_parser.py`.
+4. Add preprocessing only when the output is too large or poorly shaped for
+   model consumption.
+5. If an agent must call it, expose a separate agent operation and declare its
+   schema in `tools/static/agent_tools.json`.
+
+The runner wraps normal analyzer output in `ToolResult`; analyzers should return
+useful data or raise an exception.
+
+## Adding a Reversing Tool
+
+1. Implement the operation under `tools/reversing/analyzers/`.
+2. Register the manual operation in `tools/reversing/manual.py`.
+3. Add its CLI mode and required argument validation in
+   `cli/reversing_parser.py`.
+4. If it is agent-callable, register it separately in
+   `tools/reversing/agent.py` and `tools/reversing/agent_tools.json`.
+
+Keep the reusable radare2 session boundary in
+`tools/reversing/analyzers/session.py`.
+
+## Adding an AI Profile
+
+1. Add or reuse a provider in `ai/model_profiles.yaml`.
+2. Add a profile that references that provider.
+3. Assign it as an agent/task default or expose it through the appropriate CLI
+   profile choices.
+
+`ModelRegistry` resolves:
 
 ```text
-output/report.md
+agent or task -> profile -> provider
 ```
 
-For large or noisy tools, the report receives structured chunks rather than full raw JSON blobs.
+Provider-specific HTTP behavior belongs in `ai/providers`, not in runners or
+generators.
 
-## Enrichment
+## Adding a Phase
 
-`ai.runner.enrichment.EnrichmentAIRunner` incrementally updates reverse-engineering notes from preprocessed sources.
+1. Add its parser under `cli/`.
+2. Register the parser in `cli/base_parser.py`.
+3. Extend `AnalysisContext` with any required normalized values.
+4. Add the phase handler in `Orchestrator._get_phase_handlers()`.
+5. Implement tool or AI runners outside the orchestrator.
+6. Persist structured results through `utils/artifacts`.
 
-The runner keeps the top-level title fixed:
+The orchestrator should remain a coordinator rather than becoming the
+implementation point for tools, providers, or document formatting.
 
-```markdown
-# Reverse Engineering Enrichment
-```
+## Known Limitations
 
-The model controls the body structure. It may add, remove, merge, or rename subsections when useful. The runner only sanitizes model output by removing code fences and preventing duplicate top-level titles.
-
-The enrichment runner writes:
-
-```text
-output/enrichment.md
-```
-
-## Adding a New Static Tool
-
-1. Implement the reusable logic in `tools/static/core/`.
-2. Register the manual entrypoint in `STATIC_MANUAL_TOOLS` inside `tools/static/manual.py`.
-3. If it is agent-callable, expose it separately through `tools/static/agent.py` and `agent_tools.json`.
-4. Add the mode to `STATIC_MODES` in `cli/static_parser.py`.
-5. Add preprocessing only if the output is large or needs model-friendly shaping.
-
-Use `ToolResult` through the runner contract; individual tools should return useful data or raise an exception. Agent execution classes belong in the corresponding phase runner module.
-
-## Adding a New Phase
-
-1. Add a parser in `cli/`.
-2. Register it in `cli/base_parser.py`.
-3. Add a phase handler to `Orchestrator.PHASE_HANDLERS`.
-4. Implement the handler method in `orchestrator/orchestrator.py`.
-5. Persist phase artifacts using helpers in `utils.artifacts`.
-
-Keep the orchestrator as the central coordinator. AI runners should not execute tools directly; when an AI workflow needs a tool action, route it through the relevant tool runner.
-
-## Current Status
-
-- Static analysis phase implemented.
-- Static strings agent implemented.
-- Reverse-engineering enrichment implemented.
-- Report generation implemented.
-- Ollama and OpenAI-compatible providers implemented.
-- Dynamic analysis and additional provider backends are not implemented yet.
+- Dynamic analysis is not implemented.
+- The reversing agent CLI path is declared but not connected to an AI runner.
+- Enrichment currently uses static artifacts and actor-message blocks, not
+  reversing-phase results.
+- Report and enrichment updates are sequential model calls and may be slow for
+  samples with many prepared evidence chunks.
+- Cloud requests are non-streaming and use retry and request-interval controls.
+- There is currently no automated test suite in the repository.
