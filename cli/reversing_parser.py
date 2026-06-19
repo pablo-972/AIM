@@ -52,11 +52,12 @@ def add_reversing_module(subparsers: argparse._SubParsersAction, common: argpars
     )
 
     parser.add_argument(
-        "reversing_modes",
-        nargs="*",
+        "--mode",
+        dest="reversing_modes",
+        action="append",
         choices=REVERSING_MODES,
-        metavar="mode",
-        help="Reverse modes to run",
+        default=[],
+        help="Reverse mode to run. Can be used multiple times",
     )
     parser.add_argument(
         "--function",

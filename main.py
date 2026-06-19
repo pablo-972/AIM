@@ -16,7 +16,7 @@ def print_banner():
 def main():
     parser = build_parser()
     args = parser.parse_args()
-    
+
     if hasattr(args, "validator") and args.validator is not None:
         args.validator(args)
 

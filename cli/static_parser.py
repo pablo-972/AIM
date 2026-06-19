@@ -36,11 +36,12 @@ def add_static_module(subparsers: argparse._SubParsersAction, common: argparse.A
     )
 
     parser.add_argument(
-        "static_modes",
-        nargs="+",
+        "--mode",
+        dest="static_modes",
+        action="append",
         choices=STATIC_MODES,
-        metavar="mode",
-        help="Static modes to run",
+        default=[],
+        help="Static analysis mode"
     )
     parser.add_argument(
         "--agent",
