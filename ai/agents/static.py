@@ -109,9 +109,8 @@ Return ONLY a valid JSON object:
 
 {
   "thought": "briefly reason",
-  "decision": "briefly why",
-  "confidence": "low|medium|high",
   "action": "save_threat_actor_messages" | "none",
+  "confidence": "low|medium|high",
   "parameters": {}
 }
 

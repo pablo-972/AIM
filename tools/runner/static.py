@@ -1,40 +1,17 @@
-from typing import Any
 from collections.abc import Callable
+from typing import Any
 
-from config import THREAT_ACTOR_MESSAGES_FILENAME
 from utils.logger import Logger
-from core.results import ToolResult
+from tools.results import ToolResult
 from tools.runner.base import BaseToolRunner
-from tools.static import (
-    analyze_file,
-    analyze_metadata,
-    analyze_pe,
-    analyze_strings,
-    calculate_hashes,
-    detect_packer,
-    get_vt_data,
-    is_pe,
-    save_threat_actor_messages,
-)
+from tools.static.agent import save_threat_actor_messages
+from tools.static.manual import STATIC_MANUAL_TOOLS
 
 
-StaticTool = Callable[[str], dict[str, Any]]
-AgentTool = Callable[..., dict[str, Any]]
-
-
-STATIC_TOOL_RUNNERS: dict[str, StaticTool] = {
-    "file": analyze_file,
-    "metadata": analyze_metadata,
-    "hash": calculate_hashes,
-    "packer": detect_packer,
-    "strings": analyze_strings,
-    "pe": analyze_pe,
-    "vt": get_vt_data,
-}
-
-STATIC_AGENT_TOOL_RUNNERS: dict[str, AgentTool] = {
-    "save_threat_actor_messages": save_threat_actor_messages,
-}
+StaticAgentTool = Callable[
+    [dict[str, Any], dict[str, Any]],
+    dict[str, Any],
+]
 
 
 class StaticToolRunner(BaseToolRunner):
@@ -42,12 +19,11 @@ class StaticToolRunner(BaseToolRunner):
 
     def __init__(self, context: Any) -> None:
         super().__init__(context)
-        self.is_pe = is_pe(str(self.sample))
 
 
     def _execute_tool(self, mode: str) -> dict[str, Any]:
         Logger.info(f"Executing static tool: {mode}")
-        tool = STATIC_TOOL_RUNNERS[mode]
+        tool = STATIC_MANUAL_TOOLS[mode]
 
         try:
             data = tool(str(self.sample))
@@ -60,9 +36,9 @@ class StaticToolRunner(BaseToolRunner):
     def _resolve_modes(self) -> list[str]:
         modes = list(self.context.static_modes)
         if "full" in modes:
-            return list(STATIC_TOOL_RUNNERS)
+            return list(STATIC_MANUAL_TOOLS)
 
-        unknown_modes = [mode for mode in modes if mode not in STATIC_TOOL_RUNNERS]
+        unknown_modes = [mode for mode in modes if mode not in STATIC_MANUAL_TOOLS]
         if unknown_modes:
             raise ValueError(f"Unknown static mode(s): {', '.join(unknown_modes)}")
 
@@ -77,26 +53,31 @@ class StaticToolRunner(BaseToolRunner):
 
         return results
 
-    
-    def execute_agent_tool(self, tool_name: str, parameters: dict[str, Any] | None = None, context: dict[str, Any] | None = None) -> dict[str, Any]:
-        tool = STATIC_AGENT_TOOL_RUNNERS.get(tool_name)
+
+class StaticAgentToolRunner:
+    def __init__(self, context: Any) -> None:
+        self.context = context
+        self._tools: dict[str, StaticAgentTool] = {
+            "save_threat_actor_messages": self._save_threat_actor_messages,
+        }
+
+    def _save_threat_actor_messages(self, parameters: dict[str, Any], tool_context: dict[str, Any]) -> dict[str, Any]:
+        return save_threat_actor_messages(self.context.output, parameters, tool_context)
+
+    def execute(self, tool_name: str, parameters: dict[str, Any] | None = None, context: dict[str, Any] | None = None) -> dict[str, Any]:
+        tool = self._tools.get(tool_name)
         if tool is None:
             return {
                 "success": False,
                 "error": f"Unknown static agent tool: {tool_name}",
             }
 
-        payload = {**(parameters or {}), **(context or {})}
-
         try:
-            return tool(path=self.context.output, filename=THREAT_ACTOR_MESSAGES_FILENAME, parameters=payload)
+            return tool(parameters or {}, context or {})
         except Exception as exc:
             Logger.error(f"Static agent tool '{tool_name}' failed: {exc}")
             return {
                 "success": False,
                 "error": str(exc),
             }
-
-
-
 

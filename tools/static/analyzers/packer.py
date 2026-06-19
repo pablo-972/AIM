@@ -18,15 +18,18 @@ def get_section_name(section):
 
 def has_packer_section(pe: pefile) -> tuple:
     matches = []
+
     for section in pe.sections:
         name = get_section_name(section)
         if name in PACKER_NAMES:
             matches.append(name)
+
     return (len(matches) > 0, matches if matches else None)
 
 
 def has_high_entropy(pe):
     suspicious = []
+
     for section in pe.sections:
         entropy = section.get_entropy()
         if entropy >= THRESHOLD_ENTROPY:
@@ -34,6 +37,7 @@ def has_high_entropy(pe):
                 "section": get_section_name(section),
                 "entropy": round(entropy, 2)
             })
+            
     return (len(suspicious) > 0, suspicious if suspicious else None)
 
 

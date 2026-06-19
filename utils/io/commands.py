@@ -1,7 +1,6 @@
 import subprocess
 
-from core.results import CommandResult
-
+from tools.results import CommandResult
 
 DEFAULT_COMMAND_TIMEOUT = 30
 
@@ -16,6 +15,11 @@ def run_command(command: list[str], timeout: int = DEFAULT_COMMAND_TIMEOUT) -> C
             errors="replace",
             timeout=timeout,
         )
+        return CommandResult(
+            stdout=result.stdout,
+            stderr=result.stderr,
+            returncode=result.returncode,
+        )
     except subprocess.TimeoutExpired as exc:
         return CommandResult(
             stdout=exc.stdout or "",
@@ -24,8 +28,3 @@ def run_command(command: list[str], timeout: int = DEFAULT_COMMAND_TIMEOUT) -> C
             timed_out=True,
         )
 
-    return CommandResult(
-        stdout=result.stdout,
-        stderr=result.stderr,
-        returncode=result.returncode,
-    )

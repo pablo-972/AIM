@@ -2,7 +2,7 @@ import requests
 
 from config import get_env
 from exceptions import ToolError
-from tools.static.hash import calculate_sha256
+from tools.static.analyzers.hash import calculate_sha256
 
 
 VT_TIMEOUT = 30
@@ -29,4 +29,3 @@ def _request_vt(sample_hash: str) -> dict:
 def get_vt_data(sample: str) -> dict:
     sample_hash = calculate_sha256(sample)
     return _request_vt(sample_hash)
-

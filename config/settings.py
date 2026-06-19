@@ -25,7 +25,9 @@ MODEL_PROFILES_PATH = AI_PATH / "model_profiles.yaml"
 
 TOOLS_PATH = ROOT_PATH / "tools"
 STATIC_TOOLS_PATH = TOOLS_PATH / "static"
-STATIC_AGENT_TOOLS_PATH = STATIC_TOOLS_PATH / "tools.json"
+REVERSING_TOOLS_PATH = TOOLS_PATH / "reversing"
+STATIC_AGENT_TOOLS_PATH = STATIC_TOOLS_PATH / "agent_tools.json"
+REVERSING_AGENT_TOOLS_PATH = REVERSING_TOOLS_PATH / "agent_tools.json"
 
 
 # Filenames
@@ -34,5 +36,4 @@ STATIC_AGENT_RESULT_FILENAME = "static_agent_steps.json"
 THREAT_ACTOR_MESSAGES_FILENAME = "threat_actor_messages.json"
 REPORT_FILENAME = "report.md"
 ENRICHMENT_FILENAME = "enrichment.md"
-
 

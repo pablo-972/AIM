@@ -1,8 +1,6 @@
 {
     "save_threat_actor_messages": {
         "description": "Save the complete strings block that contains threat actor messages.",
-        "parameters": {
-            "message_block": "Complete strings block to save."
-        }
+        "parameters": {}
     }
 }

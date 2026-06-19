@@ -8,18 +8,25 @@ from ai.agents.static import StaticAgent
 from ai.runtime.executor import AgentStepExecutor
 from ai.runtime.memory import AgentMemory
 from ai.runner.base import BaseAIRunner
+from tools.runner.static import StaticAgentToolRunner
 
 
 STRING_CHUNK_SIZE = 80
 
 
 class StaticAgentRunner(BaseAIRunner):
-    def __init__(self, context: Any, model_registry: Any, strings: list[str], tool_runner: Any) -> None:
+    def __init__(
+        self,
+        context: Any,
+        model_registry: Any,
+        strings: list[str],
+        agent_tools: StaticAgentToolRunner,
+    ) -> None:
         super().__init__(context)
 
         self.model_registry = model_registry
         self.strings = strings
-        self.tool_runner = tool_runner
+        self.agent_tools = agent_tools
         self.available_static_tools = load_json(self.context.output, STATIC_AGENT_TOOLS_PATH) or {}
         
 
@@ -33,7 +40,7 @@ class StaticAgentRunner(BaseAIRunner):
             "chunk_index": chunk_index,
             "message_block": strings_chunk,
         }
-        return self.tool_runner.execute_agent_tool(tool_name, parameters, tool_context)
+        return self.agent_tools.execute(tool_name, parameters, tool_context)
 
 
     def _analyze_chunk(self, agent: StaticAgent, strings_chunk: list[str], chunk_index: int) -> dict[str, Any] | None:

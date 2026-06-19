@@ -11,15 +11,18 @@ class ToolResult:
     data: Any = None
     error: str | None = None
 
+
     @classmethod
     def ok(cls, data: Any) -> "ToolResult":
-        return cls(status="ok", data=data, error=None)
+        return cls(status="ok", data=data)
+
 
     @classmethod
     def failed(cls, error: Exception | str) -> "ToolResult":
-        return cls(status="error", data=None, error=str(error))
+        return cls(status="error", error=str(error))
 
-    def to_dict(self) -> dict:
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "status": self.status,
             "data": self.data,
@@ -33,6 +36,7 @@ class CommandResult:
     stderr: str
     returncode: int | None
     timed_out: bool = False
+
 
     @property
     def ok(self) -> bool:

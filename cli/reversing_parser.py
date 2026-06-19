@@ -12,29 +12,35 @@ REVERSING_MODES = [
     "string-xrefs",
     "callers",
     "callees",
+    "full"
 ]
 
 
 def validate_reversing_args(args: argparse.Namespace) -> None:
-    if args.reversing_agent and args.reversing_modes:
+    selected_modes = set(args.reversing_modes)
+
+    if "full" in selected_modes and len(selected_modes) > 1:
+        raise CLIValidationError("'full' cannot be combined with other static modes")
+
+    if args.reversing_agent and selected_modes:
         raise CLIValidationError("--agent cannot be combined with manual reverse modes")
 
-    if not args.reversing_agent and not args.reversing_modes:
+    if not args.reversing_agent and not selected_modes:
         raise CLIValidationError("Select at least one reverse mode or use --agent")
 
-    if "disasm" in args.reversing_modes and not args.function:
+    if "disasm" in selected_modes and not args.function:
         raise CLIValidationError("reverse disasm requires --function")
 
-    if "xrefs" in args.reversing_modes and not args.value:
+    if "xrefs" in selected_modes and not args.value:
         raise CLIValidationError("reverse xrefs requires --value")
     
-    if "string-xrefs" in args.reversing_modes and not args.value:
+    if "string-xrefs" in selected_modes and not args.value:
         raise CLIValidationError("reverse string-xrefs requires --value")
 
-    if "callers" in args.reversing_modes and not args.function:
+    if "callers" in selected_modes and not args.function:
         raise CLIValidationError("reverse callers requires --function")
 
-    if "callees" in args.reversing_modes and not args.function:
+    if "callees" in selected_modes and not args.function:
         raise CLIValidationError("reverse callees requires --function")
 
 

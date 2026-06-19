@@ -5,9 +5,11 @@ import pefile
 
 def _calc_hash(sample: str, algo: str) -> str:
     h = hashlib.new(algo)
+
     with open(sample, "rb") as f:
         for chunk in iter(lambda: f.read(4096), b""):
             h.update(chunk)
+
     return h.hexdigest()
 
 
@@ -45,7 +47,9 @@ def calculate_hashes(sample: str) -> dict:
         "sha1": calculate_sha1(sample),
         "sha256": calculate_sha256(sample) 
     }
+    
     imphash = calculate_imphash(sample)
     if imphash:
         hashes["imphash"] = imphash
+
     return hashes

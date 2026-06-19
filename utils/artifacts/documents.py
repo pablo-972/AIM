@@ -18,6 +18,7 @@ class MarkdownDocument:
     def _build_document(self, body: str) -> str:
         body = self.sanitize(body) or EMPTY_DOCUMENT_BODY
         body = self.extract_body(body)
+
         return f"{self.title}\n\n{body.strip()}\n"
 
 

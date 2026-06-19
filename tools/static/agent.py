@@ -1,8 +1,9 @@
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-from datetime import datetime, timezone
 
+from config import THREAT_ACTOR_MESSAGES_FILENAME
 from utils.io.files import save_json
 
 
@@ -24,12 +25,13 @@ def _default_artifact() -> dict[str, Any]:
     }
 
 
-def _load_existing_blocks(path: str, filename: str) -> dict[str, Any]:
-    output_path = Path(path) / filename
+def _load_existing_blocks(output: Path) -> dict[str, Any]:
+    target = output / THREAT_ACTOR_MESSAGES_FILENAME
+
     try:
-        with output_path.open("r", encoding="utf-8") as file:
+        with target.open("r", encoding="utf-8") as file:
             data = json.load(file)
-        
+
         if isinstance(data, dict):
             data.setdefault("items", [])
             return data
@@ -39,15 +41,12 @@ def _load_existing_blocks(path: str, filename: str) -> dict[str, Any]:
     return _default_artifact()
 
 
-def _message_exists(items: list[dict[str, Any]], message_block: str) -> bool:
-    return any(
-        item.get("message_block") == message_block
-        for item in items
-    )
+def _message_exists(items: list[dict[str, Any]], message_block: list[str]) -> bool:
+    return any(item.get("message_block") == message_block for item in items)
 
 
-def save_threat_actor_messages(path: str, filename: str, parameters: dict[str, list[str]]) -> dict[str, Any]:
-    message_block = parameters.get("message_block")
+def save_threat_actor_messages(output: Path, parameters: dict[str, Any], context: dict[str, Any]) -> dict[str, Any]:
+    message_block = context.get("message_block")
     if not isinstance(message_block, list) or not message_block:
         return {
             "success": False,
@@ -56,11 +55,11 @@ def save_threat_actor_messages(path: str, filename: str, parameters: dict[str, l
             "saved_count": 0,
         }
 
-    data = _load_existing_blocks(path, filename)
+    data = _load_existing_blocks(output)
     items = data.setdefault("items", [])
 
     if _message_exists(items, message_block):
-        save_json(path, filename, data)
+        save_json(output, THREAT_ACTOR_MESSAGES_FILENAME, data)
         return {
             "success": True,
             "saved": False,
@@ -71,12 +70,11 @@ def save_threat_actor_messages(path: str, filename: str, parameters: dict[str, l
     item = {
         "id": len(items) + 1,
         "created_at": _now_iso(),
-        "chunk_index": parameters.get("chunk_index"),
+        "chunk_index": context.get("chunk_index"),
         "message_block": message_block,
     }
-
     items.append(item)
-    save_json(path, filename, data)
+    save_json(output, THREAT_ACTOR_MESSAGES_FILENAME, data)
 
     return {
         "success": True,
@@ -84,4 +82,3 @@ def save_threat_actor_messages(path: str, filename: str, parameters: dict[str, l
         "saved_count": len(items),
         "item": item,
     }
-

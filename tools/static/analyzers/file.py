@@ -13,4 +13,3 @@ def analyze_file(sample: str) -> str:
 
     return result.stdout.strip()
 
-

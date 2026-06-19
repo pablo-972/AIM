@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Any
 
-from core.context import AnalysisContext
+from orchestrator.context import AnalysisContext
 
 
 class BaseAIRunner(ABC):

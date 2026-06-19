@@ -20,7 +20,7 @@ class AgentMemory:
         steps.append(
             {
                 "step": len(steps) + 1,
-                "agent_decision": decision,
+                "decision": decision,
                 "tool_executed": tool_name,
                 "tool_output": tool_output,
             }

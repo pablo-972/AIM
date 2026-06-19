@@ -1,0 +1,59 @@
+{
+    "function": {
+        "description": "Return metadata and instructions for one function.",
+        "parameters": {
+            "function": {
+                "description": "Function name or address.",
+                "required": true
+            }
+        }
+    },
+    "disassembly": {
+        "description": "Return bounded text disassembly for one function.",
+        "parameters": {
+            "function": {
+                "description": "Function name or address.",
+                "required": true
+            },
+            "max_instructions": {
+                "description": "Maximum number of instructions to return."
+            }
+        }
+    },
+    "callers": {
+        "description": "Return callers of one function.",
+        "parameters": {
+            "function": {
+                "description": "Function name or address.",
+                "required": true
+            }
+        }
+    },
+    "callees": {
+        "description": "Return callees of one function.",
+        "parameters": {
+            "function": {
+                "description": "Function name or address.",
+                "required": true
+            }
+        }
+    },
+    "string_xrefs": {
+        "description": "Find strings and their cross-references.",
+        "parameters": {
+            "value": {
+                "description": "String value to search.",
+                "required": true
+            }
+        }
+    },
+    "import_xrefs": {
+        "description": "Find imports and their cross-references.",
+        "parameters": {
+            "import_name": {
+                "description": "Import name to search.",
+                "required": true
+            }
+        }
+    }
+}

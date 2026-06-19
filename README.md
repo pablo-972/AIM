@@ -12,11 +12,11 @@ Run malware samples only in an isolated environment. AIM reads and enriches pote
 .
 |-- main.py                         # CLI entry point
 |-- cli/                            # Argument parsers and validation
-|-- core/                           # Shared context and result contracts
-|-- orchestrator/                   # Central phase coordinator
+|-- orchestrator/                   # Analysis context and phase coordinator
 |-- tools/
-|   |-- static/                     # Static-analysis tool implementations
-|   `-- runner/                     # Tool runners
+|   |-- static/                     # Static core, manual API, and agent API
+|   |-- reversing/                  # Reversing core, manual API, and agent API
+|   `-- runner/                     # Manual and agent tool runners
 |-- ai/
 |   |-- agents/                     # Agent prompts and agent logic
 |   |-- generators/                 # Non-agentic AI generators
@@ -130,7 +130,7 @@ python main.py report /path/to/sample --module static --profile local-report
 
 The orchestrator is the central coordinator:
 
-1. Converts CLI arguments into `core.context.AnalysisContext`.
+1. Converts CLI arguments into `orchestrator.context.AnalysisContext`.
 2. Dispatches the selected phase via `PHASE_HANDLERS`.
 3. Creates shared dependencies such as `ModelRegistry` and `StaticToolRunner`.
 4. Runs deterministic tools, AI agents, enrichment, or reporting as needed.
@@ -143,8 +143,6 @@ The implemented phases are:
 
 ## Contracts
 
-Shared contracts live under `core/`.
-
 `AnalysisContext` contains the normalized execution context:
 
 - sample path
@@ -155,7 +153,8 @@ Shared contracts live under `core/`.
 - selected static modes
 - static-agent flag
 
-`ToolResult` normalizes tool outputs:
+`ToolResult` lives in `tools/results.py` and normalizes deterministic tool
+outputs:
 
 ```json
 {
@@ -175,9 +174,14 @@ Failures use the same shape:
 }
 ```
 
+`CommandResult` also lives in `tools/results.py` and normalizes stdout, stderr,
+exit status, and timeout state for external commands.
+
 ## Static Tools
 
-Static tools live in `tools/static/` and are registered by `tools.runner.static.StaticToolRunner`.
+Static implementations live in `tools/static/core/`. The manual CLI surface is
+registered in `tools.static.manual.STATIC_MANUAL_TOOLS` and executed by
+`tools.runner.static.StaticToolRunner`.
 
 Available modes:
 
@@ -209,12 +213,12 @@ Components:
 - `ai.runner.static.StaticAgentRunner`: chunks strings and runs the agent.
 - `ai.runtime.executor.AgentStepExecutor`: validates and dispatches tool calls.
 - `ai.runtime.memory.AgentMemory`: records agent steps.
-- `tools.static.actor_messages.save_threat_actor_messages`: saves selected message blocks.
+- `tools.runner.static.StaticAgentToolRunner`: executes static agent tools.
 
 Agent-callable tools are declared in:
 
 ```text
-tools/static/tools.json
+tools/static/agent_tools.json
 ```
 
 The static agent writes:
@@ -329,13 +333,13 @@ output/enrichment.md
 
 ## Adding a New Static Tool
 
-1. Implement a function in `tools/static/`.
-2. Export it from `tools/static/__init__.py`.
-3. Register it in `STATIC_TOOL_RUNNERS` inside `tools/runner/static.py`.
+1. Implement the reusable logic in `tools/static/core/`.
+2. Register the manual entrypoint in `STATIC_MANUAL_TOOLS` inside `tools/static/manual.py`.
+3. If it is agent-callable, expose it separately through `tools/static/agent.py` and `agent_tools.json`.
 4. Add the mode to `STATIC_MODES` in `cli/static_parser.py`.
 5. Add preprocessing only if the output is large or needs model-friendly shaping.
 
-Use `ToolResult` through the runner contract; individual tools should return useful data or raise an exception.
+Use `ToolResult` through the runner contract; individual tools should return useful data or raise an exception. Agent execution classes belong in the corresponding phase runner module.
 
 ## Adding a New Phase
 

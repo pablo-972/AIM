@@ -40,8 +40,6 @@ VT_CLASSIFICATION_KEYS = [
 
 VT_DIRECT_SECTION_KEYS = [
     "sandbox_verdicts",
-    "crowdsourced_yara_results",
-    "sigma_analysis_results",
 ]
 
 VT_ENRICHMENT_KEYS = [

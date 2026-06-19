@@ -5,8 +5,8 @@ from config import MODEL_PROFILES_PATH
 from utils.logger import Logger 
 from utils.io.files import load_yaml
 from utils.artifacts.builder import JsonBuilder
-from core.context import AnalysisContext
-from tools.runner.static import StaticToolRunner
+from orchestrator.context import AnalysisContext
+from tools.runner.static import StaticAgentToolRunner, StaticToolRunner
 from tools.runner.reversing import ReversingToolRunner
 from ai.model_registry import ModelRegistry
 from ai.runner.static import StaticAgentRunner
@@ -87,8 +87,8 @@ class Orchestrator:
             return
 
         model = self._get_model_registry()
-        static_tool_runner = self._get_static_tool_runner()
-        static_agent_runner = StaticAgentRunner(self.context, model, strings, static_tool_runner)
+        agent_tools = StaticAgentToolRunner(self.context)
+        static_agent_runner = StaticAgentRunner(self.context, model, strings, agent_tools)
         static_agent_runner.run()
 
 

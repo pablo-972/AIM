@@ -33,7 +33,7 @@ profiles:
 
   local-enrichment:
     provider: ollama
-    model: gemma4:e2b
+    model: llama3.1:8b
     temperature: 0.2
     max_tokens: 12000
     response_format: text

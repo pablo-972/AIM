@@ -30,8 +30,9 @@ class JsonBuilder:
         existing_tools = phase.get("tools")
         if not isinstance(existing_tools, dict):
             existing_tools = {}
-
+            
         existing_tools.update(tools)
+
         phase["status"] = status
         phase["tools"] = existing_tools
         self.data["phases"][phase_name] = phase
