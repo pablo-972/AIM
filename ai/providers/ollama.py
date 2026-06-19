@@ -1,6 +1,8 @@
+from typing import Any
+
 import requests
 
-from ai.providers.base import BaseLLMProvider, LLMResponse
+from ai.providers.base import BaseLLMProvider, JsonSchema, LLMResponse, Message
 from exceptions import ProviderError
 
 
@@ -8,15 +10,25 @@ REQUEST_TIMEOUT = 120
 
 
 class OllamaProvider(BaseLLMProvider):
-    def __init__(self, base_url: str, model: str, temperature: float = 0.2, response_format: str = "text") -> None:
-        self.base_url = base_url.rstrip("/")
-        self.model = model
-        self.temperature = temperature
-        self.response_format = response_format
+    def __init__(
+        self, 
+        base_url: str, 
+        model: str, 
+        temperature: float = 0.2, 
+        response_format: str = "text"
+        ) -> None:
+        self.base_url: str = base_url.rstrip("/")
+        self.model: str = model
+        self.temperature: float = temperature
+        self.response_format: str = response_format
 
 
-    def _chat(self, messages: list[dict]) -> LLMResponse:
-        payload = {
+    def _chat(
+        self,
+        messages: list[Message],
+        schema: JsonSchema | None = None,
+    ) -> LLMResponse:
+        payload: dict[str, Any] = {
             "model": self.model,
             "messages": messages,
             "stream": False,
@@ -25,16 +37,25 @@ class OllamaProvider(BaseLLMProvider):
             },
         }
 
-        if self.response_format == "json":
+        if schema is not None:
+            payload["format"] = schema
+        elif self.response_format == "json":
             payload["format"] = "json"
 
         try:
-            response = requests.post( f"{self.base_url}/api/chat", json=payload, timeout=REQUEST_TIMEOUT)
+            response = requests.post( 
+                f"{self.base_url}/api/chat", 
+                json=payload, 
+                timeout=REQUEST_TIMEOUT
+            )
             response.raise_for_status()
             data = response.json()
+            if not isinstance(data, dict):
+                raise ProviderError("Ollama response must be a JSON object")
 
-            content = data.get("message", {}).get("content")
-            if not content:
+            message = data.get("message")
+            content = message.get("content") if isinstance(message, dict) else None
+            if not isinstance(content, str) or not content.strip():
                 raise ProviderError("Ollama response does not contain message.content")
 
             return LLMResponse(content=content)
@@ -56,7 +77,27 @@ class OllamaProvider(BaseLLMProvider):
         )
 
 
-    def chat_with_assistant(self, system_prompt: str, assistant_prompt: str, user_prompt: str) -> LLMResponse:
+    def chat_json(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        schema: JsonSchema,
+    ) -> LLMResponse:
+        return self._chat(
+            [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            schema=schema,
+        )
+
+
+    def chat_with_assistant(
+        self, 
+        system_prompt: str, 
+        assistant_prompt: str, 
+        user_prompt: str
+    ) -> LLMResponse:
         return self._chat(
             [
                 {"role": "system", "content": system_prompt},
@@ -66,3 +107,18 @@ class OllamaProvider(BaseLLMProvider):
         )
 
 
+    def chat_json_with_assistant(                                
+        self, 
+        system_prompt: str, 
+        assistant_prompt: str, 
+        user_prompt: str, 
+        schema: JsonSchema
+    ) -> LLMResponse:
+        return self._chat(
+            [
+                {"role": "system", "content": system_prompt},
+                {"role": "assistant", "content": assistant_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            schema=schema,
+        )

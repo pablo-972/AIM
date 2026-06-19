@@ -28,7 +28,10 @@ def validate_static_args(args: argparse.Namespace) -> None:
         raise CLIValidationError("--profile can only be used together with --agent")
 
 
-def add_static_module(subparsers: argparse._SubParsersAction, common: argparse.ArgumentParser) -> None:
+def add_static_module(
+    subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
+    common: argparse.ArgumentParser,
+) -> None:
     parser = subparsers.add_parser(
         "static",
         parents=[common],

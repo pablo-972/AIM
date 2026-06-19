@@ -11,8 +11,8 @@ MARKDOWN_FENCE = "```"
 
 class MarkdownDocument:
     def __init__(self, path: Path, title: str) -> None:
-        self.path = path
-        self.title = title
+        self.path: Path = path
+        self.title: str = title
 
 
     def _build_document(self, body: str) -> str:

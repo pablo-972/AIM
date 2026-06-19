@@ -1,7 +1,10 @@
 import argparse
 
 
-def add_report_module(subparsers: argparse._SubParsersAction, common: argparse.ArgumentParser) -> None:
+def add_report_module(
+    subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
+    common: argparse.ArgumentParser,
+) -> None:
     parser = subparsers.add_parser(
         "report",
         parents=[common],

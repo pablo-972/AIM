@@ -6,6 +6,7 @@ from tools.results import ToolResult
 from tools.runner.base import BaseToolRunner
 from tools.static.agent import save_threat_actor_messages
 from tools.static.manual import STATIC_MANUAL_TOOLS
+from orchestrator.context import AnalysisContext
 
 
 StaticAgentTool = Callable[
@@ -17,7 +18,7 @@ StaticAgentTool = Callable[
 class StaticToolRunner(BaseToolRunner):
     ALLOWED_RUNNERS = {"run_static"}
 
-    def __init__(self, context: Any) -> None:
+    def __init__(self, context: AnalysisContext) -> None:
         super().__init__(context)
 
 
@@ -54,17 +55,31 @@ class StaticToolRunner(BaseToolRunner):
         return results
 
 
+
+
+
 class StaticAgentToolRunner:
-    def __init__(self, context: Any) -> None:
-        self.context = context
+    def __init__(self, context: AnalysisContext) -> None:
+        self.context: AnalysisContext = context
         self._tools: dict[str, StaticAgentTool] = {
             "save_threat_actor_messages": self._save_threat_actor_messages,
         }
 
-    def _save_threat_actor_messages(self, parameters: dict[str, Any], tool_context: dict[str, Any]) -> dict[str, Any]:
+
+    def _save_threat_actor_messages(
+            self, 
+            parameters: dict[str, Any], 
+            tool_context: dict[str, Any]
+        ) -> dict[str, Any]:
         return save_threat_actor_messages(self.context.output, parameters, tool_context)
 
-    def execute(self, tool_name: str, parameters: dict[str, Any] | None = None, context: dict[str, Any] | None = None) -> dict[str, Any]:
+
+    def execute(
+            self, 
+            tool_name: str, 
+            parameters: dict[str, Any] | None = None, 
+            context: dict[str, Any] | None = None
+        ) -> dict[str, Any]:
         tool = self._tools.get(tool_name)
         if tool is None:
             return {

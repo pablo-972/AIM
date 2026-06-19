@@ -18,21 +18,30 @@ from utils.io.text import read_text
 from utils.logger import Logger
 from utils.preprocessing import prepare_report_chunks
 from ai.generators.report import AIReport
+from ai.model_registry import ModelRegistry
 from ai.runner.base import BaseAIRunner
+from orchestrator.context import AnalysisContext
 
 
 class ReportAIRunner(BaseAIRunner):
-    def __init__(self, context: Any, model_registry: Any) -> None:
+    def __init__(
+        self,
+        context: AnalysisContext,
+        model_registry: ModelRegistry,
+    ) -> None:
         super().__init__(context)
 
         report_path = self.context.output / REPORT_FILENAME
-        self.document = MarkdownDocument(report_path, REPORT_TITLE)
+        self.document: MarkdownDocument = MarkdownDocument(report_path, REPORT_TITLE)
 
         enrichment_path = self.context.output / ENRICHMENT_FILENAME
-        self.enrichment_document = MarkdownDocument(enrichment_path, ENRICHMENT_TITLE)
+        self.enrichment_document: MarkdownDocument = MarkdownDocument(
+            enrichment_path,
+            ENRICHMENT_TITLE,
+        )
 
         llm = model_registry.create_task_client("report", profile_override=self.context.profile)
-        self.generator = AIReport(llm)
+        self.generator: AIReport = AIReport(llm)
 
 
     def _get_static_extractor(self) -> JsonExtractor | None:
@@ -44,7 +53,13 @@ class ReportAIRunner(BaseAIRunner):
         return JsonExtractor(result)
 
 
-    def _build_source_name(self, tool_name: str, chunk_data: dict[str, Any], chunk_index: int, total_chunks: int) -> str:
+    def _build_source_name(
+            self, 
+            tool_name: str, 
+            chunk_data: Any,
+            chunk_index: int, 
+            total_chunks: int
+        ) -> str:
         section = chunk_data.get("section") if isinstance(chunk_data, dict) else None
         if section:
             return f"static.{tool_name}.{section}"
@@ -60,7 +75,7 @@ class ReportAIRunner(BaseAIRunner):
         if extractor is None:
             return []
 
-        sources = []
+        sources: list[tuple[str, Any]] = []
         for tool_name in extractor.get_static_tools():
             tool_data = extractor.get_tool_data(tool_name)
             if tool_data is None:

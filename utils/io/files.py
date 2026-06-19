@@ -25,26 +25,40 @@ def save_json(path: str | Path, filename: str, data: dict[str, Any]) -> None:
     os.replace(tmp, target)
 
 
-def load_json(path: str | Path, filename: str) -> dict[str, Any] | None:
+def load_json(
+    path: str | Path,
+    filename: str | Path,
+) -> dict[str, Any] | None:
     target = Path(path) / filename
     if not target.exists():
         return None
 
     try:
         with target.open("r", encoding="utf-8") as file:
-            return json.load(file)
+            data = json.load(file)
+            if not isinstance(data, dict):
+                raise FileReadError(f"JSON root must be an object: {target}")
+            return data
     except json.JSONDecodeError as exc:
         raise FileReadError(f"Invalid JSON file: {target}") from exc
 
 
-def load_yaml(path: str | Path, filename: str) -> dict[str, Any] | None:
+def load_yaml(
+    path: str | Path,
+    filename: str | Path,
+) -> dict[str, Any] | None:
     target = Path(path) / filename if path else Path(filename)
     if not target.exists():
         return None
 
     try:
         with target.open("r", encoding="utf-8") as file:
-            return yaml.safe_load(file)
+            data = yaml.safe_load(file)
+            if data is None:
+                return None
+            if not isinstance(data, dict):
+                raise FileReadError(f"YAML root must be an object: {target}")
+            return data
     except yaml.YAMLError as exc:
         raise FileReadError(f"Invalid YAML file: {target}") from exc
 

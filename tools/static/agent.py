@@ -45,9 +45,19 @@ def _message_exists(items: list[dict[str, Any]], message_block: list[str]) -> bo
     return any(item.get("message_block") == message_block for item in items)
 
 
-def save_threat_actor_messages(output: Path, parameters: dict[str, Any], context: dict[str, Any]) -> dict[str, Any]:
+def save_threat_actor_messages(
+        output: Path, 
+        parameters: dict[str, Any], 
+        context: dict[str, Any]
+    ) -> dict[str, Any]:
+    del parameters
+
     message_block = context.get("message_block")
-    if not isinstance(message_block, list) or not message_block:
+    if (
+        not isinstance(message_block, list)
+        or not message_block
+        or not all(isinstance(item, str) for item in message_block)
+    ):
         return {
             "success": False,
             "saved": False,
@@ -56,7 +66,14 @@ def save_threat_actor_messages(output: Path, parameters: dict[str, Any], context
         }
 
     data = _load_existing_blocks(output)
-    items = data.setdefault("items", [])
+    raw_items = data.setdefault("items", [])
+    items: list[dict[str, Any]] = (
+        raw_items
+        if isinstance(raw_items, list)
+        and all(isinstance(item, dict) for item in raw_items)
+        else []
+    )
+    data["items"] = items
 
     if _message_exists(items, message_block):
         save_json(output, THREAT_ACTOR_MESSAGES_FILENAME, data)

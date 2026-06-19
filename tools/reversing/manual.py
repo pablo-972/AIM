@@ -17,7 +17,7 @@ from tools.reversing.analyzers.analysis import (
 ManualTool = Callable[..., Any]
 
 
-def run_string_xrefs(sample: str, string_value: str) -> dict:
+def run_string_xrefs(sample: str, string_value: str) -> dict[str, Any]:
     return string_xrefs(sample, string_value)
 
 

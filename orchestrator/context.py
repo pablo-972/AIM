@@ -1,6 +1,6 @@
+import argparse
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 from exceptions import CLIValidationError
 from utils.crypto import sha256_file
@@ -24,7 +24,7 @@ class AnalysisContext:
 
 
     @classmethod
-    def from_args(cls, args: Any) -> "AnalysisContext":
+    def from_args(cls, args: argparse.Namespace) -> "AnalysisContext":
         sample = Path(args.sample).expanduser().resolve()
 
         if not sample.exists():

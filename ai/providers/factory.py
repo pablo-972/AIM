@@ -18,10 +18,12 @@ def resolve_value(value: Any) -> Any:
     if isinstance(value, dict):
         env_name = value.get("env")
         default = value.get("default")
-        if env_name:
+        
+        if isinstance(env_name, str) and env_name:
             return os.getenv(env_name, default)
-
+        
         return default
+    
     return value
 
 
@@ -30,7 +32,10 @@ class ProviderFactory:
     def create(provider_config: dict[str, Any], profile_config: dict[str, Any]) -> BaseLLMProvider:
         provider_type = provider_config.get("type")
         
-        if provider_type not in SUPPORTED_PROVIDER_TYPES:
+        if (
+            not isinstance(provider_type, str)
+            or provider_type not in SUPPORTED_PROVIDER_TYPES
+        ):
             raise ConfigurationError(f"Unsupported provider type: {provider_type}")
 
         model = resolve_value(profile_config.get("model"))
@@ -38,12 +43,18 @@ class ProviderFactory:
         max_tokens = profile_config.get("max_tokens", 4096)
         response_format = profile_config.get("response_format", "text")
 
-        if not model:
+        if not isinstance(model, str) or not model:
             raise ConfigurationError("Model is empty for selected profile")
+        if not isinstance(temperature, int | float):
+            raise ConfigurationError("Profile temperature must be numeric")
+        if not isinstance(max_tokens, int):
+            raise ConfigurationError("Profile max_tokens must be an integer")
+        if not isinstance(response_format, str):
+            raise ConfigurationError("Profile response_format must be a string")
 
         if provider_type == "ollama":
             base_url = resolve_value(provider_config.get("base_url"))
-            if not base_url:
+            if not isinstance(base_url, str) or not base_url:
                 raise ConfigurationError("Missing base_url for Ollama provider")
 
             return OllamaProvider(
@@ -56,10 +67,10 @@ class ProviderFactory:
         base_url = resolve_value(provider_config.get("base_url"))
         api_key = resolve_value(provider_config.get("api_key"))
 
-        if not base_url:
+        if not isinstance(base_url, str) or not base_url:
             raise ConfigurationError(f"Missing base_url for provider: {provider_type}")
 
-        if not api_key:
+        if not isinstance(api_key, str) or not api_key:
             raise ConfigurationError(f"Missing API key for provider: {provider_type}")
 
         return OpenAICompatibleProvider(

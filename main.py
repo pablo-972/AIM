@@ -2,7 +2,7 @@ from cli.base_parser import build_parser
 from orchestrator.orchestrator import Orchestrator
 
 
-def print_banner():
+def print_banner() -> None:
     print(r"""                                          
      ▄▄     ▄▄▄▄▄▄  ▄▄▄     ▄▄▄    
    ▄█▀▀█▄  █▀ ██     ███▄ ▄███    
@@ -13,7 +13,7 @@ def print_banner():
 """)
     
 
-def main():
+def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
 

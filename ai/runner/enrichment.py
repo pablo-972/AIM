@@ -6,21 +6,30 @@ from utils.logger import Logger
 from utils.artifacts.documents import ENRICHMENT_TITLE, MarkdownDocument
 from utils.preprocessing import prepare_static_agent_sources, prepare_static_enrichment_sources
 from ai.generators.enrichment import EnrichmentGenerator
+from ai.model_registry import ModelRegistry
 from ai.runner.base import BaseAIRunner
+from orchestrator.context import AnalysisContext
 
 
 class EnrichmentAIRunner(BaseAIRunner):
-    def __init__(self, context: Any, model_registry: Any) -> None:
+    def __init__(
+        self,
+        context: AnalysisContext,
+        model_registry: ModelRegistry,
+    ) -> None:
         super().__init__(context)
 
         enrichment_path = self.context.output / ENRICHMENT_FILENAME
-        self.document = MarkdownDocument(enrichment_path, ENRICHMENT_TITLE)
+        self.document: MarkdownDocument = MarkdownDocument(
+            enrichment_path,
+            ENRICHMENT_TITLE,
+        )
 
         llm = model_registry.create_task_client("enrichment", profile_override=self.context.profile)
-        self.generator = EnrichmentGenerator(llm)
+        self.generator: EnrichmentGenerator = EnrichmentGenerator(llm)
 
 
-    def _get_sources(self) -> list[tuple[str, dict[str, Any]]]:
+    def _get_sources(self) -> list[tuple[str, Any]]:
         result = load_json(self.context.output, RESULT_FILENAME) or {}
         static_agent_data = load_json(self.context.output, THREAT_ACTOR_MESSAGES_FILENAME) or {}
         return [

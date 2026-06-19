@@ -1,23 +1,28 @@
 import json
+from typing import Any
 
 
 MAX_REPORT_JSON_SIZE = 8000
 
 
-def json_size(data) -> int:
+def json_size(data: Any) -> int:
     return len(json.dumps(data, ensure_ascii=False, default=str))
 
 
-def make_report_chunk(section: str, data) -> dict:
+def make_report_chunk(section: str, data: Any) -> dict[str, Any]:
     return {
         "section": section,
         "data": data,
     }
 
 
-def chunk_mapping(section: str, data: dict, chunk_size: int = MAX_REPORT_JSON_SIZE) -> list[dict]:
-    chunks = []
-    current = {}
+def chunk_mapping(
+    section: str,
+    data: dict[str, Any],
+    chunk_size: int = MAX_REPORT_JSON_SIZE,
+) -> list[dict[str, Any]]:
+    chunks: list[dict[str, Any]] = []
+    current: dict[str, Any] = {}
 
     for key, value in data.items():
         candidate = dict(current)
@@ -39,9 +44,13 @@ def chunk_mapping(section: str, data: dict, chunk_size: int = MAX_REPORT_JSON_SI
     return chunks
 
 
-def chunk_sequence(section: str, values: list, chunk_size: int = MAX_REPORT_JSON_SIZE) -> list[dict]:
-    chunks = []
-    current = []
+def chunk_sequence(
+    section: str,
+    values: list[Any],
+    chunk_size: int = MAX_REPORT_JSON_SIZE,
+) -> list[dict[str, Any]]:
+    chunks: list[dict[str, Any]] = []
+    current: list[Any] = []
 
     for value in values:
         candidate = [*current, value]
@@ -61,7 +70,7 @@ def chunk_sequence(section: str, values: list, chunk_size: int = MAX_REPORT_JSON
     return chunks
 
 
-def chunk_large_value(section: str, value) -> list[dict]:
+def chunk_large_value(section: str, value: Any) -> list[dict[str, Any]]:
     if json_size(value) <= MAX_REPORT_JSON_SIZE:
         return [make_report_chunk(section, value)]
 
@@ -74,7 +83,10 @@ def chunk_large_value(section: str, value) -> list[dict]:
     return [make_report_chunk(section, str(value))]
 
 
-def prepare_generic_report_chunks(tool_name: str, tool_data) -> list[dict]:
+def prepare_generic_report_chunks(
+    tool_name: str,
+    tool_data: Any,
+) -> list[Any]:
     if json_size(tool_data) <= MAX_REPORT_JSON_SIZE:
         return [tool_data]
 

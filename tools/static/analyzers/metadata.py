@@ -1,10 +1,11 @@
 import json
+from typing import Any
 
 from exceptions import ToolError
 from utils.io.commands import run_command
 
 
-def analyze_metadata(sample: str) -> str:
+def analyze_metadata(sample: str) -> list[dict[str, Any]]:
     result = run_command(["exiftool", "-j", str(sample)])
 
     if result.timed_out:
@@ -13,5 +14,11 @@ def analyze_metadata(sample: str) -> str:
     if not result.ok:
         raise ToolError(result.stderr or f"exiftool failed with code {result.returncode}")
 
-    return json.loads(result.stdout.strip())
+    data = json.loads(result.stdout.strip())
+    if not isinstance(data, list) or not all(
+        isinstance(item, dict) for item in data
+    ):
+        raise ToolError("exiftool response must be a list of objects")
+
+    return data
     

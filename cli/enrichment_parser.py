@@ -1,7 +1,10 @@
 import argparse
 
 
-def add_enrichment_module(subparsers: argparse._SubParsersAction, common: argparse.ArgumentParser) -> None:
+def add_enrichment_module(
+    subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
+    common: argparse.ArgumentParser,
+) -> None:
     parser = subparsers.add_parser(
         "enrichment",
         parents=[common],

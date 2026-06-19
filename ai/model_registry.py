@@ -7,40 +7,54 @@ from exceptions import ConfigurationError
 
 class ModelRegistry:
     def __init__(self, config: dict[str, Any]) -> None:
-        self.config = config
+        self.config: dict[str, Any] = config
+
+
+    def _get_config_entry(
+        self,
+        section_name: str,
+        entry_name: str,
+        entry_label: str,
+    ) -> dict[str, Any]:
+        section = self.config.get(section_name)
+        if not isinstance(section, dict):
+            raise ConfigurationError(
+                f"Missing or invalid model configuration section: {section_name}"
+            )
+
+        entry = section.get(entry_name)
+        if entry is None:
+            raise ConfigurationError(f"Unknown {entry_label}: {entry_name}")
+        if not isinstance(entry, dict):
+            raise ConfigurationError(f"Invalid {entry_label}: {entry_name}")
+
+        return entry
 
 
     def _get_profile(self, profile_name: str) -> dict[str, Any]:
-        profile = self.config.get("profiles", {}).get(profile_name)
-        if profile is None:
-            raise ConfigurationError(f"Unknown model profile: {profile_name}")
-        return profile
+        return self._get_config_entry("profiles", profile_name, "model profile")
 
 
     def _get_provider(self, provider_name: str) -> dict[str, Any]:
-        provider = self.config.get("providers", {}).get(provider_name)
-        if provider is None:
-            raise ConfigurationError(f"Unknown provider: {provider_name}")
-        return provider
+        return self._get_config_entry("providers", provider_name, "provider")
     
 
     def _get_agent(self, agent_name: str) -> dict[str, Any]:
-        agent = self.config.get("agents", {}).get(agent_name)
-        if agent is None:
-            raise ConfigurationError(f"Unknown agent: {agent_name}")
-        return agent
+        return self._get_config_entry("agents", agent_name, "agent")
 
 
     def _get_task(self, task_name: str) -> dict[str, Any]:
-        task = self.config.get("tasks", {}).get(task_name)
-        if task is None:
-            raise ConfigurationError(f"Unknown task: {task_name}")
-        return task
+        return self._get_config_entry("tasks", task_name, "task")
 
 
     def _get_fallback_profile(self) -> str:
-        fallback = self.config.get("defaults", {}).get("fallback_profile")
-        if not fallback:
+        defaults = self.config.get("defaults")
+        fallback = (
+            defaults.get("fallback_profile")
+            if isinstance(defaults, dict)
+            else None
+        )
+        if not isinstance(fallback, str) or not fallback:
             raise ConfigurationError(
                 "Missing defaults.fallback_profile in model configuration"
             )
@@ -59,7 +73,7 @@ class ModelRegistry:
         profile = self._get_profile(profile_name)
         provider_name = profile.get("provider")
 
-        if not provider_name:
+        if not isinstance(provider_name, str) or not provider_name:
             raise ConfigurationError(f"Model profile '{profile_name}' does not define a provider")
 
         provider = self._get_provider(provider_name)

@@ -4,17 +4,18 @@ from tools.results import ToolResult
 from tools.runner.base import BaseToolRunner
 from tools.reversing.agent import REVERSING_AGENT_TOOLS
 from tools.reversing.manual import REVERSING_MANUAL_TOOLS
+from orchestrator.context import AnalysisContext
 
 
 class ReversingToolRunner(BaseToolRunner):
     ALLOWED_RUNNERS = {"run_reversing"}
 
-    def __init__(self, context: Any) -> None:
+    def __init__(self, context: AnalysisContext) -> None:
         super().__init__(context)
 
 
     def _resolve_modes(self) -> list[str]:
-        modes = list(getattr(self.context, "reversing_modes", []) or [])
+        modes = list(self.context.reversing_modes)
         if "full" in modes:
             return ["info", "imports", "strings"]
 
@@ -27,16 +28,16 @@ class ReversingToolRunner(BaseToolRunner):
 
     def _build_tool_kwargs(self, mode: str) -> dict[str, Any]:
         if mode == "disasm":
-            return {"function": getattr(self.context, "function", None)}
+            return {"function": self.context.function}
 
         if mode == "xrefs":
-            return {"value": getattr(self.context, "value", None)}
+            return {"value": self.context.value}
 
         if mode == "string-xrefs":
-            return {"string_value": getattr(self.context, "value", None)}
+            return {"string_value": self.context.value}
 
         if mode in {"callers", "callees"}:
-            return {"function": getattr(self.context, "function", None)}
+            return {"function": self.context.function}
 
         return {}
 
@@ -64,10 +65,15 @@ class ReversingToolRunner(BaseToolRunner):
 
 
 class ReversingAgentToolRunner:
-    def __init__(self, context: Any) -> None:
-        self.context = context
+    def __init__(self, context: AnalysisContext) -> None:
+        self.context: AnalysisContext = context
 
-    def execute(self, tool_name: str, parameters: dict[str, Any] | None = None, context: dict[str, Any] | None = None) -> dict[str, Any]:
+    def execute(
+            self, 
+            tool_name: str, 
+            parameters: dict[str, Any] | None = None, 
+            context: dict[str, Any] | None = None
+        ) -> dict[str, Any]:
         tool = REVERSING_AGENT_TOOLS.get(tool_name)
         if tool is None:
             return {

@@ -1,5 +1,7 @@
 import json
-from typing import Any, Callable
+import argparse
+from collections.abc import Callable
+from typing import Any, Protocol
 
 from config import MODEL_PROFILES_PATH
 from utils.logger import Logger 
@@ -14,9 +16,14 @@ from ai.runner.enrichment import EnrichmentAIRunner
 from ai.runner.report import ReportAIRunner
 
 
+class ToolRunner(Protocol):
+    def run(self) -> dict[str, Any]:
+        ...
+
+
 class Orchestrator:
-    def __init__(self, args: Any):
-        self.context = AnalysisContext.from_args(args)
+    def __init__(self, args: argparse.Namespace) -> None:
+        self.context: AnalysisContext = AnalysisContext.from_args(args)
         self.json_builder: JsonBuilder | None = None
         self.static_tools_results: dict[str, Any] = {}
         self.reversing_tools_results: dict[str, Any] = {}
@@ -35,14 +42,19 @@ class Orchestrator:
     
 
     def _get_strings_for_static_agent(self) -> list[str]:
-        strings = (
-            self.static_tools_results
-            .get("strings", {})
-            .get("data", {})
-            .get("parsed_strings", [])
-        )
+        strings_result = self.static_tools_results.get("strings")
+        if not isinstance(strings_result, dict):
+            return []
 
-        if isinstance(strings, list):
+        strings_data = strings_result.get("data")
+        if not isinstance(strings_data, dict):
+            return []
+
+        strings = strings_data.get("parsed_strings")
+
+        if isinstance(strings, list) and all(
+            isinstance(item, str) for item in strings
+        ):
             return strings
 
         return []
@@ -50,7 +62,11 @@ class Orchestrator:
 
     def _get_json_builder(self) -> JsonBuilder:
         if self.json_builder is None:
-            self.json_builder = JsonBuilder(self.context.output, self.context.sample, self.context.sample_sha256)
+            self.json_builder = JsonBuilder(
+                self.context.output, 
+                self.context.sample, 
+                self.context.sample_sha256
+            )
 
         return self.json_builder
 
@@ -92,7 +108,11 @@ class Orchestrator:
         static_agent_runner.run()
 
 
-    def _run_tools(self, phase_name: str, runner: Any) -> dict[str, Any]:
+    def _run_tools(
+        self,
+        phase_name: str,
+        runner: ToolRunner,
+    ) -> dict[str, Any]:
         Logger.info(f"Executing {phase_name} tools")
         results = runner.run()
 
