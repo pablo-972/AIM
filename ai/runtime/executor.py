@@ -9,7 +9,7 @@ ToolExecutor = Callable[[str, dict[str, Any]], dict[str, Any]]
 
 class AgentStepExecutor:
     def __init__(self, available_tools: dict[str, Any]) -> None:
-        self.available_tools = available_tools
+        self.available_tools: dict[str, Any] = available_tools
 
 
     def execute(
@@ -24,6 +24,9 @@ class AgentStepExecutor:
             }
 
         action = decision.get("action")
+        if not isinstance(action, str):
+            return None, {"success": False, "error": "Agent action must be a string"}
+
         if action in NO_TOOL_ACTIONS:
             return action, None
 

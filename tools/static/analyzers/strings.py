@@ -58,7 +58,7 @@ ETH_REGEX = re.compile(r"\b0x[a-fA-F0-9]{40}\b")
 LTC_REGEX = re.compile(r"\b(?:ltc1[ac-hj-np-z02-9]{11,71}|[LM3][a-km-zA-HJ-NP-Z1-9]{26,33})\b")
 
 
-def get_raw_strings(sample: str) -> str:
+def get_raw_strings(sample: str) -> list[str]:
     result = run_command(["strings", str(sample)])
     if result.timed_out:
         raise ToolError("strings command timed out")
@@ -69,46 +69,46 @@ def get_raw_strings(sample: str) -> str:
     return strings
 
 
-def parse_strings(strings: list) -> list:
-    parsed_strings = []
+def parse_strings(strings: list[str]) -> list[str]:
+    parsed_strings: list[str] = []
     for string in strings:
         if not is_noise(string):
             parsed_strings.append(string)
     return parsed_strings
 
 
-def find_regex(strings: list, regex: re.Pattern) -> list:
-    matches = []
+def find_regex(strings: list[str], regex: re.Pattern[str]) -> list[str]:
+    matches: list[str] = []
     for string in strings:
         matches.extend(match.group(0) for match in regex.finditer(string))
     return list(dict.fromkeys(matches))
 
 
-def get_ips(strings: list) -> list:
+def get_ips(strings: list[str]) -> list[str]:
     return find_regex(strings, IP_REGEX)
 
 
-def get_urls(strings: list) -> list:
+def get_urls(strings: list[str]) -> list[str]:
     return find_regex(strings, URL_REGEX)
 
 
-def get_domains(strings: list) -> list:
+def get_domains(strings: list[str]) -> list[str]:
     return find_regex(strings, DOMAIN_REGEX)
 
 
-def get_registry_keys(strings: list) -> list:
+def get_registry_keys(strings: list[str]) -> list[str]:
     return find_regex(strings, REGISTRY_REGEX)
 
 
-def get_file_names(strings: list) -> list:
+def get_file_names(strings: list[str]) -> list[str]:
     return find_regex(strings, FILE_NAME_REGEX)
 
 
-def get_emails(strings: list) -> list:
+def get_emails(strings: list[str]) -> list[str]:
     return find_regex(strings, EMAIL_REGEX)
 
 
-def get_crypto_wallets(strings: list) -> dict:
+def get_crypto_wallets(strings: list[str]) -> dict[str, list[str]]:
     return {
         "btc": find_regex(strings, BTC_REGEX),
         "bch": find_regex(strings, BCH_REGEX),
@@ -177,7 +177,7 @@ def is_noise(string: str) -> bool:
 
 
 
-def analyze_strings(sample: str) -> dict:
+def analyze_strings(sample: str) -> dict[str, object]:
     raw_strings = get_raw_strings(sample)
     parsed_strings = parse_strings(raw_strings)
 

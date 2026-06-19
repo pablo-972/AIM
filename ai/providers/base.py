@@ -1,5 +1,10 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from typing import Any
+
+
+Message = dict[str, str]
+JsonSchema = dict[str, Any]
 
 
 @dataclass(frozen=True)
@@ -13,7 +18,12 @@ class BaseLLMProvider(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def chat_json(self, system_prompt: str, user_prompt: str, schema: dict) -> LLMResponse:
+    def chat_json(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        schema: JsonSchema,
+    ) -> LLMResponse:
         return self.chat(system_prompt, user_prompt)
 
 
@@ -33,6 +43,6 @@ class BaseLLMProvider(ABC):
             system_prompt: str, 
             assistant_prompt: str, 
             user_prompt: str, 
-            schema: dict
+            schema: JsonSchema
         ) -> LLMResponse:
         return self.chat_with_assistant(system_prompt, assistant_prompt, user_prompt)

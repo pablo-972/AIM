@@ -1,14 +1,12 @@
 from abc import ABC, abstractmethod
-from typing import Any
-
 from orchestrator.context import AnalysisContext
 
 
 class BaseAIRunner(ABC):
     def __init__(self, context: AnalysisContext) -> None:
-        self.context = context
+        self.context: AnalysisContext = context
 
 
     @abstractmethod
-    def run(self) -> Any:
+    def run(self) -> None:
         raise NotImplementedError

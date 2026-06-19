@@ -1,3 +1,5 @@
+from typing import Any
+
 from ai.providers.base import BaseLLMProvider
 
 
@@ -76,7 +78,7 @@ Examples:
 `1.2.3.4`
 `example.com`
 `malware.exe`
-`HKCU\Software\...`
+`HKCU\\Software\\...`
 
 Output Rules:
 
@@ -89,11 +91,16 @@ Output Rules:
 
 
 class AIReport:
-    def __init__(self, llm: BaseLLMProvider):
-        self.llm = llm
+    def __init__(self, llm: BaseLLMProvider) -> None:
+        self.llm: BaseLLMProvider = llm
 
 
-    def update_report(self, current_report: str, source_name: str, source_data) -> str:
+    def update_report(
+        self,
+        current_report: str,
+        source_name: str,
+        source_data: Any,
+    ) -> str:
         prompt = f"""
         New evidence source:
 

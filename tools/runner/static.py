@@ -6,6 +6,7 @@ from tools.results import ToolResult
 from tools.runner.base import BaseToolRunner
 from tools.static.agent import save_threat_actor_messages
 from tools.static.manual import STATIC_MANUAL_TOOLS
+from orchestrator.context import AnalysisContext
 
 
 StaticAgentTool = Callable[
@@ -17,7 +18,7 @@ StaticAgentTool = Callable[
 class StaticToolRunner(BaseToolRunner):
     ALLOWED_RUNNERS = {"run_static"}
 
-    def __init__(self, context: Any) -> None:
+    def __init__(self, context: AnalysisContext) -> None:
         super().__init__(context)
 
 
@@ -58,8 +59,8 @@ class StaticToolRunner(BaseToolRunner):
 
 
 class StaticAgentToolRunner:
-    def __init__(self, context: Any) -> None:
-        self.context = context
+    def __init__(self, context: AnalysisContext) -> None:
+        self.context: AnalysisContext = context
         self._tools: dict[str, StaticAgentTool] = {
             "save_threat_actor_messages": self._save_threat_actor_messages,
         }

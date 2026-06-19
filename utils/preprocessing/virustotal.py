@@ -1,3 +1,5 @@
+from typing import Any
+
 from utils.preprocessing.chunks import chunk_large_value, chunk_sequence, make_report_chunk
 
 
@@ -58,7 +60,7 @@ VT_ENGINE_CATEGORY_ORDER = [
 ]
 
 
-def extract_vt_attributes(vt_data: dict) -> dict:
+def extract_vt_attributes(vt_data: dict[str, Any]) -> dict[str, Any]:
     return (
         vt_data.get("data", {}).get("attributes")
         if isinstance(vt_data.get("data"), dict)
@@ -66,7 +68,10 @@ def extract_vt_attributes(vt_data: dict) -> dict:
     ) or vt_data
 
 
-def _pick_existing_keys(data: dict, keys: list[str]) -> dict:
+def _pick_existing_keys(
+    data: dict[str, Any],
+    keys: list[str],
+) -> dict[str, Any]:
     return {
         key: data.get(key)
         for key in keys
@@ -74,11 +79,17 @@ def _pick_existing_keys(data: dict, keys: list[str]) -> dict:
     }
 
 
-def _prepare_engine_results(last_analysis_results: dict) -> dict[str, list[dict]]:
-    grouped = {}
+def _prepare_engine_results(
+    last_analysis_results: dict[str, Any],
+) -> dict[str, list[dict[str, Any]]]:
+    grouped: dict[str, list[dict[str, Any]]] = {}
 
     for engine_name, result in last_analysis_results.items():
+        if not isinstance(result, dict):
+            continue
         category = result.get("category", "unknown")
+        if not isinstance(category, str):
+            category = "unknown"
         grouped.setdefault(category, []).append(
             {
                 "engine": engine_name,
@@ -92,7 +103,9 @@ def _prepare_engine_results(last_analysis_results: dict) -> dict[str, list[dict]
     return grouped
 
 
-def _ordered_engine_categories(grouped_results: dict[str, list[dict]]) -> list[str]:
+def _ordered_engine_categories(
+    grouped_results: dict[str, list[dict[str, Any]]],
+) -> list[str]:
     return [
         category
         for category in VT_ENGINE_CATEGORY_ORDER
@@ -100,9 +113,11 @@ def _ordered_engine_categories(grouped_results: dict[str, list[dict]]) -> list[s
     ]
 
 
-def prepare_vt_report_chunks(vt_data: dict) -> list[dict]:
+def prepare_vt_report_chunks(
+    vt_data: dict[str, Any],
+) -> list[dict[str, Any]]:
     attributes = extract_vt_attributes(vt_data)
-    chunks = []
+    chunks: list[dict[str, Any]] = []
 
     summary = _pick_existing_keys(attributes, VT_SUMMARY_KEYS)
     if summary:
@@ -126,11 +141,13 @@ def prepare_vt_report_chunks(vt_data: dict) -> list[dict]:
     return chunks or [make_report_chunk("raw", vt_data)]
 
 
-def prepare_vt_enrichment_data(vt_data: dict) -> dict:
+def prepare_vt_enrichment_data(vt_data: dict[str, Any]) -> dict[str, Any]:
     attributes = extract_vt_attributes(vt_data)
     data = _pick_existing_keys(attributes, VT_ENRICHMENT_KEYS)
 
     if "tags" in data:
-        data["tags"] = data["tags"][:MAX_ENRICHMENT_TAGS]
+        tags = data["tags"]
+        if isinstance(tags, list):
+            data["tags"] = tags[:MAX_ENRICHMENT_TAGS]
 
     return data

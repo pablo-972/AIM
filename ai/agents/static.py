@@ -1,4 +1,5 @@
 import json
+from typing import Any
 
 from ai.providers.base import BaseLLMProvider
 from ai.schemas.agent_decision import AGENT_DECISION_SCHEMA
@@ -120,11 +121,15 @@ Do not include "Thinking Process", numbered reasoning, hidden reasoning, chain-o
 
 
 class StaticAgent:
-    def __init__(self, llm: BaseLLMProvider):
-        self.llm = llm
+    def __init__(self, llm: BaseLLMProvider) -> None:
+        self.llm: BaseLLMProvider = llm
 
 
-    def analyze_strings_chunk(self, strings_chunk: str, available_tools: dict) -> dict:
+    def analyze_strings_chunk(
+        self,
+        strings_chunk: list[str],
+        available_tools: dict[str, Any],
+    ) -> dict[str, Any]:
         prompt = f"""
         Task:
         Inspect this strings chunk and decide whether the chunk contains threat actor messages.

@@ -44,7 +44,10 @@ def validate_reversing_args(args: argparse.Namespace) -> None:
         raise CLIValidationError("reverse callees requires --function")
 
 
-def add_reversing_module(subparsers: argparse._SubParsersAction, common: argparse.ArgumentParser) -> None:
+def add_reversing_module(
+    subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
+    common: argparse.ArgumentParser,
+) -> None:
     parser = subparsers.add_parser(
         "reversing",
         parents=[common],

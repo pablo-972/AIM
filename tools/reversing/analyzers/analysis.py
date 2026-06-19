@@ -192,7 +192,7 @@ def string_xrefs(sample: str, value: str, include_all_strings: bool = False) -> 
             if value.lower() in str(item.get("string", "")).lower()
         ]
 
-        results = []
+        results: list[dict[str, Any]] = []
         for item in matches:
             address = item.get("vaddr") or item.get("paddr")
             if address is None:
@@ -226,7 +226,7 @@ def import_xrefs(sample: str, import_name: str) -> dict[str, Any]:
             if import_name.lower() in str(item.get("name", "")).lower()
         ]
 
-        results = []
+        results: list[dict[str, Any]] = []
         for item in matches:
             address = item.get("plt") or item.get("vaddr") or item.get("offset")
             if address is None:

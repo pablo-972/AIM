@@ -1,3 +1,5 @@
+from typing import Any
+
 from utils.preprocessing.chunks import chunk_large_value, json_size, make_report_chunk
 
 
@@ -18,7 +20,10 @@ PE_DIRECT_SECTION_KEYS = [
 PE_IMPORTS_CHUNK_SIZE = 2500
 
 
-def _pick_existing_keys(data: dict, keys: list[str]) -> dict:
+def _pick_existing_keys(
+    data: dict[str, Any],
+    keys: list[str],
+) -> dict[str, Any]:
     return {
         key: data.get(key)
         for key in keys
@@ -26,20 +31,22 @@ def _pick_existing_keys(data: dict, keys: list[str]) -> dict:
     }
 
 
-def _import_entry(dll_name: str, functions: list) -> dict:
+def _import_entry(dll_name: str, functions: list[Any]) -> dict[str, Any]:
     return {
         "dll": dll_name,
         "functions": functions,
     }
 
 
-def prepare_pe_import_sources(pe_data: dict) -> list[tuple[str, dict]]:
+def prepare_pe_import_sources(
+    pe_data: dict[str, Any],
+) -> list[tuple[str, dict[str, Any]]]:
     imports = pe_data.get("imports") or {}
     if not imports:
         return []
 
-    sources = []
-    current = []
+    sources: list[tuple[str, dict[str, Any]]] = []
+    current: list[dict[str, Any]] = []
 
     for dll_name, functions in imports.items():
         if not functions:
@@ -64,8 +71,10 @@ def prepare_pe_import_sources(pe_data: dict) -> list[tuple[str, dict]]:
     return sources
 
 
-def prepare_pe_report_chunks(pe_data: dict) -> list[dict]:
-    chunks = []
+def prepare_pe_report_chunks(
+    pe_data: dict[str, Any],
+) -> list[dict[str, Any]]:
+    chunks: list[dict[str, Any]] = []
 
     summary = _pick_existing_keys(pe_data, PE_SUMMARY_KEYS)
     if summary:
@@ -82,8 +91,10 @@ def prepare_pe_report_chunks(pe_data: dict) -> list[dict]:
     return chunks or [make_report_chunk("raw", pe_data)]
 
 
-def prepare_pe_enrichment_sources(pe_data: dict) -> list[tuple[str, dict]]:
-    sources = []
+def prepare_pe_enrichment_sources(
+    pe_data: dict[str, Any],
+) -> list[tuple[str, dict[str, Any]]]:
+    sources: list[tuple[str, dict[str, Any]]] = []
 
     summary = _pick_existing_keys(pe_data, PE_SUMMARY_KEYS)
     if summary:

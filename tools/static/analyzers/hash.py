@@ -15,9 +15,9 @@ def _calc_hash(sample: str, algo: str) -> str:
 
 def _is_pe(sample: str) -> bool:
     try:
-        pe = pefile.PE(sample)
+        pefile.PE(sample)
         return True
-    except:
+    except pefile.PEFormatError:
         return False
 
 
@@ -33,16 +33,17 @@ def calculate_sha256(sample: str) -> str:
     return _calc_hash(sample, "sha256")
 
 
-def calculate_imphash(sample: str) -> str:
+def calculate_imphash(sample: str) -> str | None:
     if _is_pe(sample):
         pe = pefile.PE(sample)
-        return pe.get_imphash()
+        imphash = pe.get_imphash()
+        return imphash if isinstance(imphash, str) else None
     else:
         return None
 
 
-def calculate_hashes(sample: str) -> dict:
-    hashes = {
+def calculate_hashes(sample: str) -> dict[str, str]:
+    hashes: dict[str, str] = {
         "md5": calculate_md5(sample),
         "sha1": calculate_sha1(sample),
         "sha256": calculate_sha256(sample) 

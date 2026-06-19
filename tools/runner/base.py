@@ -1,5 +1,6 @@
 from abc import ABC
-from typing import Any
+from pathlib import Path
+from typing import Any, cast
 
 from exceptions import ToolError
 from orchestrator.context import AnalysisContext
@@ -11,8 +12,8 @@ class BaseToolRunner(ABC):
 
 
     def __init__(self, context: AnalysisContext) -> None:
-        self.context = context
-        self.sample = context.sample
+        self.context: AnalysisContext = context
+        self.sample: Path = context.sample
 
 
     def _selected_runner_name(self) -> str:
@@ -27,11 +28,15 @@ class BaseToolRunner(ABC):
         return func_name
 
 
-    def run(self) -> Any:
+    def run(self) -> dict[str, Any]:
         func_name = self._selected_runner_name()
         func = getattr(self, func_name, None)
 
         if func is None or not callable(func):
             raise ToolError(f"Unknown runner function: {func_name}")
 
-        return func()
+        result = func()
+        if not isinstance(result, dict):
+            raise ToolError(f"Runner function returned a non-object result: {func_name}")
+
+        return cast(dict[str, Any], result)

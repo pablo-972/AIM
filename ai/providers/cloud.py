@@ -4,7 +4,7 @@ from typing import Any
 
 import requests
 
-from ai.providers.base import BaseLLMProvider, LLMResponse
+from ai.providers.base import BaseLLMProvider, JsonSchema, LLMResponse, Message
 from exceptions import ProviderError
 
 
@@ -26,24 +26,28 @@ class OpenAICompatibleProvider(BaseLLMProvider):
         max_retries: int = DEFAULT_MAX_RETRIES,
         min_request_interval: float = DEFAULT_MIN_REQUEST_INTERVAL,
     ) -> None:
-        self.base_url = base_url.rstrip("/")
-        self.api_key = api_key
-        self.model = model
-        self.temperature = temperature
-        self.max_tokens = max_tokens
-        self.response_format = response_format
-        self.provider_type = provider_type
-        self.max_retries = max_retries
-        self.min_request_interval = min_request_interval
-        self._last_request_at = 0.0
+        self.base_url: str = base_url.rstrip("/")
+        self.api_key: str = api_key
+        self.model: str = model
+        self.temperature: float = temperature
+        self.max_tokens: int = max_tokens
+        self.response_format: str = response_format
+        self.provider_type: str = provider_type
+        self.max_retries: int = max_retries
+        self.min_request_interval: float = min_request_interval
+        self._last_request_at: float = 0.0
 
-        self.headers = {
+        self.headers: dict[str, str] = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
         }
 
 
-    def _build_payload(self, messages: list[dict], schema: dict | None = None) -> dict[str, Any]:
+    def _build_payload(
+        self,
+        messages: list[Message],
+        schema: JsonSchema | None = None,
+    ) -> dict[str, Any]:
         payload: dict[str, Any] = {
             "model": self.model,
             "messages": messages,
@@ -77,7 +81,12 @@ class OpenAICompatibleProvider(BaseLLMProvider):
                     continue
 
                 response.raise_for_status()
-                return response.json()
+                data = response.json()
+                if not isinstance(data, dict):
+                    raise ProviderError(
+                        f"{self.provider_type} response must be a JSON object"
+                    )
+                return data
 
             except requests.RequestException as exc:
                 last_error = exc
@@ -128,7 +137,11 @@ class OpenAICompatibleProvider(BaseLLMProvider):
         return content
     
 
-    def _chat(self, messages: list[dict], schema: dict | None = None) -> LLMResponse:
+    def _chat(
+        self,
+        messages: list[Message],
+        schema: JsonSchema | None = None,
+    ) -> LLMResponse:
         payload = self._build_payload(messages, schema)
         data = self._post_with_retries(payload)
         content = self._extract_content(data)
@@ -148,8 +161,19 @@ class OpenAICompatibleProvider(BaseLLMProvider):
         )
     
 
-    def chat_json(self, system_prompt: str, user_prompt: str, schema: dict) -> LLMResponse:
-        return self.chat(system_prompt, user_prompt, schema)
+    def chat_json(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        schema: JsonSchema,
+    ) -> LLMResponse:
+        return self._chat(
+            [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            schema=schema,
+        )
 
 
     def chat_with_assistant(
@@ -172,6 +196,13 @@ class OpenAICompatibleProvider(BaseLLMProvider):
             system_prompt: str,
             assistant_prompt: str,
             user_prompt: str,
-            schema: dict,
+            schema: JsonSchema,
         ) -> LLMResponse:
-        return self.chat_with_assistant(system_prompt, assistant_prompt, user_prompt, schema)
+        return self._chat(
+            [
+                {"role": "system", "content": system_prompt},
+                {"role": "assistant", "content": assistant_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            schema=schema,
+        )

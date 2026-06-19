@@ -1,6 +1,5 @@
 from collections.abc import Iterator
 from typing import Any
-
 from config import STATIC_AGENT_RESULT_FILENAME, STATIC_AGENT_TOOLS_PATH
 from utils.io.files import load_json
 from utils.logger import Logger
@@ -8,6 +7,8 @@ from ai.agents.static import StaticAgent
 from ai.runtime.executor import AgentStepExecutor
 from ai.runtime.memory import AgentMemory
 from ai.runner.base import BaseAIRunner
+from ai.model_registry import ModelRegistry
+from orchestrator.context import AnalysisContext
 from tools.runner.static import StaticAgentToolRunner
 
 
@@ -17,17 +18,19 @@ STRING_CHUNK_SIZE = 80
 class StaticAgentRunner(BaseAIRunner):
     def __init__(
         self,
-        context: Any,
-        model_registry: Any,
+        context: AnalysisContext,
+        model_registry: ModelRegistry,
         strings: list[str],
         agent_tools: StaticAgentToolRunner,
     ) -> None:
         super().__init__(context)
 
-        self.model_registry = model_registry
-        self.strings = strings
-        self.agent_tools = agent_tools
-        self.available_static_tools = load_json(self.context.output, STATIC_AGENT_TOOLS_PATH) or {}
+        self.model_registry: ModelRegistry = model_registry
+        self.strings: list[str] = strings
+        self.agent_tools: StaticAgentToolRunner = agent_tools
+        self.available_static_tools: dict[str, Any] = (
+            load_json(self.context.output, STATIC_AGENT_TOOLS_PATH) or {}
+        )
         
 
     def _iter_string_chunks(self, chunk_size: int = STRING_CHUNK_SIZE) -> Iterator[list[str]]:
@@ -49,7 +52,12 @@ class StaticAgentRunner(BaseAIRunner):
         return self.agent_tools.execute(tool_name, parameters, tool_context)
 
 
-    def _analyze_chunk(self, agent: StaticAgent, strings_chunk: list[str], chunk_index: int) -> dict[str, Any] | None:
+    def _analyze_chunk(
+            self, 
+            agent: StaticAgent, 
+            strings_chunk: list[str], 
+            chunk_index: int
+        ) -> dict[str, Any] | None:
         try:
             decision = agent.analyze_strings_chunk(strings_chunk, self.available_static_tools)
         except Exception as exc:

@@ -1,5 +1,6 @@
 import json
 from json import JSONDecodeError
+from typing import Any
 
 
 REQUIRED_AGENT_DECISION_KEYS = {
@@ -16,7 +17,7 @@ VALID_CONFIDENCE_LEVELS = {
 }
 
 
-def _fallback_agent_decision(reason: str) -> dict:
+def _fallback_agent_decision(reason: str) -> dict[str, Any]:
     return {
         "thought": reason,
         "confidence": "low",
@@ -25,7 +26,7 @@ def _fallback_agent_decision(reason: str) -> dict:
     }
 
 
-def parse_agent_decision(content: str) -> dict:
+def parse_agent_decision(content: str) -> dict[str, Any]:
     content = (content or "").strip()
     if not content:
         return _fallback_agent_decision("LLM returned an empty response.")
