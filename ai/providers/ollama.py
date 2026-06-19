@@ -8,14 +8,20 @@ REQUEST_TIMEOUT = 120
 
 
 class OllamaProvider(BaseLLMProvider):
-    def __init__(self, base_url: str, model: str, temperature: float = 0.2, response_format: str = "text") -> None:
+    def __init__(
+        self, 
+        base_url: str, 
+        model: str, 
+        temperature: float = 0.2, 
+        response_format: str = "text"
+        ) -> None:
         self.base_url = base_url.rstrip("/")
         self.model = model
         self.temperature = temperature
         self.response_format = response_format
 
 
-    def _chat(self, messages: list[dict]) -> LLMResponse:
+    def _chat(self, messages: list[dict], schema: dict | None = None) -> LLMResponse:
         payload = {
             "model": self.model,
             "messages": messages,
@@ -25,7 +31,9 @@ class OllamaProvider(BaseLLMProvider):
             },
         }
 
-        if self.response_format == "json":
+        if schema is not None:
+            payload["format"] = schema
+        elif self.response_format == "json":
             payload["format"] = "json"
 
         try:
@@ -56,7 +64,22 @@ class OllamaProvider(BaseLLMProvider):
         )
 
 
-    def chat_with_assistant(self, system_prompt: str, assistant_prompt: str, user_prompt: str) -> LLMResponse:
+    def chat_json(self, system_prompt: str, user_prompt: str, schema: dict) -> LLMResponse:
+        return self._chat(
+            [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            schema=schema,
+        )
+
+
+    def chat_with_assistant(
+        self, 
+        system_prompt: str, 
+        assistant_prompt: str, 
+        user_prompt: str
+    ) -> LLMResponse:
         return self._chat(
             [
                 {"role": "system", "content": system_prompt},
@@ -65,4 +88,20 @@ class OllamaProvider(BaseLLMProvider):
             ]
         )
 
+
+    def chat_json_with_assistant(                                
+        self, 
+        system_prompt: str, 
+        assistant_prompt: str, 
+        user_prompt: str, 
+        schema: dict
+    ) -> LLMResponse:
+        return self._chat(
+            [
+                {"role": "system", "content": system_prompt},
+                {"role": "assistant", "content": assistant_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            schema=schema,
+        )
 

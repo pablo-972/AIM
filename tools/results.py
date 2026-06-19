@@ -30,6 +30,9 @@ class ToolResult:
         }
 
 
+
+
+
 @dataclass(frozen=True)
 class CommandResult:
     stdout: str

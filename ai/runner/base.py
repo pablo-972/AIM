@@ -11,5 +11,4 @@ class BaseAIRunner(ABC):
 
     @abstractmethod
     def run(self) -> Any:
-        """Execute the AI workflow."""
         raise NotImplementedError

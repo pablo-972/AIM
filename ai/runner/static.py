@@ -35,7 +35,13 @@ class StaticAgentRunner(BaseAIRunner):
             yield self.strings[index:index + chunk_size]
 
 
-    def _execute_tool_for_chunk(self, tool_name: str, parameters: dict[str, Any], chunk_index: int, strings_chunk: list[str]) -> dict[str, Any]:
+    def _execute_tool_for_chunk(
+            self, 
+            tool_name: str, 
+            parameters: dict[str, Any], 
+            chunk_index: int, 
+            strings_chunk: list[str]
+        ) -> dict[str, Any]:
         tool_context = {
             "chunk_index": chunk_index,
             "message_block": strings_chunk,
@@ -56,9 +62,16 @@ class StaticAgentRunner(BaseAIRunner):
     def run(self) -> None:
         Logger.info("Running AI static agent")
 
-        llm = self.model_registry.create_agent_client("static", profile_override=self.context.profile)
+        llm = self.model_registry.create_agent_client(
+            "static", 
+            profile_override=self.context.profile
+        )
         agent = StaticAgent(llm)
-        memory = AgentMemory(output_dir=self.context.output, filename=STATIC_AGENT_RESULT_FILENAME, flush_interval=1)
+        memory = AgentMemory(
+            output_dir=self.context.output, 
+            filename=STATIC_AGENT_RESULT_FILENAME, 
+            flush_interval=1
+        )
         step_executor = AgentStepExecutor(available_tools=self.available_static_tools)
 
         try:

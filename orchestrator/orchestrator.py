@@ -50,7 +50,11 @@ class Orchestrator:
 
     def _get_json_builder(self) -> JsonBuilder:
         if self.json_builder is None:
-            self.json_builder = JsonBuilder(self.context.output, self.context.sample, self.context.sample_sha256)
+            self.json_builder = JsonBuilder(
+                self.context.output, 
+                self.context.sample, 
+                self.context.sample_sha256
+            )
 
         return self.json_builder
 

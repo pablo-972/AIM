@@ -67,7 +67,12 @@ class ReversingAgentToolRunner:
     def __init__(self, context: Any) -> None:
         self.context = context
 
-    def execute(self, tool_name: str, parameters: dict[str, Any] | None = None, context: dict[str, Any] | None = None) -> dict[str, Any]:
+    def execute(
+            self, 
+            tool_name: str, 
+            parameters: dict[str, Any] | None = None, 
+            context: dict[str, Any] | None = None
+        ) -> dict[str, Any]:
         tool = REVERSING_AGENT_TOOLS.get(tool_name)
         if tool is None:
             return {

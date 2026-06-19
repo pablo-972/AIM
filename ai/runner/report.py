@@ -44,7 +44,13 @@ class ReportAIRunner(BaseAIRunner):
         return JsonExtractor(result)
 
 
-    def _build_source_name(self, tool_name: str, chunk_data: dict[str, Any], chunk_index: int, total_chunks: int) -> str:
+    def _build_source_name(
+            self, 
+            tool_name: str, 
+            chunk_data: dict[str, Any], 
+            chunk_index: int, 
+            total_chunks: int
+        ) -> str:
         section = chunk_data.get("section") if isinstance(chunk_data, dict) else None
         if section:
             return f"static.{tool_name}.{section}"

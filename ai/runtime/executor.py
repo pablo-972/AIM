@@ -12,7 +12,11 @@ class AgentStepExecutor:
         self.available_tools = available_tools
 
 
-    def execute(self, decision: dict[str, Any], tool_executor: ToolExecutor) -> tuple[str | None, dict[str, Any] | None]:
+    def execute(
+            self, 
+            decision: dict[str, Any], 
+            tool_executor: ToolExecutor
+        ) -> tuple[str | None, dict[str, Any] | None]:
         if not validate_agent_step(decision, self.available_tools):
             return None, {
                 "success": False,

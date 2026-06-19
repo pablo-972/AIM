@@ -54,6 +54,9 @@ class StaticToolRunner(BaseToolRunner):
         return results
 
 
+
+
+
 class StaticAgentToolRunner:
     def __init__(self, context: Any) -> None:
         self.context = context
@@ -61,10 +64,21 @@ class StaticAgentToolRunner:
             "save_threat_actor_messages": self._save_threat_actor_messages,
         }
 
-    def _save_threat_actor_messages(self, parameters: dict[str, Any], tool_context: dict[str, Any]) -> dict[str, Any]:
+
+    def _save_threat_actor_messages(
+            self, 
+            parameters: dict[str, Any], 
+            tool_context: dict[str, Any]
+        ) -> dict[str, Any]:
         return save_threat_actor_messages(self.context.output, parameters, tool_context)
 
-    def execute(self, tool_name: str, parameters: dict[str, Any] | None = None, context: dict[str, Any] | None = None) -> dict[str, Any]:
+
+    def execute(
+            self, 
+            tool_name: str, 
+            parameters: dict[str, Any] | None = None, 
+            context: dict[str, Any] | None = None
+        ) -> dict[str, Any]:
         tool = self._tools.get(tool_name)
         if tool is None:
             return {

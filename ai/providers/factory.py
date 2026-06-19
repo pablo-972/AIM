@@ -18,10 +18,12 @@ def resolve_value(value: Any) -> Any:
     if isinstance(value, dict):
         env_name = value.get("env")
         default = value.get("default")
+        
         if env_name:
             return os.getenv(env_name, default)
-
+        
         return default
+    
     return value
 
 

@@ -12,7 +12,27 @@ class BaseLLMProvider(ABC):
     def chat(self, system_prompt: str, user_prompt: str) -> LLMResponse:
         raise NotImplementedError
 
+    @abstractmethod
+    def chat_json(self, system_prompt: str, user_prompt: str, schema: dict) -> LLMResponse:
+        return self.chat(system_prompt, user_prompt)
+
 
     @abstractmethod
-    def chat_with_assistant(self, system_prompt: str, assistant_prompt: str, user_prompt: str) -> LLMResponse:
+    def chat_with_assistant(
+            self, 
+            system_prompt: str, 
+            assistant_prompt: str, 
+            user_prompt: str
+        ) -> LLMResponse:
         raise NotImplementedError
+
+
+    @abstractmethod
+    def chat_json_with_assistant(
+            self, 
+            system_prompt: str, 
+            assistant_prompt: str, 
+            user_prompt: str, 
+            schema: dict
+        ) -> LLMResponse:
+        return self.chat_with_assistant(system_prompt, assistant_prompt, user_prompt)

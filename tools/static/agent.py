@@ -45,7 +45,11 @@ def _message_exists(items: list[dict[str, Any]], message_block: list[str]) -> bo
     return any(item.get("message_block") == message_block for item in items)
 
 
-def save_threat_actor_messages(output: Path, parameters: dict[str, Any], context: dict[str, Any]) -> dict[str, Any]:
+def save_threat_actor_messages(
+        output: Path, 
+        parameters: dict[str, Any], 
+        context: dict[str, Any]
+    ) -> dict[str, Any]:
     message_block = context.get("message_block")
     if not isinstance(message_block, list) or not message_block:
         return {

@@ -1,7 +1,8 @@
 import json
 
 from ai.providers.base import BaseLLMProvider
-from ai.runtime.validators import parse_llm_json_response
+from ai.schemas.agent_decision import AGENT_DECISION_SCHEMA
+from ai.schemas.parsing import parse_agent_decision
 
 
 SYSTEM_PROMPT = """
@@ -105,18 +106,16 @@ Prefer false negatives over false positives.
 If there is any doubt whether a string is actor-authored, DO NOT save it.
 
 # Output
-Return ONLY a valid JSON object:
-
-{
-  "thought": "briefly reason",
-  "action": "save_threat_actor_messages" | "none",
-  "confidence": "low|medium|high",
-  "parameters": {}
-}
+Return ONLY valid JSON matching the provided decision schema.
+Use action "save_threat_actor_messages" or "none".
 
 Do not return line-level findings. If the block contains a relevant threat actor
 message, choose action "save_threat_actor_messages"; the system will save the
 entire input block automatically.
+
+The "thought" field must be a short operational summary, not a step-by-step reasoning trace.
+Maximum 1 sentence.
+Do not include "Thinking Process", numbered reasoning, hidden reasoning, chain-of-thought, or detailed analysis.
 """
 
 
@@ -138,6 +137,6 @@ class StaticAgent:
         {strings_chunk}
         """
 
-        response = self.llm.chat(SYSTEM_PROMPT, prompt)
-        return parse_llm_json_response(response.content)
+        response = self.llm.chat_json(SYSTEM_PROMPT, prompt, AGENT_DECISION_SCHEMA)
+        return parse_agent_decision(response.content)
         
