@@ -26,7 +26,11 @@ def xrefs(sample: str, value: str) -> dict[str, Any]:
     }
 
 
-def string_xrefs(sample: str, value: str, include_all_strings: bool = False) -> dict[str, Any]:
+def string_xrefs(
+        sample: str, 
+        value: str, 
+        include_all_strings: bool = False
+    ) -> dict[str, Any]:
     if not value:
         raise ValueError("value is required")
 
