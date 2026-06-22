@@ -1,6 +1,9 @@
 from typing import Any
 
-from ai.runtime.validators import validate_tool_parameters
+from ai.runtime.validators import (
+    normalize_tool_parameters,
+    validate_tool_parameters,
+)
 
 
 NO_TOOL_ACTIONS = {"none", "finish"}
@@ -60,6 +63,8 @@ class ReversingPostprocessor:
             "query",
             "function",
             "resolved_function",
+            "start_address",
+            "end_address",
             "instructions_count",
             "returned_instructions",
             "truncated",
@@ -85,6 +90,16 @@ class ReversingPostprocessor:
         instructions = data.get("instructions")
         if isinstance(instructions, list):
             summary.setdefault("instructions_count", len(instructions))
+            addresses: list[int] = []
+            for instruction in instructions:
+                if not isinstance(instruction, dict):
+                    continue
+                address = instruction.get("address")
+                if isinstance(address, int):
+                    addresses.append(address)
+            if addresses:
+                summary["start_address"] = hex(min(addresses))
+                summary["end_address"] = hex(max(addresses))
 
         callers = data.get("callers")
         if isinstance(callers, list):
@@ -123,6 +138,9 @@ class ReversingPostprocessor:
         if not isinstance(finding, dict):
             return None
 
+        if target["tool"] not in CODE_FOLLOW_UP_TOOLS:
+            return None
+
         finding_type = finding.get("type")
         code_targets = observation.get("code_targets")
         has_code_evidence = (
@@ -131,6 +149,13 @@ class ReversingPostprocessor:
         )
 
         if self._is_empty_code_observation(observation):
+            return None
+
+        if (
+            target["tool"] == "function"
+            and isinstance(observation.get("instructions_count"), int)
+            and observation["instructions_count"] < 3
+        ):
             return None
 
         if finding_type == "critical_code_region" and not has_code_evidence:
@@ -158,6 +183,20 @@ class ReversingPostprocessor:
             function = finding.get("function")
             if not function and isinstance(code_targets, list) and code_targets:
                 finding["function"] = code_targets[0]
+
+        resolved_function = observation.get("resolved_function")
+        if isinstance(resolved_function, str) and resolved_function:
+            finding["function"] = resolved_function
+
+        start_address = observation.get("start_address")
+        end_address = observation.get("end_address")
+        if isinstance(start_address, str) and isinstance(end_address, str):
+            finding["address_range"] = {
+                "start": start_address,
+                "end": end_address,
+            }
+        else:
+            finding["address_range"] = None
 
         evidence = finding.get("evidence")
         if not isinstance(evidence, list) or not evidence:
@@ -241,6 +280,7 @@ class ReversingPostprocessor:
                 or instructions_count < 3
             ):
                 return "none", {}
+            parameters = normalize_tool_parameters(action, parameters)
 
         if action in CODE_FOLLOW_UP_TOOLS and has_code_target:
             requested_function = parameters.get("function")
@@ -253,7 +293,10 @@ class ReversingPostprocessor:
                     normalized_parameters["max_instructions"] = parameters[
                         "max_instructions"
                     ]
-                return action, normalized_parameters
+                return action, normalize_tool_parameters(
+                    action,
+                    normalized_parameters,
+                )
 
         if (
             target["tool"] in {"string_xrefs", "import_xrefs"}
@@ -265,6 +308,7 @@ class ReversingPostprocessor:
         if action in NO_TOOL_ACTIONS:
             return action, {}
 
+        parameters = normalize_tool_parameters(action, parameters)
         tool_spec = self.available_tools.get(action)
         if (
             not isinstance(tool_spec, dict)

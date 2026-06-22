@@ -1,7 +1,10 @@
 from typing import TYPE_CHECKING, Any
 
 from ai.runtime.priority_queue import TargetPriorityQueue
-from ai.runtime.validators import validate_tool_parameters
+from ai.runtime.validators import (
+    normalize_tool_parameters,
+    validate_tool_parameters,
+)
 
 if TYPE_CHECKING:
     from ai.runtime.memory import AgentMemory
@@ -105,6 +108,7 @@ class ReversingTargetQueue:
         if not isinstance(tool_name, str) or not isinstance(parameters, dict):
             return None
 
+        parameters = normalize_tool_parameters(tool_name, parameters)
         tool_spec = self.available_tools.get(tool_name)
         if not isinstance(tool_spec, dict):
             return None

@@ -33,7 +33,7 @@ class ReversingAgentRunner(BaseAIRunner):
     ) -> None:
         super().__init__(context)
         self.model_registry = model_registry
-        self.budget = context.reversing_budget
+        self.depth = context.reversing_depth
         self.available_tools = load_json(
             REVERSING_AGENT_TOOLS_PATH.parent,
             REVERSING_AGENT_TOOLS_PATH.name,
@@ -214,12 +214,12 @@ class ReversingAgentRunner(BaseAIRunner):
     ) -> None:
         while (
             self.targets.has_items()
-            and self.targets.visited_count() < self.budget
+            and self.targets.visited_count() < self.depth
         ):
             target = self.targets.pop()
             Logger.info(
                 f"Reversing agent target: {target['tool']} "
-                f"({self.targets.visited_count()}/{self.budget})"
+                f"({self.targets.visited_count()}/{self.depth})"
             )
             tool_output = self.tool_runner.execute(
                 target["tool"],

@@ -13,6 +13,8 @@ COMPACT_OUTPUT_KEYS = {
     "reason",
     "function",
     "resolved_function",
+    "start_address",
+    "end_address",
     "query",
     "target",
     "count",

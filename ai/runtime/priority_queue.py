@@ -13,10 +13,16 @@ class TargetPriorityQueue:
 
 
     def _key(self, target: dict[str, Any]) -> str:
+        parameters = target["parameters"]
+        if target["tool"] == "disassembly":
+            parameters = {
+                "function": parameters.get("function"),
+            }
+
         return json.dumps(
             {
                 "tool": target["tool"],
-                "parameters": target["parameters"],
+                "parameters": parameters,
             },
             sort_keys=True,
             ensure_ascii=False,

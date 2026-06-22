@@ -4,6 +4,7 @@
         "parameters": {
             "function": {
                 "description": "Function name or address.",
+                "type": "string",
                 "required": true
             }
         }
@@ -13,10 +14,14 @@
         "parameters": {
             "function": {
                 "description": "Function name or address.",
+                "type": "string",
                 "required": true
             },
             "max_instructions": {
-                "description": "Maximum number of instructions to return."
+                "description": "Maximum number of instructions to return.",
+                "type": "integer",
+                "minimum": 25,
+                "maximum": 500
             }
         }
     },
@@ -25,6 +30,7 @@
         "parameters": {
             "function": {
                 "description": "Function name or address.",
+                "type": "string",
                 "required": true
             }
         }
@@ -34,6 +40,7 @@
         "parameters": {
             "function": {
                 "description": "Function name or address.",
+                "type": "string",
                 "required": true
             }
         }
@@ -43,6 +50,7 @@
         "parameters": {
             "value": {
                 "description": "String value to search.",
+                "type": "string",
                 "required": true
             }
         }
@@ -52,6 +60,7 @@
         "parameters": {
             "import_name": {
                 "description": "Import name to search.",
+                "type": "string",
                 "required": true
             }
         }

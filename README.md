@@ -243,10 +243,10 @@ Available reversing modes:
 - `callees`
 - `full`
 
-Run the reversing agent with an optional tool-execution budget:
+Run the reversing agent with an optional exploration depth:
 
 ```bash
-python main.py reversing samples/sample.exe --agent --profile local-reverse --budget 12
+python main.py reversing samples/sample.exe --agent --profile local-reverse --depth 12
 ```
 
 The agent loads `enrichment.md` when available, builds initial targets from

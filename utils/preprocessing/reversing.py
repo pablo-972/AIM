@@ -30,18 +30,45 @@ def chunk_reversing_evidence(
         return _chunk_sequence(section, value, chunk_size)
 
     if isinstance(value, str):
-        return [
-            make_report_chunk(
-                f"{section}.{index}",
-                value[offset:offset + chunk_size],
-            )
-            for index, offset in enumerate(
-                range(0, len(value), chunk_size),
-                start=1,
-            )
-        ]
+        return _chunk_text(section, value, chunk_size)
 
     return [make_report_chunk(section, str(value))]
+
+
+def _chunk_text(
+    section: str,
+    value: str,
+    chunk_size: int,
+) -> list[dict[str, Any]]:
+    chunks: list[dict[str, Any]] = []
+    offset = 0
+
+    while offset < len(value):
+        low = 1
+        high = min(chunk_size, len(value) - offset)
+        accepted = 1
+
+        while low <= high:
+            length = (low + high) // 2
+            candidate = make_report_chunk(
+                f"{section}.{len(chunks) + 1}",
+                value[offset:offset + length],
+            )
+            if json_size(candidate) <= chunk_size:
+                accepted = length
+                low = length + 1
+            else:
+                high = length - 1
+
+        chunks.append(
+            make_report_chunk(
+                f"{section}.{len(chunks) + 1}",
+                value[offset:offset + accepted],
+            )
+        )
+        offset += accepted
+
+    return chunks
 
 
 def _chunk_sequence(

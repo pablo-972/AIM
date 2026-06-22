@@ -3,6 +3,11 @@ from typing import Any
 from tools.reversing.analyzers.session import R2Session
 
 
+DEFAULT_MAX_INSTRUCTIONS = 300
+MIN_MAX_INSTRUCTIONS = 25
+MAX_MAX_INSTRUCTIONS = 500
+
+
 def _parse_address(value: str) -> int | None:
     try:
         return int(value, 0)
@@ -96,8 +101,15 @@ def disassembly(sample: str, function: str) -> dict[str, Any]:
 def text_disassembly(
     sample: str,
     function: str,
-    max_instructions: int = 300,
+    max_instructions: int = DEFAULT_MAX_INSTRUCTIONS,
 ) -> dict[str, Any]:
+    if not isinstance(max_instructions, int):
+        raise ValueError("max_instructions must be an integer")
+    max_instructions = max(
+        MIN_MAX_INSTRUCTIONS,
+        min(max_instructions, MAX_MAX_INSTRUCTIONS),
+    )
+
     details = function_details(sample, function)
 
     ops = details["instructions"]
@@ -108,6 +120,11 @@ def text_disassembly(
         for op in selected_ops
         if op.get("address") is not None and op.get("disasm")
     )
+    addresses = [
+        op["address"]
+        for op in selected_ops
+        if isinstance(op.get("address"), int)
+    ]
 
     return {
         "function": function,
@@ -116,5 +133,7 @@ def text_disassembly(
         "instructions_count": len(ops),
         "returned_instructions": len(selected_ops),
         "truncated": len(ops) > max_instructions,
+        "start_address": hex(min(addresses)) if addresses else None,
+        "end_address": hex(max(addresses)) if addresses else None,
         "disassembly": text,
     }
