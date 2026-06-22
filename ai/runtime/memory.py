@@ -4,7 +4,7 @@ from typing import Any
 from utils.io.files import save_json
 
 
-NO_TOOL_ACTIONS = {"none", "finish"}
+NO_TOOL_ACTIONS = {"none", "finish", "seed_queue"}
 COMPACT_OUTPUT_KEYS = {
     "success",
     "saved",
@@ -12,6 +12,7 @@ COMPACT_OUTPUT_KEYS = {
     "item_id",
     "reason",
     "function",
+    "resolved_function",
     "query",
     "target",
     "count",
@@ -62,6 +63,10 @@ class AgentMemory:
         steps = self.data["steps"]
         step_number = len(steps) + 1
         normalized_decision = self._normalize_decision(decision)
+        normalized_decision = self._align_decision_with_tool(
+            normalized_decision,
+            tool_name,
+        )
         normalized_error = error or self._tool_error(tool_output)
 
         step = {
@@ -169,6 +174,21 @@ class AgentMemory:
         }
 
 
+    def _align_decision_with_tool(
+        self,
+        decision: dict[str, Any],
+        tool_name: str | None,
+    ) -> dict[str, Any]:
+        if (
+            tool_name
+            and tool_name not in NO_TOOL_ACTIONS
+            and decision["action"] not in {"none", "finish", tool_name}
+        ):
+            decision["action"] = tool_name
+
+        return decision
+
+
     def _normalize_tool(
         self,
         decision: dict[str, Any],
@@ -244,6 +264,15 @@ class AgentMemory:
                 target.setdefault(f"{key}_count", len(value))
             elif isinstance(value, list):
                 target.setdefault(f"{key}_count", len(value))
+
+            if key == "matches" and isinstance(value, list):
+                xrefs_count = sum(
+                    len(item.get("xrefs", []))
+                    for item in value
+                    if isinstance(item, dict)
+                    and isinstance(item.get("xrefs"), list)
+                )
+                target.setdefault("xrefs_count", xrefs_count)
 
 
     def _tool_error(self, tool_output: dict[str, Any] | None) -> str | None:

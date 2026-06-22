@@ -1,7 +1,26 @@
+REVERSING_TOOL_NAMES = [
+    "string_xrefs",
+    "import_xrefs",
+    "function",
+    "disassembly",
+    "callers",
+    "callees",
+]
+
+REVERSING_ACTION_NAMES = [
+    "none",
+    "finish",
+    "seed_queue",
+    *REVERSING_TOOL_NAMES,
+]
+
 REVERSING_TARGET_SCHEMA = {
     "type": "object",
     "properties": {
-        "tool": {"type": "string"},
+        "tool": {
+            "type": "string",
+            "enum": REVERSING_TOOL_NAMES,
+        },
         "parameters": {"type": "object"},
         "priority": {
             "type": "integer",
@@ -21,6 +40,7 @@ REVERSING_SEED_SCHEMA = {
         "reasoning": {"type": "string"},
         "targets": {
             "type": "array",
+            "maxItems": 6,
             "items": REVERSING_TARGET_SCHEMA,
         },
     },
@@ -29,21 +49,79 @@ REVERSING_SEED_SCHEMA = {
 }
 
 
+ADDRESS_RANGE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "start": {
+            "anyOf": [
+                {"type": "string"},
+                {"type": "null"},
+            ]
+        },
+        "end": {
+            "anyOf": [
+                {"type": "string"},
+                {"type": "null"},
+            ]
+        },
+    },
+    "required": ["start", "end"],
+    "additionalProperties": False,
+}
+
+
 REVERSING_FINDING_SCHEMA = {
     "type": "object",
     "properties": {
         "type": {"type": "string"},
+        "category": {
+            "type": "string",
+            "enum": [
+                "ransom_note_generation",
+                "file_encryption",
+                "crypto",
+                "defense_evasion",
+                "network",
+                "persistence",
+                "privilege_escalation",
+                "api_resolution",
+                "anti_analysis",
+                "unknown",
+            ],
+        },
         "summary": {"type": "string"},
         "confidence": {
             "type": "string",
             "enum": ["low", "medium", "high"],
         },
+        "function": {
+            "anyOf": [
+                {"type": "string"},
+                {"type": "null"},
+            ]
+        },
+        "address_range": {
+            "anyOf": [
+                ADDRESS_RANGE_SCHEMA,
+                {"type": "null"},
+            ]
+        },
         "evidence": {
             "type": "array",
             "items": {"type": "string"},
         },
+        "reason": {"type": "string"},
     },
-    "required": ["type", "summary", "confidence", "evidence"],
+    "required": [
+        "type",
+        "category",
+        "summary",
+        "confidence",
+        "function",
+        "address_range",
+        "evidence",
+        "reason",
+    ],
     "additionalProperties": False,
 }
 
@@ -51,31 +129,29 @@ REVERSING_FINDING_SCHEMA = {
 REVERSING_ANALYSIS_SCHEMA = {
     "type": "object",
     "properties": {
-        "relevant": {"type": "boolean"},
         "thought": {"type": "string"},
         "confidence": {
             "type": "string",
             "enum": ["low", "medium", "high"],
         },
+        "action": {
+            "type": "string",
+            "enum": REVERSING_ACTION_NAMES,
+        },
+        "parameters": {"type": "object"},
         "finding": {
             "anyOf": [
                 REVERSING_FINDING_SCHEMA,
                 {"type": "null"},
             ]
         },
-        "next_targets": {
-            "type": "array",
-            "items": REVERSING_TARGET_SCHEMA,
-        },
-        "finish": {"type": "boolean"},
     },
     "required": [
-        "relevant",
         "thought",
         "confidence",
+        "action",
+        "parameters",
         "finding",
-        "next_targets",
-        "finish",
     ],
     "additionalProperties": False,
 }

@@ -4,6 +4,7 @@ from typing import Any
 from ai.providers.base import BaseLLMProvider
 from ai.schemas.parsing import parse_json_object
 from ai.schemas.reversing import (
+    REVERSING_ACTION_NAMES,
     REVERSING_ANALYSIS_SCHEMA,
     REVERSING_SEED_SCHEMA,
 )
@@ -12,23 +13,30 @@ from ai.schemas.reversing import (
 SYSTEM_PROMPT = """
 You are a malware reverse-engineering agent.
 
-Choose concrete investigation targets and analyze tool evidence. Stay grounded
-in the supplied enrichment and tool output. Never invent behavior, functions,
-imports, strings, addresses, or findings.
+Main objective:
+Identify critical assembly and code regions associated with malicious behavior.
 
-Higher target priority means it should be investigated sooner.
+Critical regions include code related to ransom-note generation, file traversal,
+file encryption, extension modification, cryptographic routines, process
+execution, defense evasion, shadow-copy deletion, privilege escalation,
+persistence, network communication, API resolution, and anti-analysis.
 
-When analyzing evidence:
-- Mark it relevant only when it explains malware behavior or guides further
-  reverse engineering.
-- Return at most one concise, evidence-backed finding per chunk.
-- Suggest only concrete follow-up targets justified by current evidence.
-- Prefer xrefs, callers, callees, and bounded disassembly.
-- Set finish=true only when the current evidence indicates there are no useful
-  follow-up targets.
-
-The thought field must be a short operational summary, not chain-of-thought.
-Return only JSON matching the supplied schema.
+Rules:
+- Stay grounded in the supplied tool observation.
+- Never invent functions, addresses, instructions, imports, xrefs, or behavior.
+- Never contradict numeric observation fields.
+- If matches_count is greater than zero, do not claim there were no matches.
+- If returned_instructions is zero, do not claim code was analyzed.
+- Plain wallet, payment, contact, Session, or onion strings are artifacts. They
+  are not configuration loading or C2 without code evidence.
+- Create critical_code_region findings only when xref, function, caller/callee,
+  or disassembly evidence ties the behavior to code.
+- After string_xrefs or import_xrefs returns code references, prefer function,
+  disassembly, callers, or callees using an actual returned function/address.
+- Avoid repeated related-string searches unless code evidence requires one.
+- Return at most one concise finding and one next action.
+- Use short analyst notes, not chain-of-thought.
+- Return only JSON matching the supplied schema.
 """
 
 
@@ -44,9 +52,9 @@ class ReversingAgent:
         available_tools: dict[str, Any],
     ) -> dict[str, Any]:
         prompt = f"""
-        Create the initial reverse-engineering investigation queue.
+        Create a small initial investigation queue.
 
-        Existing enrichment:
+        Enrichment context:
         {enrichment or "No enrichment is available."}
 
         Bounded reconnaissance:
@@ -55,8 +63,14 @@ class ReversingAgent:
         Available tools:
         {json.dumps(available_tools, indent=2, ensure_ascii=False)}
 
-        Choose a small set of high-value targets from interesting strings, suspicious
-        imports, and large or suspicious functions.
+        Prioritize targets that can lead to critical code regions:
+        - suspicious imports with import_xrefs
+        - behaviorally meaningful strings with string_xrefs
+        - concrete functions with function or disassembly
+
+        Do not prioritize wallet, payment, contact, Session, or onion strings unless
+        they are needed to locate ransom-note generation code. Do not invent addresses.
+        Return no more than six targets.
         """
         
         response = self.llm.chat_json(
@@ -64,53 +78,72 @@ class ReversingAgent:
             prompt,
             REVERSING_SEED_SCHEMA,
         )
-        return parse_json_object(
-            response.content,
-            fallback={
-                "reasoning": "No initial targets returned.",
-                "targets": [],
-            },
-        )
+        result = parse_json_object(response.content, fallback={})
+        if not isinstance(result.get("targets"), list):
+            raise ValueError("Invalid reversing seed response.")
+        return result
 
 
     def analyze_evidence(
         self,
         enrichment: str,
         target: dict[str, Any],
+        observation: dict[str, Any],
         chunk: Any,
         chunk_index: int,
         total_chunks: int,
         available_tools: dict[str, Any],
     ) -> dict[str, Any]:
         prompt = f"""
-        Analyze one chunk returned for the current investigation target.
+        Analyze the observation and choose at most one next action.
 
-        Existing enrichment:
-        {enrichment or "No enrichment is available."}
-
-        Current target:
+        Current input target:
         {json.dumps(target, indent=2, ensure_ascii=False, default=str)}
 
-        Tool evidence chunk {chunk_index} of {total_chunks}:
+        Tool executed:
+        {target["tool"]}
+
+        Tool output summary:
+        {json.dumps(observation, indent=2, ensure_ascii=False, default=str)}
+
+        Bounded raw tool chunk {chunk_index} of {total_chunks}:
         {json.dumps(chunk, indent=2, ensure_ascii=False, default=str)}
 
-        Available tools for follow-up:
+        Enrichment context:
+        {enrichment or "No enrichment is available."}
+
+        Available next actions:
         {json.dumps(available_tools, indent=2, ensure_ascii=False)}
+
+        Choose:
+        - action=none when this observation is not useful.
+        - action=finish when investigation is sufficient.
+        - a tool action only when more investigation is justified.
+
+        For xref observations with code_targets, use one of those exact values for a
+        function-oriented follow-up. Do not perform another string search when code can
+        be followed directly.
         """
-        
+
         response = self.llm.chat_json(
             SYSTEM_PROMPT,
             prompt,
             REVERSING_ANALYSIS_SCHEMA,
         )
-        return parse_json_object(
-            response.content,
-            fallback={
-                "relevant": False,
-                "thought": "No valid evidence decision returned.",
-                "confidence": "low",
-                "finding": None,
-                "next_targets": [],
-                "finish": False,
-            },
-        )
+        result = parse_json_object(response.content, fallback={})
+        required = {"thought", "confidence", "action", "parameters", "finding"}
+        
+        if not required.issubset(result):
+            raise ValueError("Invalid reversing evidence response.")
+        if result["action"] not in REVERSING_ACTION_NAMES:
+            raise ValueError("Invalid reversing action.")
+        if result["confidence"] not in {"low", "medium", "high"}:
+            raise ValueError("Invalid reversing confidence.")
+        if not isinstance(result["parameters"], dict):
+            raise ValueError("Invalid reversing parameters.")
+        if result["finding"] is not None and not isinstance(
+            result["finding"],
+            dict,
+        ):
+            raise ValueError("Invalid reversing finding.")
+        return result

@@ -1,28 +1,28 @@
 from typing import Any
 
+from ai.agents.reversing import ReversingAgent
+from ai.model_registry import ModelRegistry
+from ai.runner.base import BaseAIRunner
+from ai.runtime.memory import AgentMemory
+from ai.runtime.reversing_targets import ReversingTargetQueue
 from config import (
     ENRICHMENT_FILENAME,
     REVERSING_AGENT_RESULT_FILENAME,
     REVERSING_AGENT_TOOLS_PATH,
 )
-from ai.agents.reversing import ReversingAgent
-from ai.model_registry import ModelRegistry
-from ai.runner.base import BaseAIRunner
-from ai.runtime.memory import AgentMemory
-from ai.runtime.priority_queue import TargetPriorityQueue
-from ai.runtime.validators import validate_tool_parameters
 from orchestrator.context import AnalysisContext
 from tools.reversing.analyzers.reconnaissance import collect_reconnaissance
 from tools.runner.reversing import ReversingAgentToolRunner
-from utils.artifacts.documents import EMPTY_DOCUMENT_BODY, ENRICHMENT_TITLE, MarkdownDocument
+from utils.artifacts.documents import (
+    EMPTY_DOCUMENT_BODY,
+    ENRICHMENT_TITLE,
+    MarkdownDocument,
+)
 from utils.io.files import load_json
 from utils.io.text import read_text
 from utils.logger import Logger
+from utils.postprocessing.reversing import ReversingPostprocessor
 from utils.preprocessing.chunks import chunk_large_value
-
-
-DEFAULT_REVERSING_BUDGET = 12
-DEFAULT_TARGET_PRIORITY = 50
 
 
 class ReversingAgentRunner(BaseAIRunner):
@@ -39,12 +39,16 @@ class ReversingAgentRunner(BaseAIRunner):
             REVERSING_AGENT_TOOLS_PATH.name,
         ) or {}
         self.tool_runner = ReversingAgentToolRunner(context)
-        self.targets = TargetPriorityQueue()
         self.memory = AgentMemory(
             output_dir=self.context.output,
             filename=REVERSING_AGENT_RESULT_FILENAME,
             agent_name="reverse_agent",
         )
+        self.targets = ReversingTargetQueue(
+            available_tools=self.available_tools,
+            memory=self.memory,
+        )
+        self.postprocessor = ReversingPostprocessor(self.available_tools)
 
 
     def _load_enrichment(self) -> str:
@@ -56,154 +60,6 @@ class ReversingAgentRunner(BaseAIRunner):
 
         body = document.extract_body(content)
         return "" if body == EMPTY_DOCUMENT_BODY else body
-
-
-    def _normalize_target(self, target: Any) -> dict[str, Any] | None:
-        if not isinstance(target, dict):
-            return None
-
-        tool_name = target.get("tool")
-        parameters = target.get("parameters")
-        if not isinstance(tool_name, str) or not isinstance(parameters, dict):
-            return None
-
-        tool_spec = self.available_tools.get(tool_name)
-        if not isinstance(tool_spec, dict):
-            return None
-        if not validate_tool_parameters(parameters, tool_spec):
-            return None
-
-        try:
-            priority = int(target.get("priority", DEFAULT_TARGET_PRIORITY))
-        except (TypeError, ValueError):
-            priority = DEFAULT_TARGET_PRIORITY
-
-        return {
-            "tool": tool_name,
-            "parameters": parameters,
-            "priority": max(1, min(priority, 100)),
-            "reason": str(target.get("reason") or "").strip(),
-        }
-
-
-    def _enqueue_targets(
-        self,
-        targets: Any,
-        source: str,
-    ) -> None:
-        if not isinstance(targets, list):
-            return
-
-        for target in targets:
-            normalized = self._normalize_target(target)
-            if normalized is not None and self.targets.push(normalized):
-                self.memory.record_queue_event(
-                    action="added",
-                    target=normalized,
-                    queue_size=self.targets.size(),
-                    source=source,
-                )
-
-
-    def _fallback_targets(
-        self,
-        reconnaissance: dict[str, Any],
-    ) -> list[dict[str, Any]]:
-        targets = [
-            {
-                "tool": "import_xrefs",
-                "parameters": {"import_name": item["name"]},
-                "priority": 90,
-                "reason": "Suspicious import discovered during reconnaissance.",
-            }
-            for item in reconnaissance["suspicious_imports"][:5]
-            if item.get("name")
-        ]
-        targets.extend(
-            {
-                "tool": "disassembly",
-                "parameters": {
-                    "function": item["name"],
-                    "max_instructions": 200,
-                },
-                "priority": 80,
-                "reason": "Large function discovered during reconnaissance.",
-            }
-            for item in reconnaissance["large_functions"][:3]
-            if item.get("name")
-        )
-        targets.extend(
-            {
-                "tool": "string_xrefs",
-                "parameters": {"value": item["value"]},
-                "priority": 70,
-                "reason": "Interesting string discovered during reconnaissance.",
-            }
-            for item in reconnaissance["interesting_strings"][:3]
-            if item.get("value")
-        )
-        return targets
-
-
-    def _input_ref(
-        self,
-        target: dict[str, Any],
-        chunk_index: int | None = None,
-    ) -> dict[str, Any]:
-        tool_name = target["tool"]
-        parameters = target["parameters"]
-
-        if tool_name in {"function", "disassembly", "callers", "callees"}:
-            input_type = "function"
-            value = parameters.get("function")
-        elif tool_name == "string_xrefs":
-            input_type = "string_xref"
-            value = parameters.get("value")
-        elif tool_name == "import_xrefs":
-            input_type = "import_xref"
-            value = parameters.get("import_name")
-        else:
-            input_type = tool_name
-            value = None
-
-        result = {
-            "type": input_type,
-            "value": value,
-        }
-        if chunk_index is not None:
-            result["index"] = chunk_index
-        return result
-
-
-    def _step_decision(
-        self,
-        analysis: dict[str, Any],
-    ) -> dict[str, Any]:
-        next_targets = analysis.get("next_targets")
-        first_target = (
-            next_targets[0]
-            if isinstance(next_targets, list)
-            and next_targets
-            and isinstance(next_targets[0], dict)
-            else None
-        )
-
-        if first_target is not None:
-            action = first_target.get("tool", "none")
-            parameters = first_target.get("parameters", {})
-        elif analysis.get("finish") is True:
-            action = "finish"
-            parameters = {}
-        else:
-            action = "none"
-            parameters = {}
-
-        return {
-            "thought": analysis.get("thought", ""),
-            "confidence": analysis.get("confidence", "low"),
-            "action": action,
-            "parameters": parameters if isinstance(parameters, dict) else {},
-        }
 
 
     def _seed_decision(
@@ -221,12 +77,8 @@ class ReversingAgentRunner(BaseAIRunner):
         return {
             "thought": str(seed.get("reasoning") or ""),
             "confidence": "medium" if first_target else "low",
-            "action": first_target.get("tool", "finish") if first_target else "finish",
-            "parameters": (
-                first_target.get("parameters", {})
-                if first_target
-                else {}
-            ),
+            "action": "seed_queue",
+            "parameters": {},
         }
 
 
@@ -238,12 +90,18 @@ class ReversingAgentRunner(BaseAIRunner):
         tool_output: dict[str, Any],
     ) -> None:
         chunks = chunk_large_value(target["tool"], tool_output.get("data"))
+        observation = self.postprocessor.observation_summary(
+            target,
+            tool_output,
+        )
+
         for chunk_index, chunk in enumerate(chunks, start=1):
             error = None
             try:
                 analysis = agent.analyze_evidence(
                     enrichment=enrichment,
                     target=target,
+                    observation=observation,
                     chunk=chunk,
                     chunk_index=chunk_index,
                     total_chunks=len(chunks),
@@ -256,29 +114,116 @@ class ReversingAgentRunner(BaseAIRunner):
                     f"chunk {chunk_index}: {exc}"
                 )
                 analysis = {
-                    "relevant": False,
-                    "thought": "The evidence chunk could not be analyzed.",
+                    "thought": "LLM decision failed.",
                     "confidence": "low",
+                    "action": "none",
+                    "parameters": {},
                     "finding": None,
-                    "next_targets": [],
-                    "finish": False,
                 }
 
-            finding = analysis.get("finding")
-            if analysis.get("relevant") is not True or not isinstance(finding, dict):
-                finding = None
-
+            finding = self.postprocessor.finding(
+                analysis.get("finding"),
+                target,
+                observation,
+            )
+            follow_up = self.postprocessor.follow_up_target(
+                analysis,
+                target,
+                observation,
+            )
             self.memory.record(
-                decision=self._step_decision(analysis),
+                decision=self.postprocessor.trace_decision(
+                    analysis,
+                    target,
+                    observation,
+                ),
                 tool_name=target["tool"],
                 tool_output=tool_output,
-                input_ref=self._input_ref(target, chunk_index),
+                input_ref=self.postprocessor.input_ref(target, chunk_index),
                 finding=finding,
                 error=error,
             )
-            self._enqueue_targets(
-                analysis.get("next_targets"),
-                source="follow_up",
+            if follow_up is not None:
+                self.targets.enqueue([follow_up], source="follow_up")
+
+
+    def _initial_targets(
+        self,
+        agent: ReversingAgent,
+        enrichment: str,
+        reconnaissance: dict[str, Any],
+    ) -> tuple[dict[str, Any], list[dict[str, Any]], str, str | None]:
+        seed_error = None
+        try:
+            seed = agent.create_initial_targets(
+                enrichment=enrichment,
+                reconnaissance=reconnaissance,
+                available_tools=self.available_tools,
+            )
+        except Exception as exc:
+            seed_error = str(exc)
+            Logger.error(f"Reversing seed decision failed: {exc}")
+            seed = {
+                "reasoning": "LLM decision failed.",
+                "targets": [],
+            }
+
+        raw_targets = seed.get("targets")
+        targets = (
+            raw_targets[:6]
+            if isinstance(raw_targets, list) and raw_targets
+            else []
+        )
+        source = "seed"
+        if not targets and not enrichment:
+            targets = self.targets.fallback_targets(reconnaissance)
+            seed = {
+                "reasoning": "Using deterministic reconnaissance fallback.",
+                "targets": targets,
+            }
+            source = "fallback"
+
+        return seed, targets, source, seed_error
+
+
+    def _execute_queue(
+        self,
+        agent: ReversingAgent,
+        enrichment: str,
+    ) -> None:
+        while (
+            self.targets.has_items()
+            and self.targets.visited_count() < self.budget
+        ):
+            target = self.targets.pop()
+            Logger.info(
+                f"Reversing agent target: {target['tool']} "
+                f"({self.targets.visited_count()}/{self.budget})"
+            )
+            tool_output = self.tool_runner.execute(
+                target["tool"],
+                target["parameters"],
+            )
+
+            if tool_output.get("success") is True:
+                self._analyze_target(
+                    agent=agent,
+                    enrichment=enrichment,
+                    target=target,
+                    tool_output=tool_output,
+                )
+                continue
+
+            self.memory.record(
+                decision={
+                    "thought": target["reason"],
+                    "confidence": "low",
+                    "action": target["tool"],
+                    "parameters": target["parameters"],
+                },
+                tool_name=target["tool"],
+                tool_output=tool_output,
+                input_ref=self.postprocessor.input_ref(target),
             )
 
 
@@ -297,23 +242,11 @@ class ReversingAgentRunner(BaseAIRunner):
                 profile_override=self.context.profile,
             )
             agent = ReversingAgent(llm)
-
-            seed = agent.create_initial_targets(
-                enrichment=enrichment,
-                reconnaissance=reconnaissance,
-                available_tools=self.available_tools,
+            seed, targets, source, seed_error = self._initial_targets(
+                agent,
+                enrichment,
+                reconnaissance,
             )
-            targets = seed.get("targets")
-            missing_targets = not isinstance(targets, list) or not targets
-            fallback_used = missing_targets and not enrichment
-            if fallback_used:
-                targets = self._fallback_targets(reconnaissance)
-                seed = {
-                    "reasoning": "Using deterministic reconnaissance fallback.",
-                    "targets": targets,
-                }
-            elif missing_targets:
-                targets = []
 
             self.memory.record(
                 decision=self._seed_decision(seed),
@@ -321,51 +254,10 @@ class ReversingAgentRunner(BaseAIRunner):
                     "type": "initialization",
                     "value": "enrichment" if enrichment else "reconnaissance",
                 },
+                error=seed_error,
             )
-            self._enqueue_targets(
-                targets,
-                source="fallback" if fallback_used else "seed",
-            )
-
-            while (
-                self.targets.has_items()
-                and self.targets.visited_count() < self.budget
-            ):
-                target = self.targets.pop()
-                self.memory.record_queue_event(
-                    action="removed",
-                    target=target,
-                    queue_size=self.targets.size(),
-                    source="execution",
-                )
-                Logger.info(
-                    f"Reversing agent target: {target['tool']} "
-                    f"({self.targets.visited_count()}/{self.budget})"
-                )
-                tool_output = self.tool_runner.execute(
-                    target["tool"],
-                    target["parameters"],
-                )
-
-                if tool_output.get("success") is True:
-                    self._analyze_target(
-                        agent=agent,
-                        enrichment=enrichment,
-                        target=target,
-                        tool_output=tool_output,
-                    )
-                else:
-                    self.memory.record(
-                        decision={
-                            "thought": target["reason"],
-                            "confidence": "low",
-                            "action": target["tool"],
-                            "parameters": target["parameters"],
-                        },
-                        tool_name=target["tool"],
-                        tool_output=tool_output,
-                        input_ref=self._input_ref(target),
-                    )
+            self.targets.enqueue(targets, source=source)
+            self._execute_queue(agent, enrichment)
         except KeyboardInterrupt:
             self.memory.close(status="interrupted")
             raise
