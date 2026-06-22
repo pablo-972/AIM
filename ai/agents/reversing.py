@@ -15,6 +15,8 @@ You are a malware reverse-engineering agent.
 
 Main objective:
 Identify critical assembly and code regions associated with malicious behavior.
+Assembly evidence is the primary source of truth. Enrichment, strings, and
+imports are only pivots used to reach executable code.
 
 Critical regions include code related to ransom-note generation, file traversal,
 file encryption, extension modification, cryptographic routines, process
@@ -31,13 +33,22 @@ Rules:
   are not configuration loading or C2 without code evidence.
 - Create critical_code_region findings only when xref, function, caller/callee,
   or disassembly evidence ties the behavior to code.
-- After string_xrefs or import_xrefs returns code references, prefer function,
-  disassembly, callers, or callees using an actual returned function/address.
+- After string_xrefs or import_xrefs returns code references, inspect an actual
+  returned function/address instead of continuing with broad artifact searches.
+- Use function as a lightweight first inspection after xrefs.
+- Request disassembly when the inspected function contains concrete suspicious
+  instructions, calls, control flow, loops, API use, or data manipulation that
+  warrants deeper assembly analysis.
+- Do not request disassembly for every function or for a simple import thunk,
+  one-jump wrapper, or function with no meaningful instructions.
 - Avoid repeated related-string searches unless code evidence requires one.
 - Return at most one concise finding and one next action.
 - Use short analyst notes, not chain-of-thought.
 - Return only JSON matching the supplied schema.
 """
+
+MAX_EVIDENCE_ENRICHMENT_LENGTH = 3500
+MAX_TARGET_REASON_LENGTH = 500
 
 
 class ReversingAgent:
@@ -94,26 +105,46 @@ class ReversingAgent:
         total_chunks: int,
         available_tools: dict[str, Any],
     ) -> dict[str, Any]:
+        bounded_enrichment = self._bounded_text(
+            enrichment,
+            MAX_EVIDENCE_ENRICHMENT_LENGTH,
+        )
+        compact_target = {
+            "tool": target["tool"],
+            "parameters": target["parameters"],
+            "priority": target.get("priority"),
+            "reason": self._bounded_text(
+                str(target.get("reason") or ""),
+                MAX_TARGET_REASON_LENGTH,
+            ),
+        }
+        compact_tools = {
+            name: {
+                "parameters": list(spec.get("parameters", {})),
+            }
+            for name, spec in available_tools.items()
+            if isinstance(spec, dict)
+        }
         prompt = f"""
         Analyze the observation and choose at most one next action.
 
         Current input target:
-        {json.dumps(target, indent=2, ensure_ascii=False, default=str)}
+        {json.dumps(compact_target, ensure_ascii=False, default=str)}
 
         Tool executed:
         {target["tool"]}
 
         Tool output summary:
-        {json.dumps(observation, indent=2, ensure_ascii=False, default=str)}
+        {json.dumps(observation, ensure_ascii=False, default=str)}
 
         Bounded raw tool chunk {chunk_index} of {total_chunks}:
-        {json.dumps(chunk, indent=2, ensure_ascii=False, default=str)}
+        {json.dumps(chunk, ensure_ascii=False, default=str)}
 
-        Enrichment context:
-        {enrichment or "No enrichment is available."}
+        Bounded enrichment context:
+        {bounded_enrichment or "No enrichment is available."}
 
         Available next actions:
-        {json.dumps(available_tools, indent=2, ensure_ascii=False)}
+        {json.dumps(compact_tools, ensure_ascii=False)}
 
         Choose:
         - action=none when this observation is not useful.
@@ -121,8 +152,9 @@ class ReversingAgent:
         - a tool action only when more investigation is justified.
 
         For xref observations with code_targets, use one of those exact values for a
-        function-oriented follow-up. Do not perform another string search when code can
-        be followed directly.
+        function-oriented follow-up. Inspect it with function first. If the current
+        target is already a function, choose disassembly only when its instructions
+        provide concrete evidence that deeper assembly analysis is valuable.
         """
 
         response = self.llm.chat_json(
@@ -147,3 +179,11 @@ class ReversingAgent:
         ):
             raise ValueError("Invalid reversing finding.")
         return result
+
+
+    def _bounded_text(self, value: str, limit: int) -> str:
+        if len(value) <= limit:
+            return value
+
+        half = limit // 2
+        return f"{value[:half]}\n...[truncated]...\n{value[-half:]}"

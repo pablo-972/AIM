@@ -68,7 +68,21 @@ class OllamaProvider(BaseLLMProvider):
             message = data.get("message")
             content = message.get("content") if isinstance(message, dict) else None
             if not isinstance(content, str) or not content.strip():
-                raise ProviderError("Ollama response does not contain message.content")
+                diagnostics = {
+                    "done": data.get("done"),
+                    "done_reason": data.get("done_reason"),
+                    "prompt_eval_count": data.get("prompt_eval_count"),
+                    "eval_count": data.get("eval_count"),
+                    "message_keys": (
+                        sorted(message)
+                        if isinstance(message, dict)
+                        else []
+                    ),
+                }
+                raise ProviderError(
+                    "Ollama response does not contain message.content. "
+                    f"Diagnostics: {diagnostics}"
+                )
 
             return LLMResponse(content=content)
 

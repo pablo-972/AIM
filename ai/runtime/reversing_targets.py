@@ -8,6 +8,7 @@ if TYPE_CHECKING:
 
 
 DEFAULT_TARGET_PRIORITY = 50
+MAX_TARGET_REASON_LENGTH = 500
 
 
 class ReversingTargetQueue:
@@ -119,5 +120,7 @@ class ReversingTargetQueue:
             "tool": tool_name,
             "parameters": parameters,
             "priority": max(1, min(priority, 100)),
-            "reason": str(target.get("reason") or "").strip(),
+            "reason": str(target.get("reason") or "").strip()[
+                :MAX_TARGET_REASON_LENGTH
+            ],
         }

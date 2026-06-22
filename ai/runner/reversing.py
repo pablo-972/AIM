@@ -22,7 +22,7 @@ from utils.io.files import load_json
 from utils.io.text import read_text
 from utils.logger import Logger
 from utils.postprocessing.reversing import ReversingPostprocessor
-from utils.preprocessing.chunks import chunk_large_value
+from utils.preprocessing.reversing import chunk_reversing_evidence
 
 
 class ReversingAgentRunner(BaseAIRunner):
@@ -89,7 +89,10 @@ class ReversingAgentRunner(BaseAIRunner):
         target: dict[str, Any],
         tool_output: dict[str, Any],
     ) -> None:
-        chunks = chunk_large_value(target["tool"], tool_output.get("data"))
+        chunks = chunk_reversing_evidence(
+            target["tool"],
+            tool_output.get("data"),
+        )
         observation = self.postprocessor.observation_summary(
             target,
             tool_output,
@@ -107,19 +110,37 @@ class ReversingAgentRunner(BaseAIRunner):
                     total_chunks=len(chunks),
                     available_tools=self.available_tools,
                 )
-            except Exception as exc:
-                error = str(exc)
-                Logger.error(
-                    f"Reversing agent failed for {target['tool']} "
-                    f"chunk {chunk_index}: {exc}"
-                )
-                analysis = {
-                    "thought": "LLM decision failed.",
-                    "confidence": "low",
-                    "action": "none",
-                    "parameters": {},
-                    "finding": None,
-                }
+            except Exception as first_exc:
+                try:
+                    Logger.warning(
+                        f"Retrying {target['tool']} chunk {chunk_index} "
+                        "without enrichment context"
+                    )
+                    analysis = agent.analyze_evidence(
+                        enrichment="",
+                        target=target,
+                        observation=observation,
+                        chunk=chunk,
+                        chunk_index=chunk_index,
+                        total_chunks=len(chunks),
+                        available_tools=self.available_tools,
+                    )
+                except Exception as retry_exc:
+                    error = (
+                        f"Initial LLM error: {first_exc}; "
+                        f"compact retry error: {retry_exc}"
+                    )
+                    Logger.error(
+                        f"Reversing agent failed for {target['tool']} "
+                        f"chunk {chunk_index}: {error}"
+                    )
+                    analysis = {
+                        "thought": "LLM decision failed.",
+                        "confidence": "low",
+                        "action": "none",
+                        "parameters": {},
+                        "finding": None,
+                    }
 
             finding = self.postprocessor.finding(
                 analysis.get("finding"),

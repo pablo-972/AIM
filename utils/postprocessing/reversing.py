@@ -230,12 +230,17 @@ class ReversingPostprocessor:
         has_code_target = bool(code_targets)
 
         if target["tool"] in {"string_xrefs", "import_xrefs"} and has_code_target:
-            requested_function = parameters.get("function")
+            return "function", {"function": code_targets[0]}
+
+        if target["tool"] == "function" and action == "disassembly":
+            confidence = analysis.get("confidence")
+            instructions_count = observation.get("instructions_count")
             if (
-                action not in CODE_FOLLOW_UP_TOOLS
-                or requested_function not in code_targets
+                confidence not in {"medium", "high"}
+                or not isinstance(instructions_count, int)
+                or instructions_count < 3
             ):
-                return "function", {"function": code_targets[0]}
+                return "none", {}
 
         if action in CODE_FOLLOW_UP_TOOLS and has_code_target:
             requested_function = parameters.get("function")
