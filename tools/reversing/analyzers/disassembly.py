@@ -33,9 +33,9 @@ def text_disassembly(sample: str, function: str, max_instructions: int = 300) ->
     ops = details["instructions"]
     selected_ops = ops[:max_instructions]
     text = "\n".join(
-        f"{op.get('offset'):#x}: {op.get('disasm')}"
+        f"{op.get('address'):#x}: {op.get('disasm')}"
         for op in selected_ops
-        if op.get("offset") is not None and op.get("disasm")
+        if op.get("address") is not None and op.get("disasm")
     )
 
     return {

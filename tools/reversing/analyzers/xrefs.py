@@ -41,13 +41,14 @@ def string_xrefs(sample: str, value: str, include_all_strings: bool = False) -> 
         ]
 
         results: list[dict[str, Any]] = []
-        
+
         for item in matches:
             address = item.get("vaddr") or item.get("paddr")
             if address is None:
                 continue
 
             r2.cmd(f"s {address}")
+
             results.append(
                 {
                     "string": item.get("string"),
@@ -83,6 +84,7 @@ def import_xrefs(sample: str, import_name: str) -> dict[str, Any]:
                 continue
 
             r2.cmd(f"s {address}")
+
             results.append(
                 {
                     "import": item.get("name"),

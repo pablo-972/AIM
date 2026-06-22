@@ -18,11 +18,11 @@ def imports(sample: str) -> list[dict[str, Any]]:
     return [
         {
             "name": item.get("name"),
-            "plt": item.get("plt"),
+            "libname": item.get("libname"),
+            "type": item.get("type"),
             "ordinal": item.get("ordinal"),
             "bind": item.get("bind"),
-            "type": item.get("type"),
-            "libname": item.get("libname"),
+            "plt": item.get("plt")
         }
         for item in items
     ]
@@ -35,13 +35,22 @@ def functions(sample: str) -> list[dict[str, Any]]:
     return [
         {
             "name": item.get("name"),
-            "offset": item.get("offset"),
+            "address": item.get("addr"),
+            "type": item.get("type"),
+            "signature": item.get("signature"),
             "size": item.get("size"),
             "realsz": item.get("realsz"),
-            "noreturn": item.get("noreturn"),
+            "instructions": item.get("ninstrs"),
+            "basic_blocks": item.get("nbbs"),
+            "edges": item.get("edges"),
             "calltype": item.get("calltype"),
-            "nbbs": item.get("nbbs"),
-            "nins": item.get("nins"),
+            "nargs": item.get("nargs"),
+            "nlocals": item.get("nlocals"),
+            "stackframe": item.get("stackframe"),
+            "recursive": item.get("recursive"),
+            "noreturn": item.get("noreturn"),
+            "indegree": item.get("indegree"),
+            "outdegree": item.get("outdegree"),
         }
         for item in items
     ]
@@ -77,10 +86,11 @@ def callers(sample: str, function: str) -> dict[str, Any]:
         "callers": [
             {
                 "from": item.get("from"),
+                "function": item.get("fcn_name"),
                 "to": item.get("to"),
                 "type": item.get("type"),
                 "opcode": item.get("opcode"),
-                "function": item.get("fcn_name"),
+                "perm": item.get("perm")
             }
             for item in items
         ],
@@ -95,19 +105,27 @@ def callees(sample: str, function: str) -> dict[str, Any]:
         r2.cmd(f"s {function}")
         function_info = r2.cmdj("pdfj") or {}
 
+    calls = []
+    for op in function_info.get("ops", []):
+        if op.get("type") in {"call", "ucall", "icall"}:
+            calls.append(op)
+
+
     return {
         "function": function,
         "callees": [
             {
-                "offset": op.get("offset"),
+                "call_address": op.get("addr") or op.get("offset"),
+                "call_type": op.get("type"),
                 "opcode": op.get("opcode"),
-                "jump": op.get("jump"),
-                "ptr": op.get("ptr"),
-                "callee": op.get("disasm"),
+                "disasm": op.get("disasm"),
+                "target_address": op.get("jump") or op.get("ptr"),
+                "fallthrough": op.get("fail"),
+                "refs": op.get("refs", []),
             }
-            for op in function_info.get("ops", [])
-            if op.get("type") in {"call", "ucall", "icall"}
+            for op in calls
         ],
+        "count": len(calls),
     }
 
 
