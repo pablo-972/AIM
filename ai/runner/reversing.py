@@ -1,18 +1,10 @@
 from typing import Any
 
-from ai.agents.reversing import ReversingAgent
-from ai.model_registry import ModelRegistry
-from ai.runner.base import BaseAIRunner
-from ai.runtime.memory import AgentMemory
-from ai.runtime.reversing_targets import ReversingTargetQueue
 from config import (
     ENRICHMENT_FILENAME,
     REVERSING_AGENT_RESULT_FILENAME,
     REVERSING_AGENT_TOOLS_PATH,
 )
-from orchestrator.context import AnalysisContext
-from tools.reversing.analyzers.reconnaissance import collect_reconnaissance
-from tools.runner.reversing import ReversingAgentToolRunner
 from utils.artifacts.documents import (
     EMPTY_DOCUMENT_BODY,
     ENRICHMENT_TITLE,
@@ -23,6 +15,18 @@ from utils.io.text import read_text
 from utils.logger import Logger
 from utils.postprocessing.reversing import ReversingPostprocessor
 from utils.preprocessing.reversing import chunk_reversing_evidence
+from orchestrator.context import AnalysisContext
+from tools.reversing.analyzers.reconnaissance import collect_reconnaissance
+from tools.runner.reversing import ReversingAgentToolRunner
+from ai.agents.reversing import ReversingAgent
+from ai.model_registry import ModelRegistry
+from ai.runner.base import BaseAIRunner
+from ai.runtime.memory import AgentMemory
+from ai.runtime.reversing_targets import ReversingTargetQueue
+
+
+
+
 
 
 class ReversingAgentRunner(BaseAIRunner):
