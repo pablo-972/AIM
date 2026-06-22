@@ -2,7 +2,7 @@ import argparse
 
 
 def add_enrichment_module(
-    subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
+    subparsers: argparse._SubParsersAction,
     common: argparse.ArgumentParser,
 ) -> None:
     parser = subparsers.add_parser(

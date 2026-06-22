@@ -29,7 +29,7 @@ def validate_static_args(args: argparse.Namespace) -> None:
 
 
 def add_static_module(
-    subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
+    subparsers: argparse._SubParsersAction,
     common: argparse.ArgumentParser,
 ) -> None:
     parser = subparsers.add_parser(
