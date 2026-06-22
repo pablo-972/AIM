@@ -21,6 +21,7 @@ class AnalysisContext:
     profile: str | None
     static_agent: bool
     reversing_agent: bool
+    reversing_budget: int
 
 
     @classmethod
@@ -50,4 +51,5 @@ class AnalysisContext:
             profile=getattr(args, "profile", None),
             static_agent=getattr(args, "static_agent", False),
             reversing_agent=getattr(args, "reversing_agent", False),
+            reversing_budget=getattr(args, "reversing_budget", 12),
         )

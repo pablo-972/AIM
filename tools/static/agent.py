@@ -41,8 +41,18 @@ def _load_existing_blocks(output: Path) -> dict[str, Any]:
     return _default_artifact()
 
 
-def _message_exists(items: list[dict[str, Any]], message_block: list[str]) -> bool:
-    return any(item.get("message_block") == message_block for item in items)
+def _find_message(
+    items: list[dict[str, Any]],
+    message_block: list[str],
+) -> dict[str, Any] | None:
+    return next(
+        (
+            item
+            for item in items
+            if item.get("message_block") == message_block
+        ),
+        None,
+    )
 
 
 def save_threat_actor_messages(
@@ -75,13 +85,15 @@ def save_threat_actor_messages(
     )
     data["items"] = items
 
-    if _message_exists(items, message_block):
+    existing_item = _find_message(items, message_block)
+    if existing_item is not None:
         save_json(output, THREAT_ACTOR_MESSAGES_FILENAME, data)
         return {
             "success": True,
             "saved": False,
             "reason": "duplicate",
             "saved_count": len(items),
+            "item_id": existing_item.get("id"),
         }
 
     item = {
@@ -97,5 +109,5 @@ def save_threat_actor_messages(
         "success": True,
         "saved": True,
         "saved_count": len(items),
-        "item": item,
+        "item_id": item["id"],
     }

@@ -188,3 +188,5 @@ output/
 
 # Logs
 logs/
+dockerfile
+entrypoint.sh

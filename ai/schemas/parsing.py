@@ -17,6 +17,22 @@ VALID_CONFIDENCE_LEVELS = {
 }
 
 
+def parse_json_object(
+    content: str,
+    fallback: dict[str, Any],
+) -> dict[str, Any]:
+    content = (content or "").strip()
+    if not content:
+        return dict(fallback)
+
+    try:
+        value = json.loads(content)
+    except (JSONDecodeError, TypeError):
+        return dict(fallback)
+
+    return value if isinstance(value, dict) else dict(fallback)
+
+
 def _fallback_agent_decision(reason: str) -> dict[str, Any]:
     return {
         "thought": reason,

@@ -31,10 +31,13 @@ class ReversingToolRunner(BaseToolRunner):
             return {"function": self.context.function}
 
         if mode == "xrefs":
-            return {"value": self.context.value}
+            return {"function": self.context.function}
 
         if mode == "string-xrefs":
             return {"string_value": self.context.value}
+
+        if mode == "import-xrefs":
+            return {"import_name": self.context.value}
 
         if mode in {"callers", "callees"}:
             return {"function": self.context.function}

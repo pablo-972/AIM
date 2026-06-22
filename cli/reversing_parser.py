@@ -10,6 +10,7 @@ REVERSING_MODES = [
     "disasm",
     "xrefs",
     "string-xrefs",
+    "import-xrefs",
     "callers",
     "callees",
     "full"
@@ -28,14 +29,20 @@ def validate_reversing_args(args: argparse.Namespace) -> None:
     if not args.reversing_agent and not selected_modes:
         raise CLIValidationError("Select at least one reverse mode or use --agent")
 
+    if args.reversing_budget < 1:
+        raise CLIValidationError("--budget must be greater than zero")
+
     if "disasm" in selected_modes and not args.function:
         raise CLIValidationError("reverse disasm requires --function")
 
-    if "xrefs" in selected_modes and not args.value:
-        raise CLIValidationError("reverse xrefs requires --value")
+    if "xrefs" in selected_modes and not args.function:
+        raise CLIValidationError("reverse xrefs requires --function")
     
     if "string-xrefs" in selected_modes and not args.value:
         raise CLIValidationError("reverse string-xrefs requires --value")
+
+    if "import-xrefs" in selected_modes and not args.value:
+        raise CLIValidationError("reverse import-xrefs requires --value")
 
     if "callers" in selected_modes and not args.function:
         raise CLIValidationError("reverse callers requires --function")
@@ -81,6 +88,13 @@ def add_reversing_module(
         choices=["local-reverse", "openai-reverse", "gemini-reverse"],
         default=None,
         help="Model profile for assisted reversing",
+    )
+    parser.add_argument(
+        "--budget",
+        dest="reversing_budget",
+        type=int,
+        default=12,
+        help="Maximum reversing tool targets executed by the agent",
     )
 
     parser.set_defaults(

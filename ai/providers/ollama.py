@@ -7,6 +7,7 @@ from exceptions import ProviderError
 
 
 REQUEST_TIMEOUT = 120
+MAX_ERROR_BODY_LENGTH = 2000
 
 
 class OllamaProvider(BaseLLMProvider):
@@ -48,7 +49,18 @@ class OllamaProvider(BaseLLMProvider):
                 json=payload, 
                 timeout=REQUEST_TIMEOUT
             )
-            response.raise_for_status()
+
+            if not response.ok:
+                error_body = response.text.strip()
+                if len(error_body) > MAX_ERROR_BODY_LENGTH:
+                    error_body = f"{error_body[:MAX_ERROR_BODY_LENGTH]}..."
+
+                details = error_body or "<empty response body>"
+                raise ProviderError(
+                    f"Ollama request failed with HTTP {response.status_code}: "
+                    f"{details}"
+                )
+
             data = response.json()
             if not isinstance(data, dict):
                 raise ProviderError("Ollama response must be a JSON object")
@@ -61,7 +73,9 @@ class OllamaProvider(BaseLLMProvider):
             return LLMResponse(content=content)
 
         except requests.RequestException as exc:
-            raise ProviderError(f"Ollama request failed: {exc}") from exc
+            raise ProviderError(
+                f"Ollama connection failed for {self.base_url}/api/chat: {exc}"
+            ) from exc
 
         except ValueError as exc:
             raise ProviderError("Invalid JSON response from Ollama") from exc

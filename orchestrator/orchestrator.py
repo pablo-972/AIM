@@ -12,6 +12,7 @@ from tools.runner.static import StaticAgentToolRunner, StaticToolRunner
 from tools.runner.reversing import ReversingToolRunner
 from ai.model_registry import ModelRegistry
 from ai.runner.static import StaticAgentRunner
+from ai.runner.reversing import ReversingAgentRunner
 from ai.runner.enrichment import EnrichmentAIRunner
 from ai.runner.report import ReportAIRunner
 
@@ -133,6 +134,16 @@ class Orchestrator:
         self.reversing_tools_results = self._run_tools("reversing", self._get_reversing_tool_runner())
 
 
+    def _run_reversing_agent(self) -> None:
+        if not self.context.reversing_agent:
+            return
+
+        ReversingAgentRunner(
+            self.context,
+            self._get_model_registry(),
+        ).run()
+
+
     def run_static_phase(self) -> None:
         Logger.info("Running static phase")
         self._run_static_tools()
@@ -147,7 +158,10 @@ class Orchestrator:
 
     def run_reversing_phase(self) -> None:
         Logger.info("Running reversing phase")
-        self._run_reversing_tools()
+        if self.context.reversing_agent:
+            self._run_reversing_agent()
+        else:
+            self._run_reversing_tools()
         Logger.success("Reversing phase finished")
 
 

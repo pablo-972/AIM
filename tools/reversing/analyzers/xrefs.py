@@ -3,16 +3,16 @@ from typing import Any
 from tools.reversing.analyzers.session import R2Session
 
 
-def xrefs(sample: str, value: str) -> dict[str, Any]:
-    if not value:
-        raise ValueError("value is required")
+def xrefs(sample: str, function: str) -> dict[str, Any]:
+    if not function:
+        raise ValueError("function is required")
 
     with R2Session(sample) as r2:
-        r2.cmd(f"s {value}")
+        r2.cmd(f"s {function}")
         items = r2.cmdj("axtj") or []
 
     return {
-        "target": value,
+        "function": function,
         "xrefs": [
             {
                 "from": item.get("from"),
@@ -72,12 +72,17 @@ def import_xrefs(sample: str, import_name: str) -> dict[str, Any]:
     if not import_name:
         raise ValueError("import_name is required")
 
+    normalized_name = import_name.lower()
+
     with R2Session(sample) as r2:
         items = r2.cmdj("iij") or []
         matches = [
             item
             for item in items
-            if import_name.lower() in str(item.get("name", "")).lower()
+            if (
+                normalized_name in str(item.get("name", "")).lower()
+                or normalized_name in str(item.get("libname", "")).lower()
+            )
         ]
 
         results: list[dict[str, Any]] = []

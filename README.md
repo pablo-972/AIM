@@ -112,11 +112,13 @@ Relevant environment variables include:
 - `OPENAI_API_KEY`
 - `OPENAI_BASE_URL`
 - `OPENAI_STATIC_MODEL`
+- `OPENAI_REVERSING_MODEL`
 - `OPENAI_REPORT_MODEL`
 - `OPENAI_ENRICHMENT_MODEL`
 - `GEMINI_API_KEY`
 - `GEMINI_BASE_URL`
 - `GEMINI_STATIC_MODEL`
+- `GEMINI_REVERSING_MODEL`
 - `GEMINI_REPORT_MODEL`
 - `GEMINI_ENRICHMENT_MODEL`
 - `VT_API_BASE_URL`
@@ -206,7 +208,7 @@ The static agent requires `strings` or `full`, because it consumes
 Run basic reverse-engineering collection:
 
 ```bash
-python main.py reversing samples/sample.exe full
+python main.py reversing samples/sample.exe --mode full
 ```
 
 `full` currently runs:
@@ -218,12 +220,13 @@ python main.py reversing samples/sample.exe full
 Run individual operations:
 
 ```bash
-python main.py reversing samples/sample.exe functions
-python main.py reversing samples/sample.exe disasm --function main
-python main.py reversing samples/sample.exe xrefs --value 0x401000
-python main.py reversing samples/sample.exe string-xrefs --value "example.com"
-python main.py reversing samples/sample.exe callers --function sym.main
-python main.py reversing samples/sample.exe callees --function sym.main
+python main.py reversing samples/sample.exe --mode functions
+python main.py reversing samples/sample.exe --mode disasm --function main
+python main.py reversing samples/sample.exe --mode xrefs --function sym.main
+python main.py reversing samples/sample.exe --mode string-xrefs --value "example.com"
+python main.py reversing samples/sample.exe --mode import-xrefs --value VirtualAlloc
+python main.py reversing samples/sample.exe --mode callers --function sym.main
+python main.py reversing samples/sample.exe --mode callees --function sym.main
 ```
 
 Available reversing modes:
@@ -235,13 +238,20 @@ Available reversing modes:
 - `disasm`
 - `xrefs`
 - `string-xrefs`
+- `import-xrefs`
 - `callers`
 - `callees`
 - `full`
 
-The reversing agent tool definitions and dispatcher exist, but the
-`reversing --agent` workflow is not yet connected to an AI runner in the
-orchestrator.
+Run the reversing agent with an optional tool-execution budget:
+
+```bash
+python main.py reversing samples/sample.exe --agent --profile local-reverse --budget 12
+```
+
+The agent loads `enrichment.md` when available, builds initial targets from
+bounded imports/functions/strings reconnaissance, executes a prioritized queue,
+and stores a compact trace in `reversing_agent.json`.
 
 ## Enrichment
 
@@ -369,6 +379,7 @@ output/<sha256>/
 |-- analysis.json
 |-- static_agent_steps.json
 |-- threat_actor_messages.json
+|-- reversing_agent.json
 |-- enrichment.md
 `-- report.md
 ```
@@ -411,28 +422,70 @@ Static and reversing results share the same phase-based document:
 selected phase. Running one tool later does not replace previously stored tools
 or other phases.
 
-### `static_agent_steps.json`
+### Common agent trace schema
 
-Records each static-agent decision and any tool execution result:
+`static_agent_steps.json` and `reversing_agent.json` use the same top-level
+schema:
 
 ```json
 {
+  "schema_version": "1.0",
+  "agent": "static_agent",
+  "status": "completed",
   "steps": [
     {
       "step": 1,
+      "input": {
+        "type": "strings_chunk",
+        "index": 1,
+        "value": null
+      },
       "decision": {
         "thought": "...",
-        "action": "save_threat_actor_messages",
         "confidence": "high",
-        "parameters": {},
-        "chunk_index": 1
+        "action": "save_threat_actor_messages",
+        "parameters": {}
       },
-      "tool_executed": "save_threat_actor_messages",
-      "tool_output": {}
+      "tool": {
+        "name": "save_threat_actor_messages",
+        "status": "ok",
+        "output": {
+          "success": true,
+          "saved": true,
+          "saved_count": 1,
+          "item_id": 1
+        },
+        "artifact_ref": {
+          "filename": "threat_actor_messages.json",
+          "item_id": 1
+        }
+      },
+      "finding": {
+        "type": "threat_actor_message",
+        "confidence": "high",
+        "summary": "Threat actor message block identified.",
+        "artifact_ref": {
+          "filename": "threat_actor_messages.json",
+          "item_id": 1
+        }
+      },
+      "error": null
     }
-  ]
+  ],
+  "findings": [],
+  "artifacts": [],
+  "queue": [],
+  "errors": []
 }
 ```
+
+Agent steps contain compact metadata only. Large values such as strings blocks,
+disassembly, instruction lists, and xref collections are omitted or replaced
+with counts. Full threat actor message blocks remain in
+`threat_actor_messages.json`.
+
+For queue-driven agents, `queue` records each `added` and `removed` event,
+including its source, target, and the queue size after the operation.
 
 ### `threat_actor_messages.json`
 
@@ -515,9 +568,8 @@ implementation point for tools, providers, or document formatting.
 ## Known Limitations
 
 - Dynamic analysis is not implemented.
-- The reversing agent CLI path is declared but not connected to an AI runner.
 - Enrichment currently uses static artifacts and actor-message blocks, not
-  reversing-phase results.
+  reversing-phase or reversing-agent findings.
 - Report and enrichment updates are sequential model calls and may be slow for
   samples with many prepared evidence chunks.
 - Cloud requests are non-streaming and use retry and request-interval controls.
