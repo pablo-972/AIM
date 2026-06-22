@@ -1,16 +1,16 @@
 from collections.abc import Callable
 from typing import Any
 
-from tools.reversing.analyzers.analysis import (
+
+from tools.reversing.analyzers.disassembly import disassembly
+from tools.reversing.analyzers.xrefs import xrefs, string_xrefs
+from tools.reversing.analyzers.metadata import (
     binary_info,
     callees,
     callers,
-    disassembly,
     functions,
     imports,
-    string_xrefs,
     strings,
-    xrefs,
 )
 
 

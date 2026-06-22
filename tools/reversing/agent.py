@@ -1,14 +1,9 @@
 from collections.abc import Callable
 from typing import Any
 
-from tools.reversing.analyzers.analysis import (
-    callees,
-    callers,
-    function_details,
-    import_xrefs,
-    string_xrefs,
-    text_disassembly,
-)
+from tools.reversing.analyzers.metadata import callees, callers
+from tools.reversing.analyzers.disassembly import function_details, text_disassembly
+from tools.reversing.analyzers.xrefs import string_xrefs, import_xrefs
 
 
 def get_string_xrefs(sample: str, value: str) -> dict[str, Any]:
