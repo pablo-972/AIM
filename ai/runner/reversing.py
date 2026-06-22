@@ -25,10 +25,6 @@ from ai.runtime.memory import AgentMemory
 from ai.runtime.reversing_targets import ReversingTargetQueue
 
 
-
-
-
-
 class ReversingAgentRunner(BaseAIRunner):
     def __init__(
         self,
