@@ -81,7 +81,7 @@ python main.py reversing samples/sample.exe --mode import-xrefs --value kernel32
 Run the reversing agent:
 
 ```bash
-python main.py reversing samples/sample.exe --agent --depth 12
+python main.py reversing samples/sample.exe --agent --max-targets 12
 ```
 
 Run the complete implemented pipeline:

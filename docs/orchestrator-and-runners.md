@@ -30,7 +30,7 @@ Orchestrator
 - Resolves and validates the sample path.
 - Calculates the sample SHA-256.
 - Creates the sample-specific output path.
-- Normalizes phase, mode, profile, agent, function, value, and depth options.
+- Normalizes phase, mode, profile, agent, function, value, and maximum-target options.
 
 The output directory is:
 

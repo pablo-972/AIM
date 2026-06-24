@@ -21,8 +21,8 @@ REVERSING_PROFILES = [
 
 
 def validate_full_args(args: argparse.Namespace) -> None:
-    if args.reversing_depth < 1:
-        raise CLIValidationError("--depth must be greater than zero")
+    if args.reversing_max_targets < 1:
+        raise CLIValidationError("--max-targets must be greater than zero")
 
 
 def add_full_module(
@@ -54,11 +54,11 @@ def add_full_module(
         help="Model profile for the reversing agent",
     )
     parser.add_argument(
-        "--depth",
-        dest="reversing_depth",
+        "--max-targets",
+        dest="reversing_max_targets",
         type=int,
         default=12,
-        help="Maximum exploration depth for the reversing agent",
+        help="Maximum number of unique targets executed by the reversing agent",
     )
 
     parser.set_defaults(

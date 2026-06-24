@@ -29,8 +29,8 @@ def validate_reversing_args(args: argparse.Namespace) -> None:
     if not args.reversing_agent and not selected_modes:
         raise CLIValidationError("Select at least one reverse mode or use --agent")
 
-    if args.reversing_depth < 1:
-        raise CLIValidationError("--depth must be greater than zero")
+    if args.reversing_max_targets < 1:
+        raise CLIValidationError("--max-targets must be greater than zero")
 
     if "disasm" in selected_modes and not args.function:
         raise CLIValidationError("reverse disasm requires --function")
@@ -94,11 +94,11 @@ def add_reversing_module(
         help="Model profile for assisted reversing",
     )
     parser.add_argument(
-        "--depth",
-        dest="reversing_depth",
+        "--max-targets",
+        dest="reversing_max_targets",
         type=int,
         default=12,
-        help="Maximum exploration depth for the reversing agent",
+        help="Maximum number of unique targets executed by the reversing agent",
     )
 
     parser.set_defaults(

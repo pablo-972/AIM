@@ -21,7 +21,7 @@ class AnalysisContext:
     profile: str | None
     static_agent: bool
     reversing_agent: bool
-    reversing_depth: int
+    reversing_max_targets: int
     full_static_profile: str | None
     full_enrichment_profile: str | None
     full_reversing_profile: str | None
@@ -53,7 +53,7 @@ class AnalysisContext:
             profile=getattr(args, "profile", None),
             static_agent=getattr(args, "static_agent", False),
             reversing_agent=getattr(args, "reversing_agent", False),
-            reversing_depth=getattr(args, "reversing_depth", 12),
+            reversing_max_targets=getattr(args, "reversing_max_targets", 12),
             full_static_profile=getattr(args, "static_profile", None),
             full_enrichment_profile=getattr(args, "enrichment_profile", None),
             full_reversing_profile=getattr(args, "reversing_profile", None),

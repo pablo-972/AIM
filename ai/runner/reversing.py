@@ -75,7 +75,7 @@ class ReversingAgentRunner(BaseAIRunner):
                 targets=self.targets,
             )
             ReversingExplorationLoop(
-                depth=self.context.reversing_depth,
+                max_targets=self.context.reversing_max_targets,
                 targets=self.targets,
                 tool_runner=ReversingAgentToolRunner(self.context),
                 evaluator=evaluator,

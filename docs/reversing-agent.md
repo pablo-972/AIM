@@ -10,8 +10,8 @@ disassembly.
 ## Running the Agent
 
 ```bash
-python main.py reversing sample.exe --agent --depth 12
-python main.py reversing sample.exe --agent --profile local-reversing --depth 20
+python main.py reversing sample.exe --agent --max-targets 12
+python main.py reversing sample.exe --agent --profile local-reversing --max-targets 20
 ```
 
 Supported profiles:
@@ -20,7 +20,7 @@ Supported profiles:
 - `openai-reversing`
 - `gemini-reversing`
 
-`--depth` limits the number of unique queued targets executed. A tool result may
+`--max-targets` limits the number of unique queued targets executed. A tool result may
 produce several trace steps when its output is divided into chunks.
 
 Manual reversing modes cannot be combined with `--agent`.

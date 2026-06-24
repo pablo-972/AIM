@@ -28,14 +28,14 @@ class EvidenceEvaluator(Protocol):
 class ReversingExplorationLoop:
     def __init__(
         self,
-        depth: int,
+        max_targets: int,
         targets: "ReversingTargetQueue",
         tool_runner: ReversingToolExecutor,
         evaluator: EvidenceEvaluator,
         postprocessor: ReversingPostprocessor,
         memory: "AgentMemory",
     ) -> None:
-        self.depth = depth
+        self.max_targets = max_targets
         self.targets = targets
         self.tool_runner = tool_runner
         self.evaluator = evaluator
@@ -45,12 +45,12 @@ class ReversingExplorationLoop:
     def run(self) -> None:
         while (
             self.targets.has_items()
-            and self.targets.visited_count() < self.depth
+            and self.targets.visited_count() < self.max_targets
         ):
             target = self.targets.pop()
             Logger.info(
                 f"Reversing agent target: {target['tool']} "
-                f"({self.targets.visited_count()}/{self.depth})"
+                f"({self.targets.visited_count()}/{self.max_targets})"
             )
             tool_output = self.tool_runner.execute(
                 target["tool"],
