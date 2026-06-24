@@ -51,11 +51,10 @@ class ReversingInvestigationInitializer:
 
     def initialize(self, agent: ReversingAgent) -> ReversingInitialization:
         enrichment = self._load_enrichment()
-        reconnaissance = (
-            {}
-            if enrichment
-            else collect_reconnaissance(str(self.context.sample))
-        )
+        reconnaissance = {}
+        if not enrichment:
+            reconnaissance = collect_reconnaissance(str(self.context.sample))
+
         seed, targets, source, seed_error = self._create_targets(
             agent,
             enrichment,
