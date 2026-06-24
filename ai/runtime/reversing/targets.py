@@ -1,10 +1,7 @@
 from typing import Any
 
 from ai.runtime.reversing.priority_queue import TargetPriorityQueue
-from ai.runtime.validators import (
-    normalize_tool_parameters,
-    validate_tool_parameters,
-)
+from ai.runtime.validators import normalize_tool_parameters, validate_tool_parameters
 from ai.runtime.memory import AgentMemory
 
 DEFAULT_TARGET_PRIORITY = 50
