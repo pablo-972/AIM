@@ -68,26 +68,13 @@ class ReversingAgentToolRunner:
         self.context: AnalysisContext = context
 
     def execute(
-            self, 
-            tool_name: str, 
-            parameters: dict[str, Any] | None = None, 
-            context: dict[str, Any] | None = None
-        ) -> dict[str, Any]:
-        tool = REVERSING_AGENT_TOOLS.get(tool_name)
-        if tool is None:
-            return {
-                "success": False,
-                "error": f"Unknown reversing agent tool: {tool_name}",
-            }
-
-        try:
-            return {
-                "success": True,
-                "data": tool(str(self.context.sample), **(parameters or {})),
-            }
-        except Exception as exc:
-            Logger.error(f"Reversing agent tool '{tool_name}' failed: {exc}")
-            return {
-                "success": False,
-                "error": str(exc),
-            }
+        self,
+        tool_name: str,
+        parameters: dict[str, Any] | None = None,
+        context: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        tool = REVERSING_AGENT_TOOLS[tool_name]
+        return {
+            "success": True,
+            "data": tool(str(self.context.sample), **(parameters or {})),
+        }

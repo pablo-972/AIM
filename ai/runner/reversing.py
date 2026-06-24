@@ -9,6 +9,7 @@ from tools.runner.reversing import ReversingAgentToolRunner
 from ai.agents.reversing import ReversingAgent
 from ai.model_registry import ModelRegistry
 from ai.runner.base import BaseAIRunner
+from ai.runtime.executor import AgentStepExecutor
 from ai.runtime.memory import AgentMemory
 from ai.runtime.reversing.evidence import ReversingEvidenceEvaluator
 from ai.runtime.reversing.exploration import ReversingExplorationLoop
@@ -75,6 +76,7 @@ class ReversingAgentRunner(BaseAIRunner):
                 max_targets=self.context.reversing_max_targets,
                 targets=self.targets,
                 tool_runner=ReversingAgentToolRunner(self.context),
+                step_executor=AgentStepExecutor(self.available_tools),
                 evaluator=evaluator,
                 postprocessor=self.postprocessor,
                 memory=self.memory,

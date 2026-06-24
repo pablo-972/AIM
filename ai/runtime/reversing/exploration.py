@@ -1,9 +1,12 @@
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
 from utils.logger import Logger
 from utils.postprocessing.reversing import ReversingPostprocessor
-from ai.runtime.memory import AgentMemory
-from ai.runtime.reversing.targets import ReversingTargetQueue
+from ai.runtime.executor import AgentStepExecutor
+
+if TYPE_CHECKING:
+    from ai.runtime.memory import AgentMemory
+    from ai.runtime.reversing.targets import ReversingTargetQueue
 
 
 class ReversingToolExecutor(Protocol):
@@ -31,6 +34,7 @@ class ReversingExplorationLoop:
         max_targets: int,
         targets: "ReversingTargetQueue",
         tool_runner: ReversingToolExecutor,
+        step_executor: AgentStepExecutor,
         evaluator: EvidenceEvaluator,
         postprocessor: ReversingPostprocessor,
         memory: "AgentMemory",
@@ -38,6 +42,7 @@ class ReversingExplorationLoop:
         self.max_targets = max_targets
         self.targets = targets
         self.tool_runner = tool_runner
+        self.step_executor = step_executor
         self.evaluator = evaluator
         self.postprocessor = postprocessor
         self.memory = memory
@@ -52,9 +57,10 @@ class ReversingExplorationLoop:
                 f"Reversing agent target: {target['tool']} "
                 f"({self.targets.visited_count()}/{self.max_targets})"
             )
-            tool_output = self.tool_runner.execute(
+            tool_output = self.step_executor.execute_tool(
                 target["tool"],
                 target["parameters"],
+                self.tool_runner.execute,
             )
 
             if tool_output.get("success") is True:

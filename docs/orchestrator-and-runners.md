@@ -121,6 +121,12 @@ Agent tool runners use a separate interface:
 This keeps CLI tools and model-callable tools independent even when they reuse
 the same lower-level analyzer.
 
+Both static and reversing agent tool calls pass through
+`AgentStepExecutor`. Static supplies a complete model decision, while reversing
+supplies the validated target removed from its priority queue. The shared
+executor validates and normalizes parameters, invokes the phase tool runner,
+captures exceptions, and enforces the agent-tool result object contract.
+
 ## AI Runners
 
 AI runners own workflow state and call agents, tools, and persistence helpers:

@@ -63,26 +63,13 @@ class StaticAgentToolRunner:
         }
 
     def execute(
-            self, 
-            tool_name: str, 
-            parameters: dict[str, Any] | None = None, 
-            context: dict[str, Any] | None = None
-        ) -> dict[str, Any]:
-        tool = self._tools.get(tool_name)
-        if tool is None:
-            return {
-                "success": False,
-                "error": f"Unknown static agent tool: {tool_name}",
-            }
-
-        try:
-            return tool(parameters or {}, context or {})
-        except Exception as exc:
-            Logger.error(f"Static agent tool '{tool_name}' failed: {exc}")
-            return {
-                "success": False,
-                "error": str(exc),
-            }
+        self,
+        tool_name: str,
+        parameters: dict[str, Any] | None = None,
+        context: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        tool = self._tools[tool_name]
+        return tool(parameters or {}, context or {})
 
     def _save_threat_actor_messages(
             self, 
