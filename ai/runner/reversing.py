@@ -16,9 +16,6 @@ from ai.runtime.reversing.initialization import ReversingInvestigationInitialize
 from ai.runtime.reversing.targets import ReversingTargetQueue
 
 
-
-
-
 class ReversingAgentRunner(BaseAIRunner):
     def __init__(
         self,
