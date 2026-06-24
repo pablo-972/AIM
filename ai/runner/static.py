@@ -15,7 +15,6 @@ from ai.model_registry import ModelRegistry
 from orchestrator.context import AnalysisContext
 from tools.runner.static import StaticAgentToolRunner
 
-
 STRING_CHUNK_SIZE = 80
 
 
