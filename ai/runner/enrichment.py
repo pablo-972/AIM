@@ -28,16 +28,6 @@ class EnrichmentAIRunner(BaseAIRunner):
         llm = model_registry.create_task_client("enrichment", profile_override=self.context.profile)
         self.generator: EnrichmentGenerator = EnrichmentGenerator(llm)
 
-
-    def _get_sources(self) -> list[tuple[str, Any]]:
-        result = load_json(self.context.output, RESULT_FILENAME) or {}
-        static_agent_data = load_json(self.context.output, THREAT_ACTOR_MESSAGES_FILENAME) or {}
-        return [
-            *prepare_static_enrichment_sources(result),
-            *prepare_static_agent_sources(static_agent_data),
-        ]
-    
-    
     def run(self) -> None:
         Logger.info("Running AI enrichment")
 
@@ -63,3 +53,14 @@ class EnrichmentAIRunner(BaseAIRunner):
             self.document.save_body(current_body)
 
         Logger.success("Enrichment finished")
+
+    def _get_sources(self) -> list[tuple[str, Any]]:
+        result = load_json(self.context.output, RESULT_FILENAME) or {}
+        static_agent_data = load_json(self.context.output, THREAT_ACTOR_MESSAGES_FILENAME) or {}
+        return [
+            *prepare_static_enrichment_sources(result),
+            *prepare_static_agent_sources(static_agent_data),
+        ]
+    
+    
+

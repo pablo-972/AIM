@@ -1,14 +1,11 @@
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
-from ai.runtime.priority_queue import TargetPriorityQueue
+from ai.runtime.reversing.priority_queue import TargetPriorityQueue
 from ai.runtime.validators import (
     normalize_tool_parameters,
     validate_tool_parameters,
 )
-
-if TYPE_CHECKING:
-    from ai.runtime.memory import AgentMemory
-
+from ai.runtime.memory import AgentMemory
 
 DEFAULT_TARGET_PRIORITY = 50
 MAX_TARGET_REASON_LENGTH = 500
@@ -24,7 +21,6 @@ class ReversingTargetQueue:
         self.memory = memory
         self.queue = TargetPriorityQueue()
 
-
     def enqueue(self, targets: Any, source: str) -> None:
         if not isinstance(targets, list):
             return
@@ -39,7 +35,6 @@ class ReversingTargetQueue:
                     source=source,
                 )
 
-
     def pop(self) -> dict[str, Any]:
         target = self.queue.pop()
         self.memory.record_queue_event(
@@ -50,14 +45,11 @@ class ReversingTargetQueue:
         )
         return target
 
-
     def has_items(self) -> bool:
         return self.queue.has_items()
 
-
     def visited_count(self) -> int:
         return self.queue.visited_count()
-
 
     def fallback_targets(
         self,
@@ -97,7 +89,6 @@ class ReversingTargetQueue:
             if item.get("value")
         )
         return targets[:6]
-
 
     def _normalize(self, target: Any) -> dict[str, Any] | None:
         if not isinstance(target, dict):

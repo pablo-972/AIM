@@ -2,7 +2,6 @@ from typing import Any
 
 from utils.preprocessing.chunks import chunk_large_value, json_size, make_report_chunk
 
-
 PE_SUMMARY_KEYS = [
     "architecture",
     "sizes",
@@ -18,24 +17,6 @@ PE_DIRECT_SECTION_KEYS = [
 ]
 
 PE_IMPORTS_CHUNK_SIZE = 2500
-
-
-def _pick_existing_keys(
-    data: dict[str, Any],
-    keys: list[str],
-) -> dict[str, Any]:
-    return {
-        key: data.get(key)
-        for key in keys
-        if key in data and data.get(key) not in ({}, [], None)
-    }
-
-
-def _import_entry(dll_name: str, functions: list[Any]) -> dict[str, Any]:
-    return {
-        "dll": dll_name,
-        "functions": functions,
-    }
 
 
 def prepare_pe_import_sources(
@@ -113,3 +94,24 @@ def prepare_pe_enrichment_sources(
             sources.append((key, value))
 
     return sources
+
+
+def _pick_existing_keys(
+    data: dict[str, Any],
+    keys: list[str],
+) -> dict[str, Any]:
+    return {
+        key: data.get(key)
+        for key in keys
+        if key in data and data.get(key) not in ({}, [], None)
+    }
+
+
+def _import_entry(dll_name: str, functions: list[Any]) -> dict[str, Any]:
+    return {
+        "dll": dll_name,
+        "functions": functions,
+    }
+
+
+

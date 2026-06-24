@@ -13,7 +13,6 @@ from tools.reversing.analyzers.metadata import (
     strings,
 )
 
-
 ManualTool = Callable[..., Any]
 
 

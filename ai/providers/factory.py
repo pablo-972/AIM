@@ -6,7 +6,6 @@ from ai.providers.cloud import OpenAICompatibleProvider
 from ai.providers.ollama import OllamaProvider
 from exceptions import ConfigurationError
 
-
 SUPPORTED_PROVIDER_TYPES = {
     "ollama",
     "openai",

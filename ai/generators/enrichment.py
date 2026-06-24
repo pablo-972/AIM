@@ -2,7 +2,6 @@ from typing import Any
 
 from ai.providers.base import BaseLLMProvider
 
-
 SYSTEM_PROMPT = """
 You are a Senior Malware Reverse Engineer.
 
@@ -106,7 +105,6 @@ Write actionable reverse-engineering guidance.
 class EnrichmentGenerator:
     def __init__(self, llm: BaseLLMProvider) -> None:
         self.llm: BaseLLMProvider = llm
-
 
     def enrich(
         self,

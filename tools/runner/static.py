@@ -21,6 +21,13 @@ class StaticToolRunner(BaseToolRunner):
     def __init__(self, context: AnalysisContext) -> None:
         super().__init__(context)
 
+    def run_static(self) -> dict[str, dict[str, Any]]:
+        results: dict[str, dict[str, Any]] = {}
+
+        for mode in self._resolve_modes():
+            results[mode] = self._execute_tool(mode)
+
+        return results
 
     def _execute_tool(self, mode: str) -> dict[str, Any]:
         Logger.info(f"Executing static tool: {mode}")
@@ -32,7 +39,6 @@ class StaticToolRunner(BaseToolRunner):
         except Exception as exc:
             Logger.error(f"Static tool '{mode}' failed: {exc}")
             return ToolResult.failed(exc).to_dict()
-
 
     def _resolve_modes(self) -> list[str]:
         modes = list(self.context.static_modes)
@@ -46,15 +52,6 @@ class StaticToolRunner(BaseToolRunner):
         return modes
 
 
-    def run_static(self) -> dict[str, dict[str, Any]]:
-        results: dict[str, dict[str, Any]] = {}
-
-        for mode in self._resolve_modes():
-            results[mode] = self._execute_tool(mode)
-
-        return results
-
-
 
 
 
@@ -64,15 +61,6 @@ class StaticAgentToolRunner:
         self._tools: dict[str, StaticAgentTool] = {
             "save_threat_actor_messages": self._save_threat_actor_messages,
         }
-
-
-    def _save_threat_actor_messages(
-            self, 
-            parameters: dict[str, Any], 
-            tool_context: dict[str, Any]
-        ) -> dict[str, Any]:
-        return save_threat_actor_messages(self.context.output, parameters, tool_context)
-
 
     def execute(
             self, 
@@ -95,4 +83,14 @@ class StaticAgentToolRunner:
                 "success": False,
                 "error": str(exc),
             }
+
+    def _save_threat_actor_messages(
+            self, 
+            parameters: dict[str, Any], 
+            tool_context: dict[str, Any]
+        ) -> dict[str, Any]:
+        return save_threat_actor_messages(self.context.output, parameters, tool_context)
+
+
+
 

@@ -2,57 +2,9 @@ from typing import Any
 
 from tools.reversing.analyzers.session import R2Session
 
-
 DEFAULT_MAX_INSTRUCTIONS = 300
 MIN_MAX_INSTRUCTIONS = 25
 MAX_MAX_INSTRUCTIONS = 500
-
-
-def _parse_address(value: str) -> int | None:
-    try:
-        return int(value, 0)
-    except ValueError:
-        return None
-
-
-def _find_containing_function(
-    functions: list[dict[str, Any]],
-    address: int,
-) -> dict[str, Any] | None:
-    for function in functions:
-        offset = function.get("offset") or function.get("addr")
-        size = function.get("size") or 0
-        if (
-            isinstance(offset, int)
-            and isinstance(size, int)
-            and offset <= address < offset + max(size, 1)
-        ):
-            return function
-
-    return None
-
-
-def _resolve_function(r2: Any, function: str) -> str:
-    address = _parse_address(function)
-    if address is None:
-        return function
-
-    raw_functions = r2.cmdj("aflj") or []
-    functions = raw_functions if isinstance(raw_functions, list) else []
-    containing = _find_containing_function(functions, address)
-
-    if containing is not None:
-        name = containing.get("name")
-        offset = containing.get("offset") or containing.get("addr")
-
-        if isinstance(name, str) and name:
-            return name
-        
-        if isinstance(offset, int):
-            return hex(offset)
-
-    r2.cmd(f"af @ {hex(address)}")
-    return hex(address)
 
 
 def function_details(sample: str, function: str) -> dict[str, Any]:
@@ -137,3 +89,53 @@ def text_disassembly(
         "end_address": hex(max(addresses)) if addresses else None,
         "disassembly": text,
     }
+
+
+def _parse_address(value: str) -> int | None:
+    try:
+        return int(value, 0)
+    except ValueError:
+        return None
+
+
+def _find_containing_function(
+    functions: list[dict[str, Any]],
+    address: int,
+) -> dict[str, Any] | None:
+    for function in functions:
+        offset = function.get("offset") or function.get("addr")
+        size = function.get("size") or 0
+        if (
+            isinstance(offset, int)
+            and isinstance(size, int)
+            and offset <= address < offset + max(size, 1)
+        ):
+            return function
+
+    return None
+
+
+def _resolve_function(r2: Any, function: str) -> str:
+    address = _parse_address(function)
+    if address is None:
+        return function
+
+    raw_functions = r2.cmdj("aflj") or []
+    functions = raw_functions if isinstance(raw_functions, list) else []
+    containing = _find_containing_function(functions, address)
+
+    if containing is not None:
+        name = containing.get("name")
+        offset = containing.get("offset") or containing.get("addr")
+
+        if isinstance(name, str) and name:
+            return name
+        
+        if isinstance(offset, int):
+            return hex(offset)
+
+    r2.cmd(f"af @ {hex(address)}")
+    return hex(address)
+
+
+

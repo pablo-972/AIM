@@ -13,6 +13,13 @@ class ReversingToolRunner(BaseToolRunner):
     def __init__(self, context: AnalysisContext) -> None:
         super().__init__(context)
 
+    def run_reversing(self) -> dict[str, dict[str, Any]]:
+        results: dict[str, dict[str, Any]] = {}
+
+        for mode in self._resolve_modes():
+            results[mode] = self._execute_tool(mode)
+
+        return results
 
     def _resolve_modes(self) -> list[str]:
         modes = list(self.context.reversing_modes)
@@ -24,7 +31,6 @@ class ReversingToolRunner(BaseToolRunner):
             raise ValueError(f"Unknown reverse mode(s): {', '.join(unknown_modes)}")
 
         return modes
-
 
     def _build_tool_kwargs(self, mode: str) -> dict[str, Any]:
         if mode == "disasm":
@@ -44,7 +50,6 @@ class ReversingToolRunner(BaseToolRunner):
 
         return {}
 
-
     def _execute_tool(self, mode: str) -> dict[str, Any]:
         Logger.info(f"Executing reverse tool: {mode}")
         tool = REVERSING_MANUAL_TOOLS[mode]
@@ -56,15 +61,6 @@ class ReversingToolRunner(BaseToolRunner):
         except Exception as exc:
             Logger.error(f"Reverse tool '{mode}' failed: {exc}")
             return ToolResult.failed(exc).to_dict()
-
-
-    def run_reversing(self) -> dict[str, dict[str, Any]]:
-        results: dict[str, dict[str, Any]] = {}
-
-        for mode in self._resolve_modes():
-            results[mode] = self._execute_tool(mode)
-
-        return results
 
 
 class ReversingAgentToolRunner:

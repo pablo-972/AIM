@@ -2,7 +2,6 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any
 
-
 Message = dict[str, str]
 JsonSchema = dict[str, Any]
 
@@ -26,7 +25,6 @@ class BaseLLMProvider(ABC):
     ) -> LLMResponse:
         return self.chat(system_prompt, user_prompt)
 
-
     @abstractmethod
     def chat_with_assistant(
             self, 
@@ -35,7 +33,6 @@ class BaseLLMProvider(ABC):
             user_prompt: str
         ) -> LLMResponse:
         raise NotImplementedError
-
 
     @abstractmethod
     def chat_json_with_assistant(

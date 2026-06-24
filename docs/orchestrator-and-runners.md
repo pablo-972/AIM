@@ -56,11 +56,32 @@ Available phase handlers are:
 - `reversing`
 - `enrichment`
 - `report`
+- `full`
 
 For static analysis, deterministic tools run before the optional static agent.
 The agent receives the `parsed_strings` produced during that execution.
 
 For reversing, manual modes and the reversing agent are mutually exclusive.
+The `full` phase is the explicit pipeline exception because it runs them as
+separate sequential stages:
+
+```text
+static full
+    -> static agent
+    -> enrichment
+    -> reversing full (info, imports, strings)
+    -> reversing agent
+```
+
+`Orchestrator.run_full_phase()` creates a phase-specific `AnalysisContext` for
+each stage and reuses `run_static_phase()`, `run_enrichment_phase()`, and
+`run_reversing_phase()`. Reversing is invoked twice with different contexts:
+first for manual tools and then for the agent.
+
+The pipeline accepts independent profiles through `--static-profile`,
+`--enrichment-profile`, and `--reversing-profile`. Intermediate deterministic
+results are always persisted in `analysis.json` because later stages consume
+that artifact.
 
 ## Tool Runners
 

@@ -84,6 +84,15 @@ Run the reversing agent:
 python main.py reversing samples/sample.exe --agent --depth 12
 ```
 
+Run the complete implemented pipeline:
+
+```bash
+python main.py full samples/sample.exe
+```
+
+The `full` phase runs all static tools, the static agent, enrichment, the
+manual reversing `full` set, and finally the reversing agent.
+
 Generate enrichment and a report:
 
 ```bash

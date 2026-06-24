@@ -3,18 +3,6 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-
-# Load .env file
-load_dotenv()
-
-
-def get_env(name: str) -> str:
-    value = os.getenv(name)
-    if value is None:
-        raise RuntimeError(f"Environment variable '{name}' is required")
-    return value
-
-
 # Paths
 ROOT_PATH = Path(__file__).resolve().parent.parent
 CONFIG_PATH = ROOT_PATH / "config"
@@ -29,7 +17,6 @@ REVERSING_TOOLS_PATH = TOOLS_PATH / "reversing"
 STATIC_AGENT_TOOLS_PATH = STATIC_TOOLS_PATH / "agent_tools.json"
 REVERSING_AGENT_TOOLS_PATH = REVERSING_TOOLS_PATH / "agent_tools.json"
 
-
 # Filenames
 RESULT_FILENAME = "analysis.json"
 STATIC_AGENT_RESULT_FILENAME = "static_agent.json"
@@ -37,4 +24,18 @@ REVERSING_AGENT_RESULT_FILENAME = "reversing_agent.json"
 THREAT_ACTOR_MESSAGES_FILENAME = "threat_actor_messages.json"
 REPORT_FILENAME = "report.md"
 ENRICHMENT_FILENAME = "enrichment.md"
+
+
+# Load .env file
+load_dotenv()
+
+
+def get_env(name: str) -> str:
+    value = os.getenv(name)
+    if value is None:
+        raise RuntimeError(f"Environment variable '{name}' is required")
+    return value
+
+
+
 

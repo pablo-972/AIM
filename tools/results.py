@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from typing import Any, Literal
 
-
 ToolStatus = Literal["ok", "error"]
 
 
@@ -11,16 +10,13 @@ class ToolResult:
     data: Any = None
     error: str | None = None
 
-
     @classmethod
     def ok(cls, data: Any) -> "ToolResult":
         return cls(status="ok", data=data)
 
-
     @classmethod
     def failed(cls, error: Exception | str) -> "ToolResult":
         return cls(status="error", error=str(error))
-
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -30,16 +26,12 @@ class ToolResult:
         }
 
 
-
-
-
 @dataclass(frozen=True)
 class CommandResult:
     stdout: str
     stderr: str
     returncode: int | None
     timed_out: bool = False
-
 
     @property
     def ok(self) -> bool:

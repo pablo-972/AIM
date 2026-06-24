@@ -20,7 +20,7 @@ services:
               capabilities: [gpu]
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "http://localhost:11434/api/tags" ]
+      test: ["CMD", "curl", "http://host.docker.internal:11434/api/tags" ]
       interval: 10s
       retries: 5
 

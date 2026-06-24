@@ -8,14 +8,10 @@ IP_REGEX = re.compile(
     r"(?<![\w.])(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}"
     r"(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(?![\w.])"
 )
-
-
 URL_REGEX = re.compile(
     r"\b(?:https?|hxxps?|ftp)://[^\s\"'<>]{4,}",
     re.IGNORECASE,
 )
-
-
 DOMAIN_REGEX = re.compile(
     r"(?<![@\w-])(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+"
     r"(?:com|net|org|ru|cn|co|io|xyz|top|gov|biz|info|su|onion|"
@@ -23,39 +19,45 @@ DOMAIN_REGEX = re.compile(
     r"tk|ml|ga|cf|gq|de|uk|fr|es|it|nl|pl|br|in|jp|kr)(?![\w-])",
     re.IGNORECASE,
 )
-
-
 REGISTRY_REGEX = re.compile(
     r"\b(?:HKEY_CLASSES_ROOT|HKEY_CURRENT_USER|HKEY_LOCAL_MACHINE|"
     r"HKEY_USERS|HKEY_CURRENT_CONFIG|HKCR|HKCU|HKLM|HKU|HKCC)"
     r"\\[A-Za-z0-9_ .${}\\/-]+",
     re.IGNORECASE,
 )
-
-
 FILE_NAME_REGEX = re.compile(
     r"^[\w .()+-]+\.(?:dll|exe|sys|pdb|obj|lib|ini|dat|tmp|log|"
     r"cab|mui|manifest|cat|msi|bin|json|xml|png|jpg|ico)$",
     re.IGNORECASE,
 )
-
-
 EMAIL_REGEX = re.compile(
     r"(?<![\w.+-])[A-Za-z0-9._%+-]+@(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,24}(?![\w.-])"
 )
-
-
 PATH_REGEX = re.compile(
     r"(?:[A-Za-z]:\\(?:[^\\\n]+\\)*[^\\\n]*"          # C:\...
     r"|(?:\.\.|[A-Za-z0-9_\-\.]+)\\(?:[^\\\n]+\\)*[^\\\n]*)"  # Relative routes
 )
-
-
 BTC_REGEX = re.compile(r"\b(?:bc1[ac-hj-np-z02-9]{11,71}|[13][a-km-zA-HJ-NP-Z1-9]{25,34})\b")
 BCH_REGEX = re.compile(r"\b(?:bitcoincash:)?(?:q|p)[a-z0-9]{41}\b", re.IGNORECASE)
 XMR_REGEX = re.compile(r"\b(?:4[0-9AB][1-9A-HJ-NP-Za-km-z]{93}|8[1-9A-HJ-NP-Za-km-z]{94})\b")
 ETH_REGEX = re.compile(r"\b0x[a-fA-F0-9]{40}\b")
 LTC_REGEX = re.compile(r"\b(?:ltc1[ac-hj-np-z02-9]{11,71}|[LM3][a-km-zA-HJ-NP-Z1-9]{26,33})\b")
+
+
+def analyze_strings(sample: str) -> dict[str, object]:
+    raw_strings = get_raw_strings(sample)
+    parsed_strings = parse_strings(raw_strings)
+
+    return {
+        "parsed_strings": parsed_strings,
+        "ips": get_ips(raw_strings),
+        "urls": get_urls(raw_strings),
+        "domains": get_domains(raw_strings),
+        "registry_keys": get_registry_keys(raw_strings),
+        "file_names": get_file_names(raw_strings),
+        "emails": get_emails(raw_strings),
+        "crypto_wallets": get_crypto_wallets(raw_strings),
+    }
 
 
 def get_raw_strings(sample: str) -> list[str]:
@@ -72,7 +74,7 @@ def get_raw_strings(sample: str) -> list[str]:
 def parse_strings(strings: list[str]) -> list[str]:
     parsed_strings: list[str] = []
     for string in strings:
-        if not is_noise(string):
+        if not _is_noise(string):
             parsed_strings.append(string)
     return parsed_strings
 
@@ -118,7 +120,7 @@ def get_crypto_wallets(strings: list[str]) -> dict[str, list[str]]:
     }
 
 
-def is_noise(string: str) -> bool:
+def _is_noise(string: str) -> bool:
     # Only caps
     if re.fullmatch(r"[A-Z]{1,}", string):
         return True
@@ -177,17 +179,4 @@ def is_noise(string: str) -> bool:
 
 
 
-def analyze_strings(sample: str) -> dict[str, object]:
-    raw_strings = get_raw_strings(sample)
-    parsed_strings = parse_strings(raw_strings)
 
-    return {
-        "parsed_strings": parsed_strings,
-        "ips": get_ips(raw_strings),
-        "urls": get_urls(raw_strings),
-        "domains": get_domains(raw_strings),
-        "registry_keys": get_registry_keys(raw_strings),
-        "file_names": get_file_names(raw_strings),
-        "emails": get_emails(raw_strings),
-        "crypto_wallets": get_crypto_wallets(raw_strings),
-    }

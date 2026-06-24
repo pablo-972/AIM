@@ -5,7 +5,6 @@ from ai.providers.base import BaseLLMProvider
 from ai.schemas.agent_decision import AGENT_DECISION_SCHEMA
 from ai.schemas.parsing import parse_agent_decision
 
-
 SYSTEM_PROMPT = """
 # Role
 You are an expert malware static-analysis agent specialized in identifying
@@ -123,7 +122,6 @@ Do not include "Thinking Process", numbered reasoning, hidden reasoning, chain-o
 class StaticAgent:
     def __init__(self, llm: BaseLLMProvider) -> None:
         self.llm: BaseLLMProvider = llm
-
 
     def analyze_strings_chunk(
         self,

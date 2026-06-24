@@ -2,14 +2,12 @@ import json
 from json import JSONDecodeError
 from typing import Any
 
-
 REQUIRED_AGENT_DECISION_KEYS = {
     "thought",
     "confidence",
     "action",
     "parameters",
 }
-
 VALID_CONFIDENCE_LEVELS = {
     "low",
     "medium",
@@ -31,15 +29,6 @@ def parse_json_object(
         return dict(fallback)
 
     return value if isinstance(value, dict) else dict(fallback)
-
-
-def _fallback_agent_decision(reason: str) -> dict[str, Any]:
-    return {
-        "thought": reason,
-        "confidence": "low",
-        "action": "none",
-        "parameters": {},
-    }
 
 
 def parse_agent_decision(content: str) -> dict[str, Any]:
@@ -65,3 +54,12 @@ def parse_agent_decision(content: str) -> dict[str, Any]:
         return _fallback_agent_decision("LLM returned an invalid response.")
 
     return decision
+
+
+def _fallback_agent_decision(reason: str) -> dict[str, Any]:
+    return {
+        "thought": reason,
+        "confidence": "low",
+        "action": "none",
+        "parameters": {},
+    }

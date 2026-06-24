@@ -5,7 +5,6 @@ import requests
 from ai.providers.base import BaseLLMProvider, JsonSchema, LLMResponse, Message
 from exceptions import ProviderError
 
-
 REQUEST_TIMEOUT = 120
 MAX_ERROR_BODY_LENGTH = 2000
 
@@ -23,6 +22,57 @@ class OllamaProvider(BaseLLMProvider):
         self.temperature: float = temperature
         self.response_format: str = response_format
 
+    def chat(self, system_prompt: str, user_prompt: str) -> LLMResponse:
+        return self._chat(
+            [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ]
+        )
+
+    def chat_json(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        schema: JsonSchema,
+    ) -> LLMResponse:
+        return self._chat(
+            [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            schema=schema,
+        )
+
+    def chat_with_assistant(
+        self, 
+        system_prompt: str, 
+        assistant_prompt: str, 
+        user_prompt: str
+    ) -> LLMResponse:
+        return self._chat(
+            [
+                {"role": "system", "content": system_prompt},
+                {"role": "assistant", "content": assistant_prompt},
+                {"role": "user", "content": user_prompt},
+            ]
+        )
+
+    def chat_json_with_assistant(                                
+        self, 
+        system_prompt: str, 
+        assistant_prompt: str, 
+        user_prompt: str, 
+        schema: JsonSchema
+    ) -> LLMResponse:
+        return self._chat(
+            [
+                {"role": "system", "content": system_prompt},
+                {"role": "assistant", "content": assistant_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            schema=schema,
+        )
 
     def _chat(
         self,
@@ -90,63 +140,7 @@ class OllamaProvider(BaseLLMProvider):
             raise ProviderError(
                 f"Ollama connection failed for {self.base_url}/api/chat: {exc}"
             ) from exc
-
+    
         except ValueError as exc:
             raise ProviderError("Invalid JSON response from Ollama") from exc
 
-
-
-    def chat(self, system_prompt: str, user_prompt: str) -> LLMResponse:
-        return self._chat(
-            [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ]
-        )
-
-
-    def chat_json(
-        self,
-        system_prompt: str,
-        user_prompt: str,
-        schema: JsonSchema,
-    ) -> LLMResponse:
-        return self._chat(
-            [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            schema=schema,
-        )
-
-
-    def chat_with_assistant(
-        self, 
-        system_prompt: str, 
-        assistant_prompt: str, 
-        user_prompt: str
-    ) -> LLMResponse:
-        return self._chat(
-            [
-                {"role": "system", "content": system_prompt},
-                {"role": "assistant", "content": assistant_prompt},
-                {"role": "user", "content": user_prompt},
-            ]
-        )
-
-
-    def chat_json_with_assistant(                                
-        self, 
-        system_prompt: str, 
-        assistant_prompt: str, 
-        user_prompt: str, 
-        schema: JsonSchema
-    ) -> LLMResponse:
-        return self._chat(
-            [
-                {"role": "system", "content": system_prompt},
-                {"role": "assistant", "content": assistant_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            schema=schema,
-        )

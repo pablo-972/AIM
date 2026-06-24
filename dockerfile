@@ -33,8 +33,8 @@ RUN git clone https://github.com/radareorg/radare2 /opt/radare2 \
 # Install r2pipe
 RUN pip3 install r2pipe
 
-# Install Ollama 
-RUN curl -fsSL https://ollama.com/install.sh | sh
+# # Install Ollama 
+# RUN curl -fsSL https://ollama.com/install.sh | sh
 
 # Make entrypoint executable
 RUN chmod +x entrypoint.sh

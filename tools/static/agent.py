@@ -6,53 +6,11 @@ from typing import Any
 from config import THREAT_ACTOR_MESSAGES_FILENAME
 from utils.io.files import save_json
 
-
 DEFAULT_ARTIFACT = {
     "artifact_type": "threat_actor_messages",
     "source": "static_agent",
     "items": [],
 }
-
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
-
-
-def _default_artifact() -> dict[str, Any]:
-    return {
-        **DEFAULT_ARTIFACT,
-        "items": [],
-    }
-
-
-def _load_existing_blocks(output: Path) -> dict[str, Any]:
-    target = output / THREAT_ACTOR_MESSAGES_FILENAME
-
-    try:
-        with target.open("r", encoding="utf-8") as file:
-            data = json.load(file)
-
-        if isinstance(data, dict):
-            data.setdefault("items", [])
-            return data
-    except (OSError, json.JSONDecodeError):
-        pass
-
-    return _default_artifact()
-
-
-def _find_message(
-    items: list[dict[str, Any]],
-    message_block: list[str],
-) -> dict[str, Any] | None:
-    return next(
-        (
-            item
-            for item in items
-            if item.get("message_block") == message_block
-        ),
-        None,
-    )
 
 
 def save_threat_actor_messages(
@@ -111,3 +69,47 @@ def save_threat_actor_messages(
         "saved_count": len(items),
         "item_id": item["id"],
     }
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _default_artifact() -> dict[str, Any]:
+    return {
+        **DEFAULT_ARTIFACT,
+        "items": [],
+    }
+
+
+def _load_existing_blocks(output: Path) -> dict[str, Any]:
+    target = output / THREAT_ACTOR_MESSAGES_FILENAME
+
+    try:
+        with target.open("r", encoding="utf-8") as file:
+            data = json.load(file)
+
+        if isinstance(data, dict):
+            data.setdefault("items", [])
+            return data
+    except (OSError, json.JSONDecodeError):
+        pass
+
+    return _default_artifact()
+
+
+def _find_message(
+    items: list[dict[str, Any]],
+    message_block: list[str],
+) -> dict[str, Any] | None:
+    return next(
+        (
+            item
+            for item in items
+            if item.get("message_block") == message_block
+        ),
+        None,
+    )
+
+
+

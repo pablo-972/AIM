@@ -2,7 +2,6 @@ from typing import Any
 
 from tools.reversing.analyzers.metadata import functions, imports, strings
 
-
 SUSPICIOUS_IMPORT_KEYWORDS = {
     "virtualalloc",
     "virtualprotect",
@@ -40,19 +39,6 @@ INTERESTING_STRING_KEYWORDS = {
     "user-agent",
     "software\\",
 }
-
-
-def _is_clean_interesting_string(value: str) -> bool:
-    if not 5 <= len(value) <= 256:
-        return False
-
-    if any(ord(character) < 32 and not character.isspace() for character in value):
-        return False
-
-    return any(
-        keyword in value.lower()
-        for keyword in INTERESTING_STRING_KEYWORDS
-    )
 
 
 def collect_reconnaissance(sample: str) -> dict[str, Any]:
@@ -99,3 +85,19 @@ def collect_reconnaissance(sample: str) -> dict[str, Any]:
             "strings": len(string_items),
         },
     }
+
+
+def _is_clean_interesting_string(value: str) -> bool:
+    if not 5 <= len(value) <= 256:
+        return False
+
+    if any(ord(character) < 32 and not character.isspace() for character in value):
+        return False
+
+    return any(
+        keyword in value.lower()
+        for keyword in INTERESTING_STRING_KEYWORDS
+    )
+
+
+

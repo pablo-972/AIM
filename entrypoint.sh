@@ -12,25 +12,25 @@ else
 fi
 
 
-# Start Ollama in background
-ollama serve &
+# # Start Ollama in background
+# ollama serve &
 
 
-# Wait until Ollama is ready
-echo "Waiting for Ollama to start..."
-until curl http://localhost:11434/api/tags > /dev/null; do
-    sleep 2
-done
-echo "Ollama is ready."
+# # Wait until Ollama is ready
+# echo "Waiting for Ollama to start..."
+# until curl http://localhost:11434/api/tags > /dev/null; do
+#     sleep 2
+# done
+# echo "Ollama is ready."
 
 
-# Pull local models requested by the deployment.
-if [ ! -z "$OLLAMA_PRELOAD_MODELS" ]; then
-    for model in $OLLAMA_PRELOAD_MODELS; do
-        echo "Pulling Ollama model: $model"
-        ollama pull "$model"
-    done
-fi
+# # Pull local models requested by the deployment.
+# if [ ! -z "$OLLAMA_PRELOAD_MODELS" ]; then
+#     for model in $OLLAMA_PRELOAD_MODELS; do
+#         echo "Pulling Ollama model: $model"
+#         ollama pull "$model"
+#     done
+# fi
 
 
 # Run container

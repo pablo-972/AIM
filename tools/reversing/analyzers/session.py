@@ -10,7 +10,6 @@ class R2Session:
         self.log_level: int = log_level
         self.r2: Any | None = None
 
-
     def __enter__(self) -> Any:
         self.r2 = r2pipe.open(self.sample, flags=["-e", "bin.relocs.apply=true"])
 
@@ -19,7 +18,6 @@ class R2Session:
 
         self.r2.cmd("aaa")
         return self.r2
-
 
     def __exit__(
         self,

@@ -5,7 +5,6 @@ class JsonExtractor:
     def __init__(self, data: dict[str, Any] | None) -> None:
         self.data: dict[str, Any] = data if isinstance(data, dict) else {}
 
-
     def get_static_tools(self) -> dict[str, Any]:
         phases = self.data.get("phases", {})
         static_phase = phases.get("static", {}) if isinstance(phases, dict) else {}
@@ -13,12 +12,10 @@ class JsonExtractor:
 
         return tools if isinstance(tools, dict) else {}
 
-
     def get_tool_result(self, tool_name: str) -> dict[str, Any]:
         result = self.get_static_tools().get(tool_name, {})
 
         return result if isinstance(result, dict) else {}
-
 
     def get_tool_data(self, tool_name: str) -> Any | None:
         tool = self.get_tool_result(tool_name)
@@ -27,13 +24,11 @@ class JsonExtractor:
         
         return tool.get("data")
 
-
     def get_static_strings(self) -> list[str]:
         data = self.get_tool_data("strings") or {}
         strings = data.get("parsed_strings", []) if isinstance(data, dict) else []
 
         return strings if isinstance(strings, list) else []
-
 
     def get_threat_actor_message_blocks(self) -> list[str | list[str]]:
         items = self.data.get("items", [])

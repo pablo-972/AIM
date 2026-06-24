@@ -9,7 +9,6 @@ from ai.schemas.reversing import (
     REVERSING_SEED_SCHEMA,
 )
 
-
 SYSTEM_PROMPT = """
 You are a malware reverse-engineering agent.
 
@@ -46,7 +45,6 @@ Rules:
 - Use short analyst notes, not chain-of-thought.
 - Return only JSON matching the supplied schema.
 """
-
 MAX_EVIDENCE_ENRICHMENT_LENGTH = 3500
 MAX_TARGET_REASON_LENGTH = 500
 
@@ -54,7 +52,6 @@ MAX_TARGET_REASON_LENGTH = 500
 class ReversingAgent:
     def __init__(self, llm: BaseLLMProvider) -> None:
         self.llm = llm
-
 
     def create_initial_targets(
         self,
@@ -93,7 +90,6 @@ class ReversingAgent:
         if not isinstance(result.get("targets"), list):
             raise ValueError("Invalid reversing seed response.")
         return result
-
 
     def analyze_evidence(
         self,
@@ -179,7 +175,6 @@ class ReversingAgent:
         ):
             raise ValueError("Invalid reversing finding.")
         return result
-
 
     def _bounded_text(self, value: str, limit: int) -> str:
         if len(value) <= limit:

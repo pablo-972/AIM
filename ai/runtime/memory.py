@@ -3,7 +3,6 @@ from typing import Any
 
 from utils.io.files import save_json
 
-
 NO_TOOL_ACTIONS = {"none", "finish", "seed_queue"}
 COMPACT_OUTPUT_KEYS = {
     "success",
@@ -50,7 +49,6 @@ class AgentMemory:
             "queue": [],
             "errors": [],
         }
-
 
     def record(
         self,
@@ -110,11 +108,9 @@ class AgentMemory:
 
         self.flush()
 
-
     def close(self, status: str = "completed") -> None:
         self.data["status"] = status
         self.flush()
-
 
     def record_queue_event(
         self,
@@ -135,7 +131,6 @@ class AgentMemory:
         )
         self.flush()
 
-
     def fail(self, error: str) -> None:
         self.data["status"] = "error"
         self.data["errors"].append(
@@ -146,10 +141,8 @@ class AgentMemory:
         )
         self.flush()
 
-
     def flush(self) -> None:
         save_json(self.output_dir, self.filename, self.data)
-
 
     def _normalize_decision(self, decision: dict[str, Any]) -> dict[str, Any]:
         confidence = decision.get("confidence")
@@ -175,7 +168,6 @@ class AgentMemory:
             "parameters": parameters,
         }
 
-
     def _align_decision_with_tool(
         self,
         decision: dict[str, Any],
@@ -189,7 +181,6 @@ class AgentMemory:
             decision["action"] = tool_name
 
         return decision
-
 
     def _normalize_tool(
         self,
@@ -219,7 +210,6 @@ class AgentMemory:
             "artifact_ref": artifact_ref,
         }
 
-
     def _compact_tool_output(
         self,
         tool_output: dict[str, Any] | None,
@@ -240,7 +230,6 @@ class AgentMemory:
 
         return compact or None
 
-
     def _copy_compact_fields(
         self,
         source: dict[str, Any],
@@ -254,7 +243,6 @@ class AgentMemory:
         item = source.get("item")
         if isinstance(item, dict) and item.get("id") is not None:
             target["item_id"] = item["id"]
-
 
     def _add_collection_counts(
         self,
@@ -275,7 +263,6 @@ class AgentMemory:
                     and isinstance(item.get("xrefs"), list)
                 )
                 target.setdefault("xrefs_count", xrefs_count)
-
 
     def _tool_error(self, tool_output: dict[str, Any] | None) -> str | None:
         if not isinstance(tool_output, dict):

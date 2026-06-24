@@ -3,14 +3,12 @@ from collections.abc import Callable
 
 from ai.runtime.validators import NO_TOOL_ACTIONS, validate_agent_step
 
-
 ToolExecutor = Callable[[str, dict[str, Any]], dict[str, Any]]
 
 
 class AgentStepExecutor:
     def __init__(self, available_tools: dict[str, Any]) -> None:
         self.available_tools: dict[str, Any] = available_tools
-
 
     def execute(
             self, 

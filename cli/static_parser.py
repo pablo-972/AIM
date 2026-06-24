@@ -2,7 +2,6 @@ import argparse
 
 from exceptions import CLIValidationError
 
-
 STATIC_MODES = [
     "file",
     "hash",

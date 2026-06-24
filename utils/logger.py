@@ -12,13 +12,11 @@ class Logger:
 
     LOG_FILE = Path("logs/aim.log")
 
-
     @classmethod
     def _write_file(cls, line: str) -> None:
         cls.LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
         with open(cls.LOG_FILE, "a", encoding="utf-8") as f:
             f.write(line + "\n")
-
 
     @classmethod
     def _log(cls, level: str, color: str, message: str) -> None:
@@ -32,26 +30,21 @@ class Logger:
         print(console_line)
         cls._write_file(file_line)
 
-
     @classmethod
     def info(cls, message: str) -> None:
         cls._log("INFO", cls.INFO, message)
-
 
     @classmethod
     def success(cls, message: str) -> None:
         cls._log("SUCCESS", cls.SUCCESS, message)
 
-
     @classmethod
     def warning(cls, message: str) -> None:
         cls._log("WARNING", cls.WARNING, message)
 
-
     @classmethod
     def error(cls, message: str) -> None:
         cls._log("ERROR", cls.ERROR, message)
-
 
     @classmethod
     def debug(cls, message: str) -> None:

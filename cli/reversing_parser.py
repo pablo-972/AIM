@@ -85,7 +85,11 @@ def add_reversing_module(
     )
     parser.add_argument(
         "--profile",
-        choices=["local-reverse", "openai-reverse", "gemini-reverse"],
+        choices=[
+            "local-reversing",
+            "openai-reversing",
+            "gemini-reversing",
+        ],
         default=None,
         help="Model profile for assisted reversing",
     )

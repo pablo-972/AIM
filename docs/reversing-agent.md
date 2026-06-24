@@ -11,14 +11,14 @@ disassembly.
 
 ```bash
 python main.py reversing sample.exe --agent --depth 12
-python main.py reversing sample.exe --agent --profile local-reverse --depth 20
+python main.py reversing sample.exe --agent --profile local-reversing --depth 20
 ```
 
 Supported profiles:
 
-- `local-reverse`
-- `openai-reverse`
-- `gemini-reverse`
+- `local-reversing`
+- `openai-reversing`
+- `gemini-reversing`
 
 `--depth` limits the number of unique queued targets executed. A tool result may
 produce several trace steps when its output is divided into chunks.
@@ -165,11 +165,14 @@ Full disassembly and large collections are not stored directly in step output.
 ## Main Components
 
 - `ai/agents/reversing.py`: prompts and structured decisions.
-- `ai/runner/reversing.py`: initialization and investigation loop.
+- `ai/runner/reversing.py`: workflow composition and lifecycle.
+- `ai/runtime/reversing_initialization.py`: enrichment/reconnaissance initialization.
+- `ai/runtime/reversing_evidence.py`: chunk evaluation and compact retry.
+- `ai/runtime/reversing_exploration.py`: bounded queue-execution loop.
 - `ai/runtime/reversing_targets.py`: target normalization and queue events.
 - `ai/runtime/priority_queue.py`: priority and visited-state management.
 - `utils/preprocessing/reversing.py`: bounded recursive chunking.
-- `utils/postprocessing/reversing.py`: observation, action, and finding checks.
+- `utils/postprocessing/reversing/`: observation, action, finding, and trace policies.
 - `tools/reversing/agent.py`: model-callable reversing operations.
 - `tools/reversing/agent_tools.json`: tool parameter contract.
 - `ai/runtime/memory.py`: compact trace persistence.

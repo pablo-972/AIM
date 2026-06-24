@@ -22,7 +22,9 @@ class AnalysisContext:
     static_agent: bool
     reversing_agent: bool
     reversing_depth: int
-
+    full_static_profile: str | None
+    full_enrichment_profile: str | None
+    full_reversing_profile: str | None
 
     @classmethod
     def from_args(cls, args: argparse.Namespace) -> "AnalysisContext":
@@ -52,4 +54,7 @@ class AnalysisContext:
             static_agent=getattr(args, "static_agent", False),
             reversing_agent=getattr(args, "reversing_agent", False),
             reversing_depth=getattr(args, "reversing_depth", 12),
+            full_static_profile=getattr(args, "static_profile", None),
+            full_enrichment_profile=getattr(args, "enrichment_profile", None),
+            full_reversing_profile=getattr(args, "reversing_profile", None),
         )

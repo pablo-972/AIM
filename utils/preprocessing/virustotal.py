@@ -2,7 +2,6 @@ from typing import Any
 
 from utils.preprocessing.chunks import chunk_large_value, chunk_sequence, make_report_chunk
 
-
 VT_SUMMARY_KEYS = [
     "md5",
     "sha1",
