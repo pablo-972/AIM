@@ -27,7 +27,7 @@ profiles:
   local-static:
     provider: ollama
     model: gemma4:e2b
-    temperature: 0.1
+    temperature: 0.2
     max_tokens: 4096
     response_format: json
 
@@ -48,7 +48,7 @@ profiles:
   local-report:
     provider: ollama
     model: llama3.1:8b
-    temperature: 0.2
+    temperature: 0.1
     max_tokens: 4096
     response_format: text
 
