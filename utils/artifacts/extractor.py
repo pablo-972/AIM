@@ -30,25 +30,16 @@ class JsonExtractor:
 
         return strings if isinstance(strings, list) else []
 
-    def get_threat_actor_message_blocks(self) -> list[str | list[str]]:
-        items = self.data.get("items", [])
-        if not isinstance(items, list):
+    def get_static_agent_findings(self) -> list[dict[str, Any]]:
+        findings = self.data.get("findings", [])
+        if not isinstance(findings, list):
             return []
 
-        blocks: list[str | list[str]] = []
-        for item in items:
-            if not isinstance(item, dict):
-                continue
-
-            block = item.get("message_block")
-            if isinstance(block, str) and block:
-                blocks.append(block)
-            elif (
-                isinstance(block, list)
-                and block
-                and all(isinstance(line, str) for line in block)
-            ):
-                blocks.append(block)
-
-        return blocks
-
+        return [
+            finding
+            for finding in findings
+            if isinstance(finding, dict)
+            and finding.get("type") == "threat_actor_message"
+            and isinstance(finding.get("text"), str)
+            and finding.get("text")
+        ]

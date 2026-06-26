@@ -88,7 +88,7 @@ Output Rules:
 """
 
 
-class AIReport:
+class ReportGenerator:
     def __init__(self, llm: BaseLLMProvider) -> None:
         self.llm: BaseLLMProvider = llm
 

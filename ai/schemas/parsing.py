@@ -8,6 +8,11 @@ REQUIRED_AGENT_DECISION_KEYS = {
     "action",
     "parameters",
 }
+REQUIRED_STATIC_AGENT_KEYS = {
+    "thought",
+    "confidence",
+    "finding",
+}
 VALID_CONFIDENCE_LEVELS = {
     "low",
     "medium",
@@ -56,10 +61,57 @@ def parse_agent_decision(content: str) -> dict[str, Any]:
     return decision
 
 
+def parse_static_agent_finding(content: str) -> dict[str, Any]:
+    content = (content or "").strip()
+    if not content:
+        return _fallback_static_agent_finding("LLM returned an empty response.")
+
+    try:
+        decision = json.loads(content)
+    except (JSONDecodeError, TypeError):
+        return _fallback_static_agent_finding("LLM returned an invalid response.")
+
+    if not isinstance(decision, dict):
+        return _fallback_static_agent_finding("LLM returned an invalid response.")
+
+    if not REQUIRED_STATIC_AGENT_KEYS.issubset(decision):
+        return _fallback_static_agent_finding("LLM returned an invalid response.")
+
+    if decision["confidence"] not in VALID_CONFIDENCE_LEVELS:
+        return _fallback_static_agent_finding("LLM returned an invalid response.")
+
+    finding = decision.get("finding")
+    if finding is not None:
+        if not isinstance(finding, dict):
+            return _fallback_static_agent_finding("LLM returned an invalid response.")
+        if not isinstance(finding.get("category"), str):
+            return _fallback_static_agent_finding("LLM returned an invalid response.")
+        if not isinstance(finding.get("tone"), str):
+            return _fallback_static_agent_finding("LLM returned an invalid response.")
+
+    return {
+        "thought": decision.get("thought") if isinstance(decision.get("thought"), str) else "",
+        "confidence": decision["confidence"],
+        "action": "none",
+        "parameters": {},
+        "finding": finding,
+    }
+
+
 def _fallback_agent_decision(reason: str) -> dict[str, Any]:
     return {
         "thought": reason,
         "confidence": "low",
         "action": "none",
         "parameters": {},
+    }
+
+
+def _fallback_static_agent_finding(reason: str) -> dict[str, Any]:
+    return {
+        "thought": reason,
+        "confidence": "low",
+        "action": "none",
+        "parameters": {},
+        "finding": None,
     }

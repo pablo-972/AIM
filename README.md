@@ -110,14 +110,14 @@ Depending on the selected workflows, AIM creates:
 output/<sample-sha256>/
 |-- analysis.json
 |-- static_agent.json
-|-- threat_actor_messages.json
 |-- reversing_agent.json
 |-- enrichment.md
 `-- report.md
 ```
 
 `analysis.json` is updated additively by phase and tool. Agent traces keep
-steps compact; large data remains in dedicated artifacts or is summarized.
+steps compact; static-agent threat-actor message findings are stored in
+`static_agent.json`.
 
 ## Configuration
 

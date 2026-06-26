@@ -4,7 +4,7 @@ from config import (
     ENRICHMENT_FILENAME,
     REPORT_FILENAME,
     RESULT_FILENAME,
-    THREAT_ACTOR_MESSAGES_FILENAME,
+    STATIC_AGENT_RESULT_FILENAME,
 )
 from utils.artifacts.extractor import JsonExtractor
 from utils.artifacts.documents import (
@@ -17,7 +17,7 @@ from utils.io.files import load_json
 from utils.io.text import read_text
 from utils.logger import Logger
 from utils.preprocessing import prepare_report_chunks
-from ai.generators.report import AIReport
+from ai.inferences.report import ReportGenerator
 from ai.model_registry import ModelRegistry
 from ai.runner.base import BaseAIRunner
 from orchestrator.context import AnalysisContext
@@ -41,7 +41,7 @@ class ReportAIRunner(BaseAIRunner):
         )
 
         llm = model_registry.create_task_client("report", profile_override=self.context.profile)
-        self.generator: AIReport = AIReport(llm)
+        self.generator: ReportGenerator = ReportGenerator(llm)
 
     def run(self) -> None:
         Logger.info("Running AI report")
@@ -117,12 +117,20 @@ class ReportAIRunner(BaseAIRunner):
         return sources
 
     def _get_static_agent_sources(self) -> list[tuple[str, Any]]:
-        data = load_json(self.context.output, THREAT_ACTOR_MESSAGES_FILENAME)
-        blocks = JsonExtractor(data).get_threat_actor_message_blocks()
+        data = load_json(self.context.output, STATIC_AGENT_RESULT_FILENAME)
+        findings = JsonExtractor(data).get_static_agent_findings()
 
         return [
-            (f"static_agent.threat_actor_messages.{index}", block)
-            for index, block in enumerate(blocks, start=1)
+            (
+                f"static_agent.findings.{index}",
+                {
+                    "confidence": finding.get("confidence"),
+                    "text": finding.get("text"),
+                    "category": finding.get("category"),
+                    "tone": finding.get("tone"),
+                },
+            )
+            for index, finding in enumerate(findings, start=1)
         ]
 
     def _get_enrichment_sources(self) -> list[tuple[str, Any]]:
@@ -144,4 +152,3 @@ class ReportAIRunner(BaseAIRunner):
             *self._get_static_agent_sources(),
             *self._get_enrichment_sources(),
         ]
-

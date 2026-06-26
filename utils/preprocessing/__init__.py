@@ -7,46 +7,6 @@ from utils.preprocessing.virustotal import prepare_vt_enrichment_data, prepare_v
 from utils.artifacts.extractor import JsonExtractor
 
 
-ACTOR_MESSAGE_KEYWORDS = [
-    "ransom",
-    "decrypt",
-    "bitcoin",
-    "btc",
-    "wallet",
-    "payment",
-    "buy bitcoin",
-    "contact us",
-    "session from",
-    ".onion",
-    "stole",
-    "lost your data",
-    "we stole all your data",
-    "your organization",
-    "infiltrated",
-    "do not attempt",
-    "law enforcement",
-    "funk",
-    "congratulations",
-    "what happened",
-    "anti-virus",
-    "restore",
-    "sincerely",
-    ".funksec",
-]
-
-ACTOR_MESSAGE_NOISE_PREFIXES = [
-    "failed ",
-    "invalid ",
-    "internal error",
-    "assertion failed",
-    "called `result::unwrap",
-    "unsupported",
-    "chunk ",
-    "unexpected eof",
-    "error when",
-]
-
-
 def prepare_strings_report_data(
     tool_data: dict[str, Any],
 ) -> dict[str, Any]:
@@ -127,46 +87,19 @@ def prepare_static_agent_sources(
         return []
 
     extractor = JsonExtractor(static_agent_data)
-    message_blocks = [
-        filtered_block
-        for block in extractor.get_threat_actor_message_blocks()
-        if (filtered_block := _filter_actor_message_block(block))
-    ]
-    if not message_blocks:
+    findings = extractor.get_static_agent_findings()
+    if not findings:
         return []
 
     return [
         (
-            f"static_agent.threat_actor_messages.{index}",
-            {"message_block": message_block},
+            f"static_agent.findings.{index}",
+            {
+                "confidence": finding.get("confidence"),
+                "text": finding.get("text"),
+                "category": finding.get("category"),
+                "tone": finding.get("tone"),
+            },
         )
-        for index, message_block in enumerate(message_blocks, start=1)
+        for index, finding in enumerate(findings, start=1)
     ]
-
-
-def _filter_actor_message_block(message_block: str | list[str]) -> list[str]:
-    if isinstance(message_block, str):
-        lines = message_block.splitlines()
-    elif isinstance(message_block, list):
-        lines = message_block
-    else:
-        return []
-
-    filtered: list[str] = []
-
-    for line in lines:
-        if not isinstance(line, str):
-            continue
-
-        normalized = line.strip()
-        if not normalized:
-            continue
-
-        lower = normalized.lower()
-        if any(lower.startswith(prefix) for prefix in ACTOR_MESSAGE_NOISE_PREFIXES):
-            continue
-
-        if any(keyword in lower for keyword in ACTOR_MESSAGE_KEYWORDS):
-            filtered.append(normalized)
-
-    return filtered

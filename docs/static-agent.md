@@ -32,18 +32,16 @@ StaticToolRunner
 StaticAgentRunner
     |
     +-- split into chunks of 80 strings
-    +-- request a structured decision
-    +-- optionally save the complete original chunk
-    `-- record a compact step
+    +-- request a structured finding
+    `-- record a compact step and optional finding
 ```
 
-For each chunk, the agent chooses:
-
-- `none`
-- `save_threat_actor_messages`
+For each chunk, the agent returns either `finding=null` or a finding
+classification with `category` and `tone`.
 
 The model never reconstructs or selects individual lines for persistence. If a
-chunk is relevant, the tool runner saves the complete original strings block.
+chunk is relevant, the runner saves the complete original strings block in the
+finding `text` field.
 
 This preserves evidence exactly as supplied to the agent.
 
@@ -65,14 +63,52 @@ and unrelated URLs.
 
 ### `static_agent.json`
 
-Contains the compact execution trace:
+Contains the compact execution trace and threat-actor message findings:
 
 ```json
 {
   "agent": "static_agent",
   "status": "completed",
-  "steps": [],
-  "findings": [],
+  "steps": [
+    {
+      "step": 1,
+      "input": {
+        "type": "strings_chunk",
+        "index": 1,
+        "value": null
+      },
+      "decision": {
+        "thought": "The chunk contains a victim-facing ransom note.",
+        "confidence": "high",
+        "action": "none",
+        "parameters": {}
+      },
+      "tool": {
+        "name": "none",
+        "status": "skipped",
+        "output": null,
+        "artifact_ref": null
+      },
+      "finding": {
+        "type": "threat_actor_message",
+        "confidence": "high",
+        "text": "Your files have been encrypted.\nContact us to recover your data.",
+        "category": "ransom_note",
+        "tone": "extortion"
+      },
+      "error": null
+    }
+  ],
+  "findings": [
+    {
+      "type": "threat_actor_message",
+      "confidence": "high",
+      "text": "Your files have been encrypted.\nContact us to recover your data.",
+      "category": "ransom_note",
+      "tone": "extortion",
+      "step": 1
+    }
+  ],
   "artifacts": [],
   "queue": [],
   "errors": []
@@ -83,41 +119,13 @@ Each step records:
 
 - A lightweight strings-chunk reference.
 - The structured decision.
-- Tool status and compact output.
 - An optional finding.
 - An optional error.
 
-The strings chunk itself is not duplicated inside the step.
-
-### `threat_actor_messages.json`
-
-Contains the full saved blocks:
-
-```json
-{
-  "artifact_type": "threat_actor_messages",
-  "source": "static_agent",
-  "items": [
-    {
-      "id": 1,
-      "created_at": "2026-06-23T00:00:00+00:00",
-      "chunk_index": 4,
-      "message_block": [
-        "Your files have been encrypted.",
-        "Contact us to recover your data."
-      ]
-    }
-  ]
-}
-```
-
-Duplicate message blocks are not stored twice.
+The strings block itself is stored only when there is a finding.
 
 ## Main Components
 
-- `ai/agents/static.py`: prompt and structured model decision.
+- `ai/inferences/static.py`: prompt and structured model decision.
 - `ai/runner/static.py`: chunk loop and memory recording.
-- `tools/runner/static.py`: agent-tool dispatch.
-- `tools/static/agent.py`: threat actor message persistence.
-- `tools/static/agent_tools.json`: model-callable tool definition.
 - `ai/runtime/memory.py`: common compact trace format.
