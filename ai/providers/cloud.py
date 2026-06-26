@@ -35,7 +35,6 @@ class OpenAICompatibleProvider(BaseLLMProvider):
         self.max_retries: int = max_retries
         self.min_request_interval: float = min_request_interval
         self._last_request_at: float = 0.0
-
         self.headers: dict[str, str] = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
