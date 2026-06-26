@@ -2,7 +2,7 @@ from collections.abc import Iterator
 from typing import Any
 from config import STATIC_AGENT_RESULT_FILENAME
 from utils.logger import Logger
-from ai.inferences.static import StaticInference
+from ai.agents.static import StaticAgent
 from ai.runtime.memory import AgentMemory
 from ai.runner.base import BaseAIRunner
 from ai.model_registry import ModelRegistry
@@ -30,7 +30,7 @@ class StaticAgentRunner(BaseAIRunner):
             "static", 
             profile_override=self.context.profile
         )
-        agent = StaticInference(llm)
+        agent = StaticAgent(llm)
         memory = AgentMemory(
             output_dir=self.context.output,
             filename=STATIC_AGENT_RESULT_FILENAME,
