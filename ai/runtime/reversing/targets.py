@@ -2,7 +2,7 @@ from typing import Any
 
 from ai.runtime.reversing.priority_queue import TargetPriorityQueue
 from ai.runtime.validators import normalize_tool_parameters, validate_tool_parameters
-from ai.runtime.memory import AgentMemory
+from ai.runtime.memory import TraceMemory
 
 DEFAULT_TARGET_PRIORITY = 50
 MAX_TARGET_REASON_LENGTH = 500
@@ -12,7 +12,7 @@ class ReversingTargetQueue:
     def __init__(
         self,
         available_tools: dict[str, Any],
-        memory: "AgentMemory",
+        memory: "TraceMemory",
     ) -> None:
         self.available_tools = available_tools
         self.memory = memory

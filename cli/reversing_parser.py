@@ -21,7 +21,7 @@ def validate_reversing_args(args: argparse.Namespace) -> None:
     selected_modes = set(args.reversing_modes)
 
     if "full" in selected_modes and len(selected_modes) > 1:
-        raise CLIValidationError("'full' cannot be combined with other static modes")
+        raise CLIValidationError("'full' cannot be combined with other reverse modes")
 
     if args.reversing_agent and selected_modes:
         raise CLIValidationError("--agent cannot be combined with manual reverse modes")

@@ -5,7 +5,7 @@ from utils.postprocessing.reversing import ReversingPostprocessor
 from ai.runtime.executor import AgentStepExecutor
 
 if TYPE_CHECKING:
-    from ai.runtime.memory import AgentMemory
+    from ai.runtime.memory import TraceMemory
     from ai.runtime.reversing.targets import ReversingTargetQueue
 
 
@@ -37,7 +37,7 @@ class ReversingExplorationLoop:
         step_executor: AgentStepExecutor,
         evaluator: EvidenceEvaluator,
         postprocessor: ReversingPostprocessor,
-        memory: "AgentMemory",
+        memory: "TraceMemory",
     ) -> None:
         self.max_targets = max_targets
         self.targets = targets

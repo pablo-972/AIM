@@ -4,7 +4,7 @@ from utils.logger import Logger
 from utils.postprocessing.reversing import ReversingPostprocessor
 from utils.preprocessing.reversing import chunk_reversing_evidence
 from ai.agents.reversing import ReversingAgent
-from ai.runtime.memory import AgentMemory
+from ai.runtime.memory import TraceMemory
 from ai.runtime.reversing.targets import ReversingTargetQueue
 
 
@@ -15,7 +15,7 @@ class ReversingEvidenceEvaluator:
         enrichment: str,
         available_tools: dict[str, Any],
         postprocessor: ReversingPostprocessor,
-        memory: "AgentMemory",
+        memory: "TraceMemory",
         targets: "ReversingTargetQueue",
     ) -> None:
         self.agent = agent

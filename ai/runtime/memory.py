@@ -31,7 +31,7 @@ LARGE_OUTPUT_KEYS = {
 }
 
 
-class AgentMemory:
+class TraceMemory:
     def __init__(
         self,
         output_dir: str | Path,

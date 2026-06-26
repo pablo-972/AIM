@@ -17,6 +17,9 @@ STATIC_MODES = [
 def validate_static_args(args: argparse.Namespace) -> None:
     selected_modes = set(args.static_modes)
 
+    if len(selected_modes) < 1:
+        raise CLIValidationError("need at least one --mode")
+
     if "full" in selected_modes and len(selected_modes) > 1:
         raise CLIValidationError("'full' cannot be combined with other static modes")
 

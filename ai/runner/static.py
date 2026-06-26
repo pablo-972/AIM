@@ -3,7 +3,7 @@ from typing import Any
 from config import STATIC_STRINGS_INFERENCE_RESULT_FILENAME
 from utils.logger import Logger
 from ai.inferences.static import StaticInference
-from ai.runtime.memory import AgentMemory
+from ai.runtime.memory import TraceMemory
 from ai.runner.base import BaseAIRunner
 from ai.model_registry import ModelRegistry
 from orchestrator.context import AnalysisContext
@@ -31,7 +31,7 @@ class StaticInferenceRunner(BaseAIRunner):
             profile_override=self.context.profile
         )
         inference = StaticInference(llm)
-        memory = AgentMemory(
+        memory = TraceMemory(
             output_dir=self.context.output,
             filename=STATIC_STRINGS_INFERENCE_RESULT_FILENAME,
             agent_name="static_strings_inference",

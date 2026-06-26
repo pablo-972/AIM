@@ -7,7 +7,7 @@ from ai.schemas.parsing import parse_static_inference_finding
 
 SYSTEM_PROMPT = """
 # Role
-You are an expert malware static-analysis agent specialized in identifying
+You are an expert malware static-analysis classifier specialized in identifying
 human-written communications embedded inside malware binaries.
 
 # Objective
