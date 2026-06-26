@@ -16,7 +16,7 @@ output/<sample-sha256>/
 - Static analysis: file type, hashes, metadata, packer detection, strings, PE
   data, and VirusTotal.
 - Manual reverse engineering through radare2 and `r2pipe`.
-- Static agent for detecting victim-facing threat actor messages.
+- Static strings AI inference for detecting victim-facing threat actor messages.
 - Queue-driven reversing agent focused on executable code and assembly.
 - Incremental enrichment and malware report generation.
 - Ollama, OpenAI, and Gemini model profiles.
@@ -27,7 +27,7 @@ Dynamic analysis is not implemented.
 
 - [Orchestrator and runners](docs/orchestrator-and-runners.md)
 - [Manual analysis tools](docs/manual-tools.md)
-- [Static agent](docs/static-agent.md)
+- [Static strings inference](docs/static-agent.md)
 - [Reversing agent](docs/reversing-agent.md)
 
 ## Installation
@@ -65,10 +65,10 @@ Run selected static tools:
 python main.py static samples/sample.exe --mode file --mode hash --mode strings
 ```
 
-Run the static strings agent:
+Run static strings AI inference:
 
 ```bash
-python main.py static samples/sample.exe --mode strings --agent
+python main.py static samples/sample.exe --mode strings --ai
 ```
 
 Run manual reversing:
@@ -90,7 +90,7 @@ Run the complete implemented pipeline:
 python main.py full samples/sample.exe
 ```
 
-The `full` phase runs all static tools, the static agent, enrichment, the
+The `full` phase runs all static tools, static strings inference, enrichment, the
 manual reversing `full` set, and finally the reversing agent.
 
 Generate enrichment and a report:
@@ -109,15 +109,15 @@ Depending on the selected workflows, AIM creates:
 ```text
 output/<sample-sha256>/
 |-- analysis.json
-|-- static_agent.json
+|-- static_strings_inference.json
 |-- reversing_agent.json
 |-- enrichment.md
 `-- report.md
 ```
 
 `analysis.json` is updated additively by phase and tool. Agent traces keep
-steps compact; static-agent threat-actor message findings are stored in
-`static_agent.json`.
+steps compact; static strings inference findings are stored in
+`static_strings_inference.json`.
 
 ## Configuration
 

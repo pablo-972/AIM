@@ -18,7 +18,7 @@ REVERSING_AGENT_TOOLS_PATH = REVERSING_TOOLS_PATH / "agent_tools.json"
 
 # Filenames
 RESULT_FILENAME = "analysis.json"
-STATIC_AGENT_RESULT_FILENAME = "static_agent.json"
+STATIC_STRINGS_INFERENCE_RESULT_FILENAME = "static_strings_inference.json"
 REVERSING_AGENT_RESULT_FILENAME = "reversing_agent.json"
 REPORT_FILENAME = "report.md"
 ENRICHMENT_FILENAME = "enrichment.md"

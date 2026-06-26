@@ -1,8 +1,8 @@
 from collections.abc import Iterator
 from typing import Any
-from config import STATIC_AGENT_RESULT_FILENAME
+from config import STATIC_STRINGS_INFERENCE_RESULT_FILENAME
 from utils.logger import Logger
-from ai.agents.static import StaticAgent
+from ai.inferences.static import StaticInference
 from ai.runtime.memory import AgentMemory
 from ai.runner.base import BaseAIRunner
 from ai.model_registry import ModelRegistry
@@ -11,7 +11,7 @@ from orchestrator.context import AnalysisContext
 STRING_CHUNK_SIZE = 80
 
 
-class StaticAgentRunner(BaseAIRunner):
+class StaticInferenceRunner(BaseAIRunner):
     def __init__(
         self,
         context: AnalysisContext,
@@ -24,17 +24,17 @@ class StaticAgentRunner(BaseAIRunner):
         self.strings: list[str] = strings
         
     def run(self) -> None:
-        Logger.info("Running AI static agent")
+        Logger.info("Running static strings AI inference")
 
         llm = self.model_registry.create_task_client(
             "static", 
             profile_override=self.context.profile
         )
-        agent = StaticAgent(llm)
+        inference = StaticInference(llm)
         memory = AgentMemory(
             output_dir=self.context.output,
-            filename=STATIC_AGENT_RESULT_FILENAME,
-            agent_name="static_agent",
+            filename=STATIC_STRINGS_INFERENCE_RESULT_FILENAME,
+            agent_name="static_strings_inference",
         )
 
         try:
@@ -46,9 +46,9 @@ class StaticAgentRunner(BaseAIRunner):
                 }
 
                 try:
-                    decision = agent.analyze_strings_chunk(strings_chunk)
+                    decision = inference.analyze_strings_chunk(strings_chunk)
                 except Exception as exc:
-                    error = f"Static agent failed on chunk {chunk_index}: {exc}"
+                    error = f"Static inference failed on chunk {chunk_index}: {exc}"
                     Logger.error(error)
                     memory.record(
                         decision={
@@ -74,7 +74,7 @@ class StaticAgentRunner(BaseAIRunner):
         else:
             memory.close()
 
-        Logger.success("Static agent finished")
+        Logger.success("Static strings AI inference finished")
     
     def _iter_string_chunks(self, chunk_size: int = STRING_CHUNK_SIZE) -> Iterator[list[str]]:
         for index in range(0, len(self.strings), chunk_size):

@@ -2,8 +2,8 @@ import json
 from typing import Any
 
 from ai.providers.base import BaseLLMProvider
-from ai.schemas.agent_decision import AGENT_DECISION_SCHEMA
-from ai.schemas.parsing import parse_agent_decision
+from ai.schemas.static import STATIC_INFERENCE_FINDING_SCHEMA
+from ai.schemas.parsing import parse_static_inference_finding
 
 SYSTEM_PROMPT = """
 # Role
@@ -106,12 +106,18 @@ Prefer false negatives over false positives.
 If there is any doubt whether a string is actor-authored, DO NOT save it.
 
 # Output
-Return ONLY valid JSON matching the provided decision schema.
-Use action "save_threat_actor_messages" or "none".
+Return ONLY valid JSON matching the provided schema.
+If the block contains a relevant threat actor message, return a finding object
+with:
+- category: a concise label such as "ransom_note", "payment_instruction",
+  "decryption_instruction", "extortion_warning", or "contact_instruction".
+- tone: a concise label such as "extortion", "threatening", "instructional",
+  "coercive", or "neutral".
 
-Do not return line-level findings. If the block contains a relevant threat actor
-message, choose action "save_threat_actor_messages"; the system will save the
-entire input block automatically.
+If the block is not relevant, return finding=null.
+
+Do not return line-level findings and do not reconstruct the text. The system
+will save the original input block as the finding text.
 
 The "thought" field must be a short operational summary, not a step-by-step reasoning trace.
 Maximum 1 sentence.
@@ -119,27 +125,21 @@ Do not include "Thinking Process", numbered reasoning, hidden reasoning, chain-o
 """
 
 
-class StaticAgent:
+class StaticInference:
     def __init__(self, llm: BaseLLMProvider) -> None:
         self.llm: BaseLLMProvider = llm
 
-    def analyze_strings_chunk(
-        self,
-        strings_chunk: list[str],
-        available_tools: dict[str, Any],
-    ) -> dict[str, Any]:
+    def analyze_strings_chunk(self, strings_chunk: list[str]) -> dict[str, Any]:
         prompt = f"""
         Task:
-        Inspect this strings chunk and decide whether the chunk contains threat actor messages.
-        If it does, choose the save action. Do not extract or return individual lines.
-
-        Available tools:
-        {json.dumps(available_tools, indent=2)}
+        Inspect this strings chunk and decide whether the chunk contains
+        victim-facing threat actor messages. If it does, classify the message.
+        Do not extract or return individual lines.
 
         Strings chunk:
-        {strings_chunk}
+        {json.dumps(strings_chunk, ensure_ascii=False)}
         """
 
-        response = self.llm.chat_json(SYSTEM_PROMPT, prompt, AGENT_DECISION_SCHEMA)
-        return parse_agent_decision(response.content)
+        response = self.llm.chat_json(SYSTEM_PROMPT, prompt, STATIC_INFERENCE_FINDING_SCHEMA)
+        return parse_static_inference_finding(response.content)
         

@@ -19,7 +19,7 @@ class AnalysisContext:
     value: str | None
     function: str | None
     profile: str | None
-    static_agent: bool
+    static_ai: bool
     reversing_agent: bool
     reversing_max_targets: int
     full_static_profile: str | None
@@ -51,7 +51,7 @@ class AnalysisContext:
             value=getattr(args, "value", None),
             function=getattr(args, "function", None),
             profile=getattr(args, "profile", None),
-            static_agent=getattr(args, "static_agent", False),
+            static_ai=getattr(args, "static_ai", False),
             reversing_agent=getattr(args, "reversing_agent", False),
             reversing_max_targets=getattr(args, "reversing_max_targets", 12),
             full_static_profile=getattr(args, "static_profile", None),

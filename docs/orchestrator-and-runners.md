@@ -16,7 +16,7 @@ Orchestrator
     |
     +-- StaticToolRunner
     +-- ReversingToolRunner
-    +-- StaticAgentRunner
+    +-- StaticInferenceRunner
     +-- ReversingAgentRunner
     +-- EnrichmentAIRunner
     `-- ReportAIRunner
@@ -30,7 +30,7 @@ Orchestrator
 - Resolves and validates the sample path.
 - Calculates the sample SHA-256.
 - Creates the sample-specific output path.
-- Normalizes phase, mode, profile, agent, function, value, and maximum-target options.
+- Normalizes phase, mode, profile, AI/inference, agent, function, value, and maximum-target options.
 
 The output directory is:
 
@@ -45,7 +45,7 @@ The output directory is:
 - Selects the requested phase.
 - Lazily creates tool runners, the JSON builder, and the model registry.
 - Sends manual tool results to `analysis.json`.
-- Starts an agent runner only when the relevant `--agent` flag is enabled.
+- Starts optional AI/agent runners only when the relevant flag is enabled.
 
 It does not implement analyzers, prompts, provider HTTP requests, or artifact
 formatting.
@@ -58,8 +58,9 @@ Available phase handlers are:
 - `report`
 - `full`
 
-For static analysis, deterministic tools run before the optional static agent.
-The agent receives the `parsed_strings` produced during that execution.
+For static analysis, deterministic tools run before the optional static strings
+inference. The inference receives the `parsed_strings` produced during that
+execution.
 
 For reversing, manual modes and the reversing agent are mutually exclusive.
 The `full` phase is the explicit pipeline exception because it runs them as
@@ -67,7 +68,7 @@ separate sequential stages:
 
 ```text
 static full
-    -> static agent
+    -> static strings inference
     -> enrichment
     -> reversing full (info, imports, strings)
     -> reversing agent
@@ -126,14 +127,14 @@ the validated target removed from its priority queue. The shared executor
 validates and normalizes parameters, invokes the phase tool runner, captures
 exceptions, and enforces the agent-tool result object contract.
 
-The static agent does not call tools. It classifies strings chunks and stores
-victim-facing message findings directly in `static_agent.json`.
+The static strings inference does not call tools. It classifies strings chunks and stores
+victim-facing message findings directly in `static_strings_inference.json`.
 
 ## AI Runners
 
 AI runners own workflow state and call agents, tools, and persistence helpers:
 
-- `StaticAgentRunner` processes strings in chunks.
+- `StaticInferenceRunner` processes strings in chunks.
 - `ReversingAgentRunner` executes a prioritized investigation queue.
 - `EnrichmentAIRunner` updates `enrichment.md`.
 - `ReportAIRunner` updates `report.md`.

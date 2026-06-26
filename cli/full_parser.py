@@ -39,7 +39,7 @@ def add_full_module(
         "--static-profile",
         choices=STATIC_PROFILES,
         default="local-static",
-        help="Model profile for the static agent",
+        help="Model profile for static strings inference",
     )
     parser.add_argument(
         "--enrichment-profile",

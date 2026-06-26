@@ -80,20 +80,20 @@ def prepare_static_enrichment_sources(
     return sources
 
 
-def prepare_static_agent_sources(
-    static_agent_data: dict[str, Any],
+def prepare_static_inference_sources(
+    static_inference_data: dict[str, Any],
 ) -> list[tuple[str, dict[str, Any]]]:
-    if not static_agent_data:
+    if not static_inference_data:
         return []
 
-    extractor = JsonExtractor(static_agent_data)
-    findings = extractor.get_static_agent_findings()
+    extractor = JsonExtractor(static_inference_data)
+    findings = extractor.get_static_inference_findings()
     if not findings:
         return []
 
     return [
         (
-            f"static_agent.findings.{index}",
+            f"static_strings_inference.findings.{index}",
             {
                 "confidence": finding.get("confidence"),
                 "text": finding.get("text"),

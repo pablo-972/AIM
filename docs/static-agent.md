@@ -1,18 +1,18 @@
-# Static Agent
+# Static Strings Inference
 
-The static agent identifies explicit victim-facing threat actor messages inside
+The static strings inference identifies explicit victim-facing threat actor messages inside
 extracted strings.
 
 It is deliberately narrow. It does not attempt to classify all strings or
 produce a general malware verdict.
 
-## Running the Agent
+## Running the Inference
 
-The agent requires the `strings` tool or `full`:
+The inference requires the `strings` tool or `full`:
 
 ```bash
-python main.py static sample.exe --mode strings --agent
-python main.py static sample.exe --mode full --agent --profile local-static
+python main.py static sample.exe --mode strings --ai
+python main.py static sample.exe --mode full --ai --profile local-static
 ```
 
 Supported profiles:
@@ -29,14 +29,14 @@ StaticToolRunner
     `-- parsed_strings
             |
             v
-StaticAgentRunner
+StaticInferenceRunner
     |
     +-- split into chunks of 80 strings
     +-- request a structured finding
     `-- record a compact step and optional finding
 ```
 
-For each chunk, the agent returns either `finding=null` or a finding
+For each chunk, the inference returns either `finding=null` or a finding
 classification with `category` and `tone`.
 
 The model never reconstructs or selects individual lines for persistence. If a
@@ -47,7 +47,7 @@ This preserves evidence exactly as supplied to the agent.
 
 ## Inclusion Rules
 
-The agent focuses on human-readable communication intended for a victim:
+The inference focuses on human-readable communication intended for a victim:
 
 - Ransom notes.
 - Payment instructions.
@@ -61,13 +61,13 @@ and unrelated URLs.
 
 ## Artifacts
 
-### `static_agent.json`
+### `static_strings_inference.json`
 
 Contains the compact execution trace and threat-actor message findings:
 
 ```json
 {
-  "agent": "static_agent",
+  "agent": "static_strings_inference",
   "status": "completed",
   "steps": [
     {

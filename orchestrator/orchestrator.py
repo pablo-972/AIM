@@ -12,7 +12,7 @@ from orchestrator.context import AnalysisContext
 from tools.runner.static import StaticToolRunner
 from tools.runner.reversing import ReversingToolRunner
 from ai.model_registry import ModelRegistry
-from ai.runner.static import StaticAgentRunner
+from ai.runner.static import StaticInferenceRunner
 from ai.runner.reversing import ReversingAgentRunner
 from ai.runner.enrichment import EnrichmentAIRunner
 from ai.runner.report import ReportAIRunner
@@ -51,7 +51,7 @@ class Orchestrator:
         context = context or self.context
         Logger.info("Running static phase")
         results = self._run_static_tools(context, persist_json)
-        self._run_static_agent(context, results)
+        self._run_static_ai(context, results)
         Logger.success("Static phase finished")
 
 
@@ -95,7 +95,7 @@ class Orchestrator:
             phase="static",
             func="run_static",
             static_modes=["full"],
-            static_agent=True,
+            static_ai=True,
             profile=self.context.full_static_profile,
         )
         self.run_static_phase(static_context, persist_json=True)
@@ -142,7 +142,7 @@ class Orchestrator:
             "full": self.run_full_phase,
         }
     
-    def _get_strings_for_static_agent(
+    def _get_strings_for_static_ai(
         self,
         results: dict[str, Any],
     ) -> list[str]:
@@ -224,26 +224,26 @@ class Orchestrator:
         )
         return self.reversing_tools_results
 
-    def _run_static_agent(
+    def _run_static_ai(
         self,
         context: AnalysisContext,
         results: dict[str, Any],
     ) -> None:
-        if not context.static_agent:
+        if not context.static_ai:
             return
 
-        strings = self._get_strings_for_static_agent(results)
+        strings = self._get_strings_for_static_ai(results)
         if not strings:
-            Logger.warning("No parsed strings found. Skipping static agent.")
+            Logger.warning("No parsed strings found. Skipping static AI inference.")
             return
 
         model = self._get_model_registry()
-        static_agent_runner = StaticAgentRunner(
+        static_inference_runner = StaticInferenceRunner(
             context,
             model,
             strings,
         )
-        static_agent_runner.run()
+        static_inference_runner.run()
 
     def _run_reversing_agent(self, context: AnalysisContext) -> None:
         if not context.reversing_agent:
@@ -253,4 +253,3 @@ class Orchestrator:
             context,
             self._get_model_registry(),
         ).run()
-

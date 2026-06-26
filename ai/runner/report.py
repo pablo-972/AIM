@@ -4,7 +4,7 @@ from config import (
     ENRICHMENT_FILENAME,
     REPORT_FILENAME,
     RESULT_FILENAME,
-    STATIC_AGENT_RESULT_FILENAME,
+    STATIC_STRINGS_INFERENCE_RESULT_FILENAME,
 )
 from utils.artifacts.extractor import JsonExtractor
 from utils.artifacts.documents import (
@@ -116,13 +116,13 @@ class ReportAIRunner(BaseAIRunner):
 
         return sources
 
-    def _get_static_agent_sources(self) -> list[tuple[str, Any]]:
-        data = load_json(self.context.output, STATIC_AGENT_RESULT_FILENAME)
-        findings = JsonExtractor(data).get_static_agent_findings()
+    def _get_static_inference_sources(self) -> list[tuple[str, Any]]:
+        data = load_json(self.context.output, STATIC_STRINGS_INFERENCE_RESULT_FILENAME)
+        findings = JsonExtractor(data).get_static_inference_findings()
 
         return [
             (
-                f"static_agent.findings.{index}",
+                f"static_strings_inference.findings.{index}",
                 {
                     "confidence": finding.get("confidence"),
                     "text": finding.get("text"),
@@ -149,6 +149,6 @@ class ReportAIRunner(BaseAIRunner):
     def _get_sources(self) -> list[tuple[str, Any]]:
         return [
             *self._get_static_sources(),
-            *self._get_static_agent_sources(),
+            *self._get_static_inference_sources(),
             *self._get_enrichment_sources(),
         ]

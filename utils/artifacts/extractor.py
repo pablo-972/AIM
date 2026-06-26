@@ -30,7 +30,7 @@ class JsonExtractor:
 
         return strings if isinstance(strings, list) else []
 
-    def get_static_agent_findings(self) -> list[dict[str, Any]]:
+    def get_static_inference_findings(self) -> list[dict[str, Any]]:
         findings = self.data.get("findings", [])
         if not isinstance(findings, list):
             return []
