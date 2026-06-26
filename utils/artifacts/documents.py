@@ -14,13 +14,16 @@ class MarkdownDocument:
         self.path: Path = path
         self.title: str = title
 
+    def load_body(self) -> str:
+        current = self.sanitize(read_text(self.path))
+        if current:
+            return self.extract_body(current)
 
-    def _build_document(self, body: str) -> str:
-        body = self.sanitize(body) or EMPTY_DOCUMENT_BODY
-        body = self.extract_body(body)
+        self.save_body(EMPTY_DOCUMENT_BODY)
+        return EMPTY_DOCUMENT_BODY
 
-        return f"{self.title}\n\n{body.strip()}\n"
-
+    def save_body(self, body: str) -> None:
+        write_text(self.path, self._build_document(body))
 
     def sanitize(self, content: str | None) -> str:
         content = (content or "").strip()
@@ -33,8 +36,7 @@ class MarkdownDocument:
                 content = "\n".join(lines[1:-1]).strip()
 
         return "" if content == MARKDOWN_FENCE else content
-
-
+    
     def extract_body(self, content: str) -> str:
         lines = content.splitlines()
         if lines and lines[0].strip().lower() == self.title.lower():
@@ -42,15 +44,14 @@ class MarkdownDocument:
 
         return content.strip()
 
+    def _build_document(self, body: str) -> str:
+        body = self.sanitize(body) or EMPTY_DOCUMENT_BODY
+        body = self.extract_body(body)
 
-    def load_body(self) -> str:
-        current = self.sanitize(read_text(self.path))
-        if current:
-            return self.extract_body(current)
-
-        self.save_body(EMPTY_DOCUMENT_BODY)
-        return EMPTY_DOCUMENT_BODY
+        return f"{self.title}\n\n{body.strip()}\n"
 
 
-    def save_body(self, body: str) -> None:
-        write_text(self.path, self._build_document(body))
+
+
+
+

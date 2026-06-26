@@ -1,11 +1,18 @@
 from typing import Any
 
-from config import ENRICHMENT_FILENAME, RESULT_FILENAME, THREAT_ACTOR_MESSAGES_FILENAME
+from config import (
+    ENRICHMENT_FILENAME,
+    RESULT_FILENAME,
+    STATIC_STRINGS_INFERENCE_RESULT_FILENAME,
+)
 from utils.io.files import load_json
 from utils.logger import Logger
 from utils.artifacts.documents import ENRICHMENT_TITLE, MarkdownDocument
-from utils.preprocessing import prepare_static_agent_sources, prepare_static_enrichment_sources
-from ai.generators.enrichment import EnrichmentGenerator
+from utils.preprocessing import (
+    prepare_static_enrichment_sources,
+    prepare_static_inference_sources,
+)
+from ai.inferences.enrichment import EnrichmentGenerator
 from ai.model_registry import ModelRegistry
 from ai.runner.base import BaseAIRunner
 from orchestrator.context import AnalysisContext
@@ -28,16 +35,6 @@ class EnrichmentAIRunner(BaseAIRunner):
         llm = model_registry.create_task_client("enrichment", profile_override=self.context.profile)
         self.generator: EnrichmentGenerator = EnrichmentGenerator(llm)
 
-
-    def _get_sources(self) -> list[tuple[str, Any]]:
-        result = load_json(self.context.output, RESULT_FILENAME) or {}
-        static_agent_data = load_json(self.context.output, THREAT_ACTOR_MESSAGES_FILENAME) or {}
-        return [
-            *prepare_static_enrichment_sources(result),
-            *prepare_static_agent_sources(static_agent_data),
-        ]
-    
-    
     def run(self) -> None:
         Logger.info("Running AI enrichment")
 
@@ -63,3 +60,17 @@ class EnrichmentAIRunner(BaseAIRunner):
             self.document.save_body(current_body)
 
         Logger.success("Enrichment finished")
+
+    def _get_sources(self) -> list[tuple[str, Any]]:
+        result = load_json(self.context.output, RESULT_FILENAME) or {}
+        static_inference_data = (
+            load_json(self.context.output, STATIC_STRINGS_INFERENCE_RESULT_FILENAME)
+            or {}
+        )
+        return [
+            *prepare_static_enrichment_sources(result),
+            *prepare_static_inference_sources(static_inference_data),
+        ]
+    
+    
+

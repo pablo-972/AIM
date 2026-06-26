@@ -10,6 +10,7 @@ REVERSING_MODES = [
     "disasm",
     "xrefs",
     "string-xrefs",
+    "import-xrefs",
     "callers",
     "callees",
     "full"
@@ -20,7 +21,7 @@ def validate_reversing_args(args: argparse.Namespace) -> None:
     selected_modes = set(args.reversing_modes)
 
     if "full" in selected_modes and len(selected_modes) > 1:
-        raise CLIValidationError("'full' cannot be combined with other static modes")
+        raise CLIValidationError("'full' cannot be combined with other reverse modes")
 
     if args.reversing_agent and selected_modes:
         raise CLIValidationError("--agent cannot be combined with manual reverse modes")
@@ -28,14 +29,20 @@ def validate_reversing_args(args: argparse.Namespace) -> None:
     if not args.reversing_agent and not selected_modes:
         raise CLIValidationError("Select at least one reverse mode or use --agent")
 
+    if args.reversing_max_targets < 1:
+        raise CLIValidationError("--max-targets must be greater than zero")
+
     if "disasm" in selected_modes and not args.function:
         raise CLIValidationError("reverse disasm requires --function")
 
-    if "xrefs" in selected_modes and not args.value:
-        raise CLIValidationError("reverse xrefs requires --value")
+    if "xrefs" in selected_modes and not args.function:
+        raise CLIValidationError("reverse xrefs requires --function")
     
     if "string-xrefs" in selected_modes and not args.value:
         raise CLIValidationError("reverse string-xrefs requires --value")
+
+    if "import-xrefs" in selected_modes and not args.value:
+        raise CLIValidationError("reverse import-xrefs requires --value")
 
     if "callers" in selected_modes and not args.function:
         raise CLIValidationError("reverse callers requires --function")
@@ -45,7 +52,7 @@ def validate_reversing_args(args: argparse.Namespace) -> None:
 
 
 def add_reversing_module(
-    subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
+    subparsers: argparse._SubParsersAction,
     common: argparse.ArgumentParser,
 ) -> None:
     parser = subparsers.add_parser(
@@ -78,9 +85,20 @@ def add_reversing_module(
     )
     parser.add_argument(
         "--profile",
-        choices=["local-reverse", "openai-reverse", "gemini-reverse"],
+        choices=[
+            "local-reversing",
+            "openai-reversing",
+            "gemini-reversing",
+        ],
         default=None,
         help="Model profile for assisted reversing",
+    )
+    parser.add_argument(
+        "--max-targets",
+        dest="reversing_max_targets",
+        type=int,
+        default=12,
+        help="Maximum number of unique targets executed by the reversing agent",
     )
 
     parser.set_defaults(

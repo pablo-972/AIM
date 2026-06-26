@@ -2,7 +2,6 @@ from typing import Any
 
 from ai.providers.base import BaseLLMProvider
 
-
 SYSTEM_PROMPT = """
 You are a Malware Analyst.
 
@@ -89,11 +88,9 @@ Output Rules:
 """
 
 
-
-class AIReport:
+class ReportGenerator:
     def __init__(self, llm: BaseLLMProvider) -> None:
         self.llm: BaseLLMProvider = llm
-
 
     def update_report(
         self,

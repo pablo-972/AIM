@@ -7,7 +7,6 @@ import requests
 from ai.providers.base import BaseLLMProvider, JsonSchema, LLMResponse, Message
 from exceptions import ProviderError
 
-
 REQUEST_TIMEOUT = 120
 DEFAULT_MAX_RETRIES = 4
 DEFAULT_MIN_REQUEST_INTERVAL = 5.0
@@ -36,12 +35,73 @@ class OpenAICompatibleProvider(BaseLLMProvider):
         self.max_retries: int = max_retries
         self.min_request_interval: float = min_request_interval
         self._last_request_at: float = 0.0
-
         self.headers: dict[str, str] = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
         }
 
+    def chat(self, system_prompt: str, user_prompt: str) -> LLMResponse:
+        return self._chat(
+            [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ]
+        )
+    
+    def chat_json(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        schema: JsonSchema,
+    ) -> LLMResponse:
+        return self._chat(
+            [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            schema=schema,
+        )
+
+    def chat_with_assistant(
+            self, 
+            system_prompt: str, 
+            assistant_prompt: str, 
+            user_prompt: str
+        ) -> LLMResponse:
+        return self._chat(
+            [
+                {"role": "system", "content": system_prompt},
+                {"role": "assistant", "content": assistant_prompt},
+                {"role": "user", "content": user_prompt},
+            ]
+        )
+
+    def chat_json_with_assistant(
+            self,
+            system_prompt: str,
+            assistant_prompt: str,
+            user_prompt: str,
+            schema: JsonSchema,
+        ) -> LLMResponse:
+        return self._chat(
+            [
+                {"role": "system", "content": system_prompt},
+                {"role": "assistant", "content": assistant_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            schema=schema,
+        )
+
+    def _chat(
+        self,
+        messages: list[Message],
+        schema: JsonSchema | None = None,
+    ) -> LLMResponse:
+        payload = self._build_payload(messages, schema)
+        data = self._post_with_retries(payload)
+        content = self._extract_content(data)
+
+        return LLMResponse(content=content)
 
     def _build_payload(
         self,
@@ -62,7 +122,6 @@ class OpenAICompatibleProvider(BaseLLMProvider):
             payload["response_format"] = {"type": "json_object"}
 
         return payload
-
 
     def _post_with_retries(self, payload: dict[str, Any]) -> dict[str, Any]:
         last_error: Exception | None = None
@@ -100,7 +159,6 @@ class OpenAICompatibleProvider(BaseLLMProvider):
 
         raise ProviderError(f"{self.provider_type} request failed after retries: {last_error}")
 
-
     def _wait_for_rate_limit(self) -> None:
         elapsed = time.monotonic() - self._last_request_at
         remaining = self.min_request_interval - elapsed
@@ -109,7 +167,6 @@ class OpenAICompatibleProvider(BaseLLMProvider):
             time.sleep(remaining)
 
         self._last_request_at = time.monotonic()
-
 
     def _sleep_before_retry(self, response: requests.Response | None, attempt: int) -> None:
         retry_after = None
@@ -124,7 +181,6 @@ class OpenAICompatibleProvider(BaseLLMProvider):
         delay = retry_after or min(60.0, (2 ** attempt) + random.uniform(0, 1))
         time.sleep(delay)
 
-
     def _extract_content(self, data: dict[str, Any]) -> str:
         try:
             content = data["choices"][0]["message"]["content"]
@@ -137,72 +193,10 @@ class OpenAICompatibleProvider(BaseLLMProvider):
         return content
     
 
-    def _chat(
-        self,
-        messages: list[Message],
-        schema: JsonSchema | None = None,
-    ) -> LLMResponse:
-        payload = self._build_payload(messages, schema)
-        data = self._post_with_retries(payload)
-        content = self._extract_content(data)
-
-        return LLMResponse(content=content)
 
 
 
 
 
-    def chat(self, system_prompt: str, user_prompt: str) -> LLMResponse:
-        return self._chat(
-            [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ]
-        )
-    
-
-    def chat_json(
-        self,
-        system_prompt: str,
-        user_prompt: str,
-        schema: JsonSchema,
-    ) -> LLMResponse:
-        return self._chat(
-            [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            schema=schema,
-        )
 
 
-    def chat_with_assistant(
-            self, 
-            system_prompt: str, 
-            assistant_prompt: str, 
-            user_prompt: str
-        ) -> LLMResponse:
-        return self._chat(
-            [
-                {"role": "system", "content": system_prompt},
-                {"role": "assistant", "content": assistant_prompt},
-                {"role": "user", "content": user_prompt},
-            ]
-        )
-
-
-    def chat_json_with_assistant(
-            self,
-            system_prompt: str,
-            assistant_prompt: str,
-            user_prompt: str,
-            schema: JsonSchema,
-        ) -> LLMResponse:
-        return self._chat(
-            [
-                {"role": "system", "content": system_prompt},
-                {"role": "assistant", "content": assistant_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            schema=schema,
-        )

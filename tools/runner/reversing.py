@@ -13,6 +13,13 @@ class ReversingToolRunner(BaseToolRunner):
     def __init__(self, context: AnalysisContext) -> None:
         super().__init__(context)
 
+    def run_reversing(self) -> dict[str, dict[str, Any]]:
+        results: dict[str, dict[str, Any]] = {}
+
+        for mode in self._resolve_modes():
+            results[mode] = self._execute_tool(mode)
+
+        return results
 
     def _resolve_modes(self) -> list[str]:
         modes = list(self.context.reversing_modes)
@@ -25,22 +32,23 @@ class ReversingToolRunner(BaseToolRunner):
 
         return modes
 
-
     def _build_tool_kwargs(self, mode: str) -> dict[str, Any]:
         if mode == "disasm":
             return {"function": self.context.function}
 
         if mode == "xrefs":
-            return {"value": self.context.value}
+            return {"function": self.context.function}
 
         if mode == "string-xrefs":
             return {"string_value": self.context.value}
+
+        if mode == "import-xrefs":
+            return {"import_name": self.context.value}
 
         if mode in {"callers", "callees"}:
             return {"function": self.context.function}
 
         return {}
-
 
     def _execute_tool(self, mode: str) -> dict[str, Any]:
         Logger.info(f"Executing reverse tool: {mode}")
@@ -55,40 +63,18 @@ class ReversingToolRunner(BaseToolRunner):
             return ToolResult.failed(exc).to_dict()
 
 
-    def run_reversing(self) -> dict[str, dict[str, Any]]:
-        results: dict[str, dict[str, Any]] = {}
-
-        for mode in self._resolve_modes():
-            results[mode] = self._execute_tool(mode)
-
-        return results
-
-
 class ReversingAgentToolRunner:
     def __init__(self, context: AnalysisContext) -> None:
         self.context: AnalysisContext = context
 
     def execute(
-            self, 
-            tool_name: str, 
-            parameters: dict[str, Any] | None = None, 
-            context: dict[str, Any] | None = None
-        ) -> dict[str, Any]:
-        tool = REVERSING_AGENT_TOOLS.get(tool_name)
-        if tool is None:
-            return {
-                "success": False,
-                "error": f"Unknown reversing agent tool: {tool_name}",
-            }
-
-        try:
-            return {
-                "success": True,
-                "data": tool(str(self.context.sample), **(parameters or {})),
-            }
-        except Exception as exc:
-            Logger.error(f"Reversing agent tool '{tool_name}' failed: {exc}")
-            return {
-                "success": False,
-                "error": str(exc),
-            }
+        self,
+        tool_name: str,
+        parameters: dict[str, Any] | None = None,
+        context: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        tool = REVERSING_AGENT_TOOLS[tool_name]
+        return {
+            "success": True,
+            "data": tool(str(self.context.sample), **(parameters or {})),
+        }

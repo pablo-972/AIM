@@ -5,8 +5,12 @@ from config import get_env
 from exceptions import ToolError
 from tools.static.analyzers.hash import calculate_sha256
 
-
 VT_TIMEOUT = 30
+
+
+def get_vt_data(sample: str) -> dict[str, Any]:
+    sample_hash = calculate_sha256(sample)
+    return _request_vt(sample_hash)
 
 
 def _request_vt(sample_hash: str) -> dict[str, Any]:
@@ -30,6 +34,4 @@ def _request_vt(sample_hash: str) -> dict[str, Any]:
     raise ToolError(f"VirusTotal returned HTTP {response.status_code}: {response.text[:300]}")
 
 
-def get_vt_data(sample: str) -> dict[str, Any]:
-    sample_hash = calculate_sha256(sample)
-    return _request_vt(sample_hash)
+

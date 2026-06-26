@@ -9,9 +9,7 @@ from tools.static.analyzers.pe import analyze_pe
 from tools.static.analyzers.strings import analyze_strings
 from tools.static.analyzers.virustotal import get_vt_data
 
-
 ManualTool = Callable[..., Any]
-
 
 STATIC_MANUAL_TOOLS: dict[str, ManualTool] = {
     "file": analyze_file,

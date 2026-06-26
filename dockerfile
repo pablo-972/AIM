@@ -15,6 +15,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
+# Install radare2
+RUN git clone https://github.com/radareorg/radare2 /opt/radare2 \
+    && /opt/radare2/sys/install.sh 
+
+# Install r2pipe
+RUN pip3 install r2pipe
+
+# # Install Ollama 
+# RUN curl -fsSL https://ollama.com/install.sh | sh
 
 # Create working directory
 WORKDIR /app
@@ -26,18 +35,15 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 # Copy project files
 COPY . .
 
-# Install radare2
-RUN git clone https://github.com/radareorg/radare2 /opt/radare2 \
-    && /opt/radare2/sys/install.sh 
+# Create unprivileged user and writable dirs
+RUN groupadd -g 1000 tux \
+    && useradd -m -u 1000 -g tux -s /bin/bash tux \
+    && mkdir -p /app/output /app/logs /home/tux \
+    && chown -R tux:tux /app/output /app/logs /home/tux \
+    && chmod +x /app/entrypoint.sh 
 
-# Install r2pipe
-RUN pip3 install r2pipe
-
-# Install Ollama 
-RUN curl -fsSL https://ollama.com/install.sh | sh
-
-# Make entrypoint executable
-RUN chmod +x entrypoint.sh
+# Run as non-root
+USER tux
 
 # Entrypoint
 ENTRYPOINT ["/app/entrypoint.sh"]

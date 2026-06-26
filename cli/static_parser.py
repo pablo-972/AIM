@@ -2,7 +2,6 @@ import argparse
 
 from exceptions import CLIValidationError
 
-
 STATIC_MODES = [
     "file",
     "hash",
@@ -18,18 +17,21 @@ STATIC_MODES = [
 def validate_static_args(args: argparse.Namespace) -> None:
     selected_modes = set(args.static_modes)
 
+    if len(selected_modes) < 1:
+        raise CLIValidationError("Select at least one static mode with --mode")
+
     if "full" in selected_modes and len(selected_modes) > 1:
         raise CLIValidationError("'full' cannot be combined with other static modes")
 
-    if args.static_agent and not {"strings", "full"} & selected_modes:
-        raise CLIValidationError("--agent is only valid with 'strings' or 'full'")
+    if args.static_ai and not {"strings", "full"} & selected_modes:
+        raise CLIValidationError("--ai is only valid with 'strings' or 'full'")
 
-    if args.profile != "local-static" and not args.static_agent:
-        raise CLIValidationError("--profile can only be used together with --agent")
+    if args.profile != "local-static" and not args.static_ai:
+        raise CLIValidationError("--profile can only be used together with --ai")
 
 
 def add_static_module(
-    subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
+    subparsers: argparse._SubParsersAction,
     common: argparse.ArgumentParser,
 ) -> None:
     parser = subparsers.add_parser(
@@ -47,8 +49,8 @@ def add_static_module(
         help="Static analysis mode"
     )
     parser.add_argument(
-        "--agent",
-        dest="static_agent",
+        "--ai",
+        dest="static_ai",
         action="store_true",
         help="Run AI analysis for extracted strings",
     )
@@ -56,7 +58,7 @@ def add_static_module(
         "--profile",
         choices=["local-static", "openai-static", "gemini-static"],
         default="local-static",
-        help="Model profile to use with --agent",
+        help="Model profile to use with --ai",
     )
 
     parser.set_defaults(

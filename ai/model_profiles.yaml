@@ -119,12 +119,12 @@ profiles:
     max_tokens: 12000
 
 agents:
-  static:
-    default_profile: local-static
   reversing:
-  default_profile: local-reverse
+    default_profile: local-reversing
 
 tasks:
+  static:
+    default_profile: local-static
   report:
     default_profile: local-report
   enrichment:

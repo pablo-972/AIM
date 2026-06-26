@@ -28,7 +28,6 @@ class JsonBuilder:
         if not isinstance(self.data.get("phases"), dict):
             self.data["phases"] = {}
 
-
     def add_phase(self, phase_name: str, tools: dict[str, Any], status: str = "completed") -> None:
         phases = self.data["phases"]
         if not isinstance(phases, dict):
@@ -49,11 +48,9 @@ class JsonBuilder:
         phase["tools"] = existing_tools
         phases[phase_name] = phase
 
-
     def save_phase(self, phase_name: str, tools: dict[str, Any], status: str = "completed") -> None:
         self.add_phase(phase_name, tools, status)
         self.build()
-
 
     def build(self) -> None:
         save_json(self.output_path, RESULT_FILENAME, self.data)
