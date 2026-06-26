@@ -1,6 +1,24 @@
 from typing import Any
 
 
+def get_static_strings_from_tool_results(results: dict[str, Any]) -> list[str]:
+    strings_result = results.get("strings")
+    if not isinstance(strings_result, dict):
+        return []
+
+    strings_data = strings_result.get("data")
+    if not isinstance(strings_data, dict):
+        return []
+
+    strings = strings_data.get("parsed_strings")
+    if isinstance(strings, list) and all(
+        isinstance(item, str) for item in strings
+    ):
+        return strings
+
+    return []
+
+
 class JsonExtractor:
     def __init__(self, data: dict[str, Any] | None) -> None:
         self.data: dict[str, Any] = data if isinstance(data, dict) else {}

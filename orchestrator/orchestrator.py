@@ -8,6 +8,7 @@ from config import MODEL_PROFILES_PATH
 from utils.logger import Logger 
 from utils.io.files import load_yaml
 from utils.artifacts.builder import JsonBuilder
+from utils.artifacts.extractor import get_static_strings_from_tool_results
 from orchestrator.context import AnalysisContext
 from tools.runner.static import StaticToolRunner
 from tools.runner.reversing import ReversingToolRunner
@@ -40,7 +41,6 @@ class Orchestrator:
             raise ValueError(f"Unknown phase: {self.context.phase}")
         
         handler()
-
         Logger.success("Analysis finished.")
 
     def run_static_phase(
@@ -51,7 +51,7 @@ class Orchestrator:
         context = context or self.context
         Logger.info("Running static phase")
         results = self._run_static_tools(context, persist_json)
-        self._run_static_ai(context, results)
+        self._run_static_strings_inference(context, results)
         Logger.success("Static phase finished")
 
 
@@ -142,27 +142,6 @@ class Orchestrator:
             "full": self.run_full_phase,
         }
     
-    def _get_strings_for_static_ai(
-        self,
-        results: dict[str, Any],
-    ) -> list[str]:
-        strings_result = results.get("strings")
-        if not isinstance(strings_result, dict):
-            return []
-
-        strings_data = strings_result.get("data")
-        if not isinstance(strings_data, dict):
-            return []
-
-        strings = strings_data.get("parsed_strings")
-
-        if isinstance(strings, list) and all(
-            isinstance(item, str) for item in strings
-        ):
-            return strings
-
-        return []
-
     def _get_json_builder(self) -> JsonBuilder:
         if self.json_builder is None:
             self.json_builder = JsonBuilder(
@@ -224,7 +203,7 @@ class Orchestrator:
         )
         return self.reversing_tools_results
 
-    def _run_static_ai(
+    def _run_static_strings_inference(
         self,
         context: AnalysisContext,
         results: dict[str, Any],
@@ -232,7 +211,7 @@ class Orchestrator:
         if not context.static_ai:
             return
 
-        strings = self._get_strings_for_static_ai(results)
+        strings = get_static_strings_from_tool_results(results)
         if not strings:
             Logger.warning("No parsed strings found. Skipping static AI inference.")
             return
