@@ -1,5 +1,4 @@
 from cli.base_parser import build_parser
-from orchestrator.orchestrator import Orchestrator
 
 
 def print_banner() -> None:
@@ -20,6 +19,7 @@ def main() -> None:
     if hasattr(args, "validator") and args.validator is not None:
         args.validator(args)
 
+    from orchestrator.orchestrator import Orchestrator
     orchestrator = Orchestrator(args)
     orchestrator.run()
 

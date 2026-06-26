@@ -28,7 +28,7 @@ class ReversingToolRunner(BaseToolRunner):
 
         unknown_modes = [mode for mode in modes if mode not in REVERSING_MANUAL_TOOLS]
         if unknown_modes:
-            raise ValueError(f"Unknown reverse mode(s): {', '.join(unknown_modes)}")
+            raise ValueError(f"Unknown reversing mode(s): {', '.join(unknown_modes)}")
 
         return modes
 
@@ -51,7 +51,7 @@ class ReversingToolRunner(BaseToolRunner):
         return {}
 
     def _execute_tool(self, mode: str) -> dict[str, Any]:
-        Logger.info(f"Executing reverse tool: {mode}")
+        Logger.info(f"Executing reversing tool: {mode}")
         tool = REVERSING_MANUAL_TOOLS[mode]
 
         try:
@@ -59,7 +59,7 @@ class ReversingToolRunner(BaseToolRunner):
             data = tool(str(self.sample), **kwargs)
             return ToolResult.ok(data).to_dict()
         except Exception as exc:
-            Logger.error(f"Reverse tool '{mode}' failed: {exc}")
+            Logger.error(f"Reversing tool '{mode}' failed: {exc}")
             return ToolResult.failed(exc).to_dict()
 
 

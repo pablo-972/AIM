@@ -21,34 +21,34 @@ def validate_reversing_args(args: argparse.Namespace) -> None:
     selected_modes = set(args.reversing_modes)
 
     if "full" in selected_modes and len(selected_modes) > 1:
-        raise CLIValidationError("'full' cannot be combined with other reverse modes")
+        raise CLIValidationError("'full' cannot be combined with other reversing modes")
 
     if args.reversing_agent and selected_modes:
-        raise CLIValidationError("--agent cannot be combined with manual reverse modes")
+        raise CLIValidationError("--agent cannot be combined with manual reversing modes")
 
     if not args.reversing_agent and not selected_modes:
-        raise CLIValidationError("Select at least one reverse mode or use --agent")
+        raise CLIValidationError("Select at least one reversing mode or use --agent")
 
     if args.reversing_max_targets < 1:
         raise CLIValidationError("--max-targets must be greater than zero")
 
     if "disasm" in selected_modes and not args.function:
-        raise CLIValidationError("reverse disasm requires --function")
+        raise CLIValidationError("reversing disasm requires --function")
 
     if "xrefs" in selected_modes and not args.function:
-        raise CLIValidationError("reverse xrefs requires --function")
+        raise CLIValidationError("reversing xrefs requires --function")
     
     if "string-xrefs" in selected_modes and not args.value:
-        raise CLIValidationError("reverse string-xrefs requires --value")
+        raise CLIValidationError("reversing string-xrefs requires --value")
 
     if "import-xrefs" in selected_modes and not args.value:
-        raise CLIValidationError("reverse import-xrefs requires --value")
+        raise CLIValidationError("reversing import-xrefs requires --value")
 
     if "callers" in selected_modes and not args.function:
-        raise CLIValidationError("reverse callers requires --function")
+        raise CLIValidationError("reversing callers requires --function")
 
     if "callees" in selected_modes and not args.function:
-        raise CLIValidationError("reverse callees requires --function")
+        raise CLIValidationError("reversing callees requires --function")
 
 
 def add_reversing_module(

@@ -122,7 +122,7 @@ The output is stored in `reversing_agent.json`:
 
 ```json
 {
-  "agent": "reverse_agent",
+  "agent": "reversing_agent",
   "status": "completed",
   "steps": [],
   "findings": [],

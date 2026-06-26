@@ -32,7 +32,7 @@ class ReversingAgentRunner(BaseAIRunner):
         self.memory = TraceMemory(
             output_dir=self.context.output,
             filename=REVERSING_AGENT_RESULT_FILENAME,
-            agent_name="reverse_agent",
+            agent_name="reversing_agent",
         )
         self.targets = ReversingTargetQueue(
             available_tools=self.available_tools,
