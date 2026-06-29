@@ -25,10 +25,7 @@ def save_json(path: str | Path, filename: str, data: dict[str, Any]) -> None:
     os.replace(tmp, target)
 
 
-def load_json(
-    path: str | Path,
-    filename: str | Path,
-) -> dict[str, Any] | None:
+def load_json(path: str | Path, filename: str | Path) -> dict[str, Any] | None:
     target = Path(path) / filename
     if not target.exists():
         return None
@@ -43,10 +40,7 @@ def load_json(
         raise FileReadError(f"Invalid JSON file: {target}") from exc
 
 
-def load_yaml(
-    path: str | Path,
-    filename: str | Path,
-) -> dict[str, Any] | None:
+def load_yaml(path: str | Path, filename: str | Path) -> dict[str, Any] | None:
     target = Path(path) / filename if path else Path(filename)
     if not target.exists():
         return None
