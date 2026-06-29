@@ -27,9 +27,7 @@ class ToolRunner(Protocol):
 class Orchestrator:
     def __init__(self, args: argparse.Namespace) -> None:
         self.context: AnalysisContext = AnalysisContext.from_args(args)
-        self.json_builder: JsonBuilder | None = None
-        self.static_tools_results: dict[str, Any] = {}
-        self.reversing_tools_results: dict[str, Any] = {}
+        self.json_builders: dict[str, JsonBuilder] = {}
         self._model_registry: ModelRegistry | None = None
     
     def run(self) -> None:
@@ -142,15 +140,18 @@ class Orchestrator:
             "full": self.run_full_phase,
         }
     
-    def _get_json_builder(self) -> JsonBuilder:
-        if self.json_builder is None:
-            self.json_builder = JsonBuilder(
-                self.context.output, 
-                self.context.sample, 
-                self.context.sample_sha256
+    def _get_json_builder(self, context: AnalysisContext) -> JsonBuilder:
+        output_key = str(context.output)
+        builder = self.json_builders.get(output_key)
+        if builder is None:
+            builder = JsonBuilder(
+                context.output,
+                context.sample,
+                context.sample_sha256,
             )
+            self.json_builders[output_key] = builder
 
-        return self.json_builder
+        return builder
 
     def _get_model_registry(self) -> ModelRegistry:
         if self._model_registry is None:
@@ -170,7 +171,7 @@ class Orchestrator:
         results = runner.run()
 
         if context.output_format == "json" or persist_json:
-            self._get_json_builder().save_phase(phase_name, results)
+            self._get_json_builder(context).save_phase(phase_name, results)
 
         if context.output_format == "text":
             print(json.dumps(results, indent=4))
@@ -182,26 +183,24 @@ class Orchestrator:
         context: AnalysisContext,
         persist_json: bool = False,
     ) -> dict[str, Any]:
-        self.static_tools_results = self._run_tools(
+        return self._run_tools(
             "static",
             StaticToolRunner(context),
             context,
             persist_json,
         )
-        return self.static_tools_results
 
     def _run_reversing_tools(
         self,
         context: AnalysisContext,
         persist_json: bool = False,
     ) -> dict[str, Any]:
-        self.reversing_tools_results = self._run_tools(
+        return self._run_tools(
             "reversing",
             ReversingToolRunner(context),
             context,
             persist_json,
         )
-        return self.reversing_tools_results
 
     def _run_static_strings_inference(
         self,

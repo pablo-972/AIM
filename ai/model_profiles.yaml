@@ -28,28 +28,32 @@ profiles:
     provider: ollama
     model: gemma4:e2b
     temperature: 0.2
-    max_tokens: 4096
+    num_predict: -1
+    num_ctx: 2048
     response_format: json
 
   local-enrichment:
     provider: ollama
     model: llama3.1:8b
     temperature: 0.2
-    max_tokens: 4096
+    num_predict: -1
+    num_ctx: 2048
     response_format: text
 
   local-reversing:
     provider: ollama
     model: gemma4:e2b
     temperature: 0.1
-    max_tokens: 4096
+    num_predict: -1
+    num_ctx: 2048
     response_format: json
 
   local-report:
     provider: ollama
     model: llama3.1:8b
     temperature: 0.1
-    max_tokens: 4096
+    num_predict: -1
+    num_ctx: 2048
     response_format: text
 
   openai-static:

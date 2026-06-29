@@ -4,9 +4,10 @@ from config import (
     ENRICHMENT_FILENAME,
     REPORT_FILENAME,
     RESULT_FILENAME,
+    REVERSING_AGENT_RESULT_FILENAME,
     STATIC_STRINGS_INFERENCE_RESULT_FILENAME,
 )
-from utils.artifacts.extractor import JsonExtractor
+from utils.artifacts.extractor import JsonExtractor, batched_findings
 from utils.artifacts.documents import (
     EMPTY_DOCUMENT_BODY,
     ENRICHMENT_TITLE,
@@ -99,8 +100,8 @@ class ReportAIRunner(BaseAIRunner):
             return []
 
         sources: list[tuple[str, Any]] = []
-        for tool_name in extractor.get_static_tools():
-            tool_data = extractor.get_tool_data(tool_name)
+        for tool_name in extractor.get_phase_tools("static"):
+            tool_data = extractor.get_phase_tool_data("static", tool_name)
             if tool_data is None:
                 continue
 
@@ -133,6 +134,22 @@ class ReportAIRunner(BaseAIRunner):
             for index, finding in enumerate(findings, start=1)
         ]
 
+    def _get_reversing_agent_sources(self) -> list[tuple[str, Any]]:
+        data = load_json(self.context.output, REVERSING_AGENT_RESULT_FILENAME)
+        findings = JsonExtractor(data).get_findings()
+        batches = batched_findings(findings, batch_size=2)
+
+        return [
+            (
+                f"reversing_agent.findings.{index}",
+                {
+                    "findings": batch,
+                    "findings_count": len(batch),
+                },
+            )
+            for index, batch in enumerate(batches, start=1)
+        ]
+
     def _get_enrichment_sources(self) -> list[tuple[str, Any]]:
         content = self.enrichment_document.sanitize(
             read_text(self.enrichment_document.path)
@@ -150,5 +167,6 @@ class ReportAIRunner(BaseAIRunner):
         return [
             *self._get_static_sources(),
             *self._get_static_inference_sources(),
+            *self._get_reversing_agent_sources(),
             *self._get_enrichment_sources(),
         ]

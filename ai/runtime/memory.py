@@ -3,6 +3,7 @@ from typing import Any
 
 from utils.io.files import save_json
 
+DEFAULT_TRACE_FLUSH_INTERVAL = 10
 NO_TOOL_ACTIONS = {"none", "finish", "seed_queue"}
 COMPACT_OUTPUT_KEYS = {
     "success",
@@ -37,9 +38,12 @@ class TraceMemory:
         output_dir: str | Path,
         filename: str,
         agent_name: str,
+        flush_interval: int = DEFAULT_TRACE_FLUSH_INTERVAL,
     ) -> None:
         self.output_dir = output_dir
         self.filename = filename
+        self.flush_interval = max(1, flush_interval)
+        self._pending_events = 0
         self.data: dict[str, Any] = {
             "agent": agent_name,
             "status": "running",
@@ -106,11 +110,11 @@ class TraceMemory:
                 }
             )
 
-        self.flush()
+        self._mark_dirty()
 
     def close(self, status: str = "completed") -> None:
         self.data["status"] = status
-        self.flush()
+        self.flush(force=True)
 
     def record_queue_event(
         self,
@@ -129,7 +133,7 @@ class TraceMemory:
                 "queue_size": queue_size,
             }
         )
-        self.flush()
+        self._mark_dirty()
 
     def fail(self, error: str) -> None:
         self.data["status"] = "error"
@@ -139,10 +143,18 @@ class TraceMemory:
                 "message": error,
             }
         )
-        self.flush()
+        self.flush(force=True)
 
-    def flush(self) -> None:
+    def flush(self, force: bool = False) -> None:
+        if not force and self._pending_events < self.flush_interval:
+            return
+
         save_json(self.output_dir, self.filename, self.data)
+        self._pending_events = 0
+
+    def _mark_dirty(self) -> None:
+        self._pending_events += 1
+        self.flush()
 
     def _normalize_decision(self, decision: dict[str, Any]) -> dict[str, Any]:
         confidence = decision.get("confidence")

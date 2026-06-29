@@ -52,6 +52,19 @@ class ReversingTargetQueue:
         self,
         reconnaissance: dict[str, Any],
     ) -> list[dict[str, Any]]:
+        suspicious_imports = self._get_reconnaissance_items(
+            reconnaissance,
+            "suspicious_imports",
+        )
+        large_functions = self._get_reconnaissance_items(
+            reconnaissance,
+            "large_functions",
+        )
+        interesting_strings = self._get_reconnaissance_items(
+            reconnaissance,
+            "interesting_strings",
+        )
+
         targets = [
             {
                 "tool": "import_xrefs",
@@ -59,7 +72,7 @@ class ReversingTargetQueue:
                 "priority": 90,
                 "reason": "Suspicious import discovered during reconnaissance.",
             }
-            for item in reconnaissance["suspicious_imports"][:5]
+            for item in suspicious_imports[:5]
             if item.get("name")
         ]
         targets.extend(
@@ -72,7 +85,7 @@ class ReversingTargetQueue:
                 "priority": 80,
                 "reason": "Large function discovered during reconnaissance.",
             }
-            for item in reconnaissance["large_functions"][:3]
+            for item in large_functions[:3]
             if item.get("name")
         )
         targets.extend(
@@ -82,10 +95,25 @@ class ReversingTargetQueue:
                 "priority": 70,
                 "reason": "Interesting string discovered during reconnaissance.",
             }
-            for item in reconnaissance["interesting_strings"][:3]
+            for item in interesting_strings[:3]
             if item.get("value")
         )
         return targets[:6]
+
+    def _get_reconnaissance_items(
+        self,
+        reconnaissance: dict[str, Any],
+        key: str,
+    ) -> list[dict[str, Any]]:
+        items = reconnaissance.get(key, [])
+        if not isinstance(items, list):
+            return []
+
+        return [
+            item
+            for item in items
+            if isinstance(item, dict)
+        ]
 
     def _normalize(self, target: Any) -> dict[str, Any] | None:
         if not isinstance(target, dict):
