@@ -19,7 +19,6 @@ class OpenAICompatibleProvider(BaseLLMProvider):
         api_key: str,
         model: str,
         temperature: float = 0.2,
-        max_tokens: int = 4096,
         response_format: str = "text",
         provider_type: str = "openai",
         max_retries: int = DEFAULT_MAX_RETRIES,
@@ -29,7 +28,6 @@ class OpenAICompatibleProvider(BaseLLMProvider):
         self.api_key: str = api_key
         self.model: str = model
         self.temperature: float = temperature
-        self.max_tokens: int = max_tokens
         self.response_format: str = response_format
         self.provider_type: str = provider_type
         self.max_retries: int = max_retries
@@ -113,7 +111,6 @@ class OpenAICompatibleProvider(BaseLLMProvider):
             "messages": messages,
             "stream": False,
             "temperature": self.temperature,
-            "max_tokens": self.max_tokens,
         }
 
         if schema is not None:

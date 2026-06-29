@@ -15,15 +15,11 @@ class OllamaProvider(BaseLLMProvider):
         base_url: str, 
         model: str, 
         temperature: float = 0.2, 
-        num_predict: int = -1,
-        num_ctx: int = 2048,
         response_format: str = "text"
         ) -> None:
         self.base_url: str = base_url.rstrip("/")
         self.model: str = model
         self.temperature: float = temperature
-        self.num_predict: int = num_predict
-        self.num_ctx: int = num_ctx
         self.response_format: str = response_format
 
     def chat(self, system_prompt: str, user_prompt: str) -> LLMResponse:
@@ -89,8 +85,6 @@ class OllamaProvider(BaseLLMProvider):
             "stream": False,
             "options": {
                 "temperature": self.temperature,
-                "num_predict": self.num_predict,
-                "num_ctx": self.num_ctx,
             },
         }
 

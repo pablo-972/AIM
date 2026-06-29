@@ -50,28 +50,19 @@ class ProviderFactory:
 
         if provider_type == "ollama":
             base_url = resolve_value(provider_config.get("base_url"))
-            num_predict = profile_config.get("num_predict", -1)
-            num_ctx = profile_config.get("num_ctx", 2048)
 
             if not isinstance(base_url, str) or not base_url:
                 raise ConfigurationError("Missing base_url for Ollama provider")
-            if not isinstance(num_predict, int):
-                raise ConfigurationError("Profile num_predict must be an integer")
-            if not isinstance(num_ctx, int):
-                raise ConfigurationError("Profile num_ctx must be an integer")
 
             return OllamaProvider(
                 base_url=base_url,
                 model=model,
                 temperature=temperature,
-                num_predict=num_predict,
-                num_ctx=num_ctx,
                 response_format=response_format,
             )
 
         base_url = resolve_value(provider_config.get("base_url"))
         api_key = resolve_value(provider_config.get("api_key"))
-        max_tokens = profile_config.get("max_tokens", 4096)
 
         if not isinstance(base_url, str) or not base_url:
             raise ConfigurationError(f"Missing base_url for provider: {provider_type}")
@@ -79,15 +70,11 @@ class ProviderFactory:
         if not isinstance(api_key, str) or not api_key:
             raise ConfigurationError(f"Missing API key for provider: {provider_type}")
 
-        if not isinstance(max_tokens, int):
-            raise ConfigurationError("Profile max_tokens must be an integer")
-
         return OpenAICompatibleProvider(
             base_url=base_url,
             api_key=api_key,
             model=model,
             temperature=temperature,
-            max_tokens=max_tokens,
             response_format=response_format,
             provider_type=provider_type,
         )

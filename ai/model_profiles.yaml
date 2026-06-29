@@ -28,32 +28,24 @@ profiles:
     provider: ollama
     model: gemma4:e2b
     temperature: 0.2
-    num_predict: -1
-    num_ctx: 2048
     response_format: json
 
   local-enrichment:
     provider: ollama
     model: llama3.1:8b
     temperature: 0.2
-    num_predict: -1
-    num_ctx: 2048
     response_format: text
 
   local-reversing:
     provider: ollama
     model: gemma4:e2b
     temperature: 0.1
-    num_predict: -1
-    num_ctx: 2048
     response_format: json
 
   local-report:
     provider: ollama
     model: llama3.1:8b
     temperature: 0.1
-    num_predict: -1
-    num_ctx: 2048
     response_format: text
 
   openai-static:
@@ -62,7 +54,6 @@ profiles:
       env: OPENAI_STATIC_MODEL
       default: ""
     temperature: 0.1
-    max_tokens: 4096
 
   openai-enrichment:
     provider: openai
@@ -70,7 +61,6 @@ profiles:
       env: OPENAI_ENRICHMENT_MODEL
       default: ""
     temperature: 0.3
-    max_tokens: 12000
 
   openai-reversing:
     provider: openai
@@ -78,7 +68,6 @@ profiles:
       env: OPENAI_REVERSING_MODEL
       default: ""
     temperature: 0.1
-    max_tokens: 4096
     response_format: json
 
   openai-report:
@@ -87,7 +76,6 @@ profiles:
       env: OPENAI_REPORT_MODEL
       default: ""
     temperature: 0.3
-    max_tokens: 12000
 
   gemini-static:
     provider: gemini
@@ -95,7 +83,6 @@ profiles:
       env: GEMINI_STATIC_MODEL
       default: "gemini-2.5-flash"
     temperature: 0.1
-    max_tokens: 12000
 
   gemini-enrichment:
     provider: gemini
@@ -103,7 +90,6 @@ profiles:
       env: GEMINI_ENRICHMENT_MODEL
       default: "gemini-2.5-flash"
     temperature: 0.1
-    max_tokens: 12000
 
   gemini-reversing:
     provider: gemini
@@ -111,7 +97,6 @@ profiles:
       env: GEMINI_REVERSING_MODEL
       default: "gemini-2.5-flash"
     temperature: 0.1
-    max_tokens: 4096
     response_format: json
 
   gemini-report:
@@ -120,7 +105,6 @@ profiles:
       env: GEMINI_REPORT_MODEL
       default: "gemini-2.5-flash"
     temperature: 0.1
-    max_tokens: 12000
 
 agents:
   reversing:
