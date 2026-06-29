@@ -45,8 +45,13 @@ For Docker:
 
 ```bash
 docker compose up -d --build
-docker exec -it aim bash
+docker exec -it aim sh
 ```
+
+Docker Compose starts two separate containers:
+
+- `aim`: Python runtime with AIM, radare2, `r2pipe`, and static/reversing tools.
+- `ollama`: CUDA/NVIDIA-based Ollama runtime exposed on `localhost:11434`.
 
 Copy `.env.example` to `.env`, then configure the providers you use. Model
 profiles are defined in `ai/model_profiles.yaml`.
