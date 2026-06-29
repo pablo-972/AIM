@@ -89,16 +89,12 @@ class StaticInferenceRunner(BaseAIRunner):
         if not isinstance(raw_finding, dict):
             return None
 
-        text = "\n".join(strings_chunk).strip()
-        if not text:
-            return None
-
         category = raw_finding.get("category")
         tone = raw_finding.get("tone")
         return {
             "type": "threat_actor_message",
             "confidence": decision.get("confidence", "low"),
-            "text": text,
+            "text": strings_chunk,
             "category": category if isinstance(category, str) and category else "unknown",
             "tone": tone if isinstance(tone, str) and tone else "unknown",
         }
