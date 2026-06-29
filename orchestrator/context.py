@@ -32,7 +32,6 @@ class AnalysisContext:
 
         if not sample.exists():
             raise CLIValidationError(f"Sample does not exist: {sample}")
-
         if not sample.is_file():
             raise CLIValidationError(f"Sample is not a file: {sample}")
 

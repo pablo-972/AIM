@@ -3,7 +3,7 @@ from typing import Any
 
 from utils.io.files import save_json
 
-DEFAULT_TRACE_FLUSH_INTERVAL = 10
+DEFAULT_TRACE_FLUSH_INTERVAL = 5
 NO_TOOL_ACTIONS = {"none", "finish", "seed_queue"}
 COMPACT_OUTPUT_KEYS = {
     "success",
@@ -53,6 +53,7 @@ class TraceMemory:
             "queue": [],
             "errors": [],
         }
+        self.flush(force=True)
 
     def record(
         self,

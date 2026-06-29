@@ -32,7 +32,7 @@ def add_full_module(
     parser = subparsers.add_parser(
         "full",
         parents=[common],
-        help="Run the complete static, enrichment, and reversing pipeline",
+        help="Run the complete static, enrichment, reversing, and report pipeline",
     )
 
     parser.add_argument(

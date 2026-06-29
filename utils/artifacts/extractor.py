@@ -110,6 +110,6 @@ class JsonExtractor:
         return [
             finding
             for finding in self.get_findings("threat_actor_message")
-            if isinstance(finding.get("text"), str)
+            if isinstance(finding.get("text"), list)
             and finding.get("text")
         ]

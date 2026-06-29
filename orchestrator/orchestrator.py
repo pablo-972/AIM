@@ -129,6 +129,14 @@ class Orchestrator:
         )
         self.run_reversing_phase(agent_reversing_context)
 
+        report_context = replace(
+            self.context,
+            phase="report",
+            func="run_report",
+            profile=None,
+        )
+        self.run_report_phase(report_context)
+
         Logger.success("Full pipeline finished")
     
     def _get_phase_handlers(self) -> dict[str, Callable[[], None]]:

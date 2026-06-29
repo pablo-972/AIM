@@ -167,6 +167,6 @@ class ReportAIRunner(BaseAIRunner):
         return [
             *self._get_static_sources(),
             *self._get_static_inference_sources(),
-            *self._get_reversing_agent_sources(),
             *self._get_enrichment_sources(),
+            *self._get_reversing_agent_sources(),
         ]
