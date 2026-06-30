@@ -41,7 +41,7 @@ class ReversingAgentRunner(BaseAIRunner):
         self.postprocessor = ReversingPostprocessor(self.available_tools)
 
     def run(self) -> None:
-        Logger.info("Running AI reversing agent")
+        
 
         try:
             agent = self._create_agent()
@@ -75,7 +75,7 @@ class ReversingAgentRunner(BaseAIRunner):
             ReversingExplorationLoop(
                 max_targets=self.context.reversing_max_targets,
                 targets=self.targets,
-                tool_runner=ReversingAgentToolRunner(self.context),
+                tool_runner=ReversingAgentToolRunner(self.context.sample),
                 step_executor=AgentStepExecutor(self.available_tools),
                 evaluator=evaluator,
                 postprocessor=self.postprocessor,
@@ -90,7 +90,7 @@ class ReversingAgentRunner(BaseAIRunner):
         else:
             self.memory.close()
 
-        Logger.success("Reversing agent finished")
+        
 
     def _create_agent(self) -> ReversingAgent:
         llm = self.model_registry.create_agent_client(

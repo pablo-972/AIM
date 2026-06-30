@@ -24,7 +24,7 @@ class StaticInferenceRunner(BaseAIRunner):
         self.strings: list[str] = strings
         
     def run(self) -> None:
-        Logger.info("Running static strings AI inference")
+        
 
         llm = self.model_registry.create_task_client(
             "static", 
@@ -74,7 +74,7 @@ class StaticInferenceRunner(BaseAIRunner):
         else:
             memory.close()
 
-        Logger.success("Static strings AI inference finished")
+        
     
     def _iter_string_chunks(self, chunk_size: int = STRING_CHUNK_SIZE) -> Iterator[list[str]]:
         for index in range(0, len(self.strings), chunk_size):

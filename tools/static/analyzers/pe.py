@@ -7,9 +7,10 @@ import pefile
 def is_pe(sample: str) -> bool:
     try:
         pefile.PE(sample)
-        return True
     except pefile.PEFormatError:
         return False
+    
+    return True
 
 
 def get_pe_architecture(pe: Any) -> str:

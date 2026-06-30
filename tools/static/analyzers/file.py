@@ -7,7 +7,6 @@ def analyze_file(sample: str) -> str:
 
     if result.timed_out:
         raise ToolError("file command timed out")
-    
     if not result.ok:
         raise ToolError(result.stderr or f"file command failed with code {result.returncode}")
 

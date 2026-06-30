@@ -68,7 +68,7 @@ class ReportAIRunner(BaseAIRunner):
             current_body = self.document.extract_body(updated_body)
             self.document.save_body(current_body)
 
-        Logger.success("Report finished")
+        
 
     def _get_static_extractor(self) -> JsonExtractor | None:
         result = load_json(self.context.output, RESULT_FILENAME)

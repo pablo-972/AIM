@@ -6,7 +6,6 @@ from exceptions import ToolError
 from orchestrator.context import AnalysisContext
 
 
-
 class BaseToolRunner(ABC):
     ALLOWED_RUNNERS: set[str] = set()
 
@@ -22,6 +21,7 @@ class BaseToolRunner(ABC):
             raise ToolError(f"Unknown runner function: {func_name}")
 
         result = func()
+
         if not isinstance(result, dict):
             raise ToolError(f"Runner function returned a non-object result: {func_name}")
 
@@ -32,7 +32,6 @@ class BaseToolRunner(ABC):
         
         if not func_name:
             raise ToolError("No runner function selected")
-        
         if func_name not in self.ALLOWED_RUNNERS:
             raise ToolError(f"Runner function not allowed: {func_name}")
 

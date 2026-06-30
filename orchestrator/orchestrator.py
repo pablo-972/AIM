@@ -1,6 +1,5 @@
 import json
 import argparse
-from collections.abc import Callable
 from dataclasses import replace
 from typing import Any, Protocol
 
@@ -25,20 +24,28 @@ class ToolRunner(Protocol):
 
 
 class Orchestrator:
+    PHASE_HANDLERS: dict[str,str] = {
+        "static": "run_static_phase",
+        "enrichment": "run_enrichment_phase",
+        "reversing": "run_reversing_phase",
+        "report": "run_report_phase",
+        "full": "run_full_phase",
+    }
+
     def __init__(self, args: argparse.Namespace) -> None:
         self.context: AnalysisContext = AnalysisContext.from_args(args)
         self.json_builders: dict[str, JsonBuilder] = {}
         self._model_registry: ModelRegistry | None = None
-    
+
     def run(self) -> None:
         Logger.info(f"Running analysis for: {self.context.sample}")
 
-        handlers = self._get_phase_handlers()
-        handler = handlers.get(self.context.phase)
+        handler = self.PHASE_HANDLERS.get(self.context.phase)
         if handler is None:
             raise ValueError(f"Unknown phase: {self.context.phase}")
         
-        handler()
+        getattr(self, handler)()
+
         Logger.success("Analysis finished.")
 
     def run_static_phase(
@@ -46,44 +53,61 @@ class Orchestrator:
         context: AnalysisContext | None = None,
         persist_json: bool = False,
     ) -> None:
-        context = context or self.context
         Logger.info("Running static phase")
-        results = self._run_static_tools(context, persist_json)
+
+        context = context or self.context
+
+        results = self._run_tools(
+            "static",
+            StaticToolRunner(context),
+            context,
+            persist_json,
+        )
         self._run_static_strings_inference(context, results)
+        
         Logger.success("Static phase finished")
 
-
-    def run_enrichment_phase(
-        self,
-        context: AnalysisContext | None = None,
-    ) -> None:
-        context = context or self.context
+    def run_enrichment_phase(self, context: AnalysisContext | None = None) -> None:
         Logger.info("Running enrichment phase")
-        EnrichmentAIRunner(context, self._get_model_registry()).run()
 
+        context = context or self.context
+
+        enrichment_runner = EnrichmentAIRunner(context, self._get_model_registry())
+        enrichment_runner.run()
 
     def run_reversing_phase(
         self,
         context: AnalysisContext | None = None,
         persist_json: bool = False,
     ) -> None:
-        context = context or self.context
         Logger.info("Running reversing phase")
+
+        context = context or self.context
+
         if context.reversing_agent:
             self._run_reversing_agent(context)
         else:
-            self._run_reversing_tools(context, persist_json)
-        Logger.success("Reversing phase finished")
+            self._run_tools(
+                "reversing",
+                ReversingToolRunner(context),
+                context,
+                persist_json,
+            )
 
+        Logger.success("Reversing phase finished")
 
     def run_report_phase(
         self,
         context: AnalysisContext | None = None,
     ) -> None:
-        context = context or self.context
         Logger.info("Running report phase")
-        ReportAIRunner(context, self._get_model_registry()).run()
 
+        context = context or self.context
+        
+        report_runner = ReportAIRunner(context, self._get_model_registry())
+        report_runner.run()
+
+        Logger.success("Report phase finished")
 
     def run_full_phase(self) -> None:
         Logger.info("Running full pipeline")
@@ -114,10 +138,7 @@ class Orchestrator:
             reversing_agent=False,
             profile=None,
         )
-        self.run_reversing_phase(
-            manual_reversing_context,
-            persist_json=True,
-        )
+        self.run_reversing_phase(manual_reversing_context, persist_json=True)
 
         agent_reversing_context = replace(
             self.context,
@@ -139,18 +160,68 @@ class Orchestrator:
 
         Logger.success("Full pipeline finished")
     
-    def _get_phase_handlers(self) -> dict[str, Callable[[], None]]:
-        return {
-            "static": self.run_static_phase,
-            "enrichment": self.run_enrichment_phase,
-            "reversing": self.run_reversing_phase,
-            "report": self.run_report_phase,
-            "full": self.run_full_phase,
-        }
-    
+
+    def _run_tools(
+        self,
+        phase_name: str,
+        runner: ToolRunner,
+        context: AnalysisContext,
+        persist_json: bool = False,
+    ) -> dict[str, Any]:
+        Logger.info(f"Executing {phase_name} tools")
+
+        results = runner.run()
+        save_json = context.output_format == "json" or persist_json
+        print_text = context.output_format == "text"
+
+        if save_json:
+            json_builder = self._get_json_builder(context)
+            json_builder.save_phase(phase_name, results)
+        if print_text:
+            print(json.dumps(results, indent=4))
+
+        Logger.success("Tools executed successfully")
+
+        return results
+
+    def _run_static_strings_inference(
+        self,
+        context: AnalysisContext,
+        results: dict[str, Any],
+    ) -> None:
+        if not context.static_ai:
+            return
+
+        strings = get_static_strings_from_tool_results(results)
+        if not strings:
+            Logger.warning("No parsed strings found. Skipping static AI inference.")
+            return
+
+        Logger.info("Running static strings AI inference")
+
+        model = self._get_model_registry()
+        static_inference_runner = StaticInferenceRunner(context, model, strings)
+        static_inference_runner.run()
+
+        Logger.success("Static strings AI inference finished")
+
+    def _run_reversing_agent(self, context: AnalysisContext) -> None:
+        if not context.reversing_agent:
+            return
+
+        Logger.info("Running AI reversing agent")
+
+        model = self._get_model_registry()
+        rev_agent_runner = ReversingAgentRunner(context, model)
+        rev_agent_runner.run()
+
+        Logger.success("Reversing agent finished")
+
+
     def _get_json_builder(self, context: AnalysisContext) -> JsonBuilder:
         output_key = str(context.output)
         builder = self.json_builders.get(output_key)
+
         if builder is None:
             builder = JsonBuilder(
                 context.output,
@@ -167,75 +238,3 @@ class Orchestrator:
             self._model_registry = ModelRegistry(profiles)
 
         return self._model_registry
-
-    def _run_tools(
-        self,
-        phase_name: str,
-        runner: ToolRunner,
-        context: AnalysisContext,
-        persist_json: bool = False,
-    ) -> dict[str, Any]:
-        Logger.info(f"Executing {phase_name} tools")
-        results = runner.run()
-
-        if context.output_format == "json" or persist_json:
-            self._get_json_builder(context).save_phase(phase_name, results)
-
-        if context.output_format == "text":
-            print(json.dumps(results, indent=4))
-
-        return results
-
-    def _run_static_tools(
-        self,
-        context: AnalysisContext,
-        persist_json: bool = False,
-    ) -> dict[str, Any]:
-        return self._run_tools(
-            "static",
-            StaticToolRunner(context),
-            context,
-            persist_json,
-        )
-
-    def _run_reversing_tools(
-        self,
-        context: AnalysisContext,
-        persist_json: bool = False,
-    ) -> dict[str, Any]:
-        return self._run_tools(
-            "reversing",
-            ReversingToolRunner(context),
-            context,
-            persist_json,
-        )
-
-    def _run_static_strings_inference(
-        self,
-        context: AnalysisContext,
-        results: dict[str, Any],
-    ) -> None:
-        if not context.static_ai:
-            return
-
-        strings = get_static_strings_from_tool_results(results)
-        if not strings:
-            Logger.warning("No parsed strings found. Skipping static AI inference.")
-            return
-
-        model = self._get_model_registry()
-        static_inference_runner = StaticInferenceRunner(
-            context,
-            model,
-            strings,
-        )
-        static_inference_runner.run()
-
-    def _run_reversing_agent(self, context: AnalysisContext) -> None:
-        if not context.reversing_agent:
-            return
-
-        ReversingAgentRunner(
-            context,
-            self._get_model_registry(),
-        ).run()

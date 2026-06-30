@@ -10,9 +10,6 @@ from orchestrator.context import AnalysisContext
 class StaticToolRunner(BaseToolRunner):
     ALLOWED_RUNNERS = {"run_static"}
 
-    def __init__(self, context: AnalysisContext) -> None:
-        super().__init__(context)
-
     def run_static(self) -> dict[str, dict[str, Any]]:
         results: dict[str, dict[str, Any]] = {}
 
@@ -23,14 +20,16 @@ class StaticToolRunner(BaseToolRunner):
 
     def _execute_tool(self, mode: str) -> dict[str, Any]:
         Logger.info(f"Executing static tool: {mode}")
+
         tool = STATIC_MANUAL_TOOLS[mode]
 
         try:
             data = tool(str(self.sample))
-            return ToolResult.ok(data).to_dict()
         except Exception as exc:
             Logger.error(f"Static tool '{mode}' failed: {exc}")
             return ToolResult.failed(exc).to_dict()
+        
+        return ToolResult.ok(data).to_dict()
 
     def _resolve_modes(self) -> list[str]:
         modes = list(self.context.static_modes)
