@@ -15,14 +15,18 @@ def run_command(command: list[str], timeout: int = DEFAULT_COMMAND_TIMEOUT) -> C
             errors="replace",
             timeout=timeout,
         )
-        return CommandResult(
-            stdout=result.stdout,
-            stderr=result.stderr,
-            returncode=result.returncode,
-        )
     except subprocess.TimeoutExpired as exc:
-        stdout = exc.stdout.decode(errors="replace") if isinstance(exc.stdout, bytes) else exc.stdout
-        stderr = exc.stderr.decode(errors="replace") if isinstance(exc.stderr, bytes) else exc.stderr
+        stdout = (
+            exc.stdout.decode(errors="replace") 
+            if isinstance(exc.stdout, bytes) 
+            else exc.stdout
+        )
+        stderr = (
+            exc.stderr.decode(errors="replace") 
+            if isinstance(exc.stderr, bytes) 
+            else exc.stderr
+        )
+
         return CommandResult(
             stdout=stdout or "",
             stderr=stderr or "",
@@ -30,3 +34,8 @@ def run_command(command: list[str], timeout: int = DEFAULT_COMMAND_TIMEOUT) -> C
             timed_out=True,
         )
 
+    return CommandResult(
+        stdout=result.stdout,
+        stderr=result.stderr,
+        returncode=result.returncode,
+    )

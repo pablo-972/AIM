@@ -67,9 +67,9 @@ class ReversingAgentToolRunner:
         self, 
         tool_name: str, 
         parameters: dict[str, Any] | None = None
-        ) -> dict[str, Any]:
+    ) -> dict[str, Any]:
         tool = REVERSING_AGENT_TOOLS[tool_name]
-       
+
         return {
             "success": True,
             "data": tool(self.sample, **(parameters or {})),

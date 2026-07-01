@@ -15,8 +15,8 @@ class R2Session:
 
         # 0=silent, 1=error, 2=warning, 3=info, 4=debug
         self.r2.cmd(f"e log.level={self.log_level}")
-
         self.r2.cmd("aaa")
+
         return self.r2
 
     def __exit__(

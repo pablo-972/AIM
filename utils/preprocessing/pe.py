@@ -8,22 +8,18 @@ PE_SUMMARY_KEYS = [
     "subsystem",
     "version_info",
 ]
-
 PE_DIRECT_SECTION_KEYS = [
     "sections",
     "delay_imports",
     "exports",
     "resources",
 ]
-
 PE_IMPORTS_CHUNK_SIZE = 2500
 
 
-def prepare_pe_import_sources(
-    pe_data: dict[str, Any],
-) -> list[tuple[str, dict[str, Any]]]:
-    imports = pe_data.get("imports") or {}
-    if not imports:
+def prepare_pe_import_sources(pe_data: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
+    imports = pe_data.get("imports")
+    if not isinstance(imports, dict) or not imports:
         return []
 
     sources: list[tuple[str, dict[str, Any]]] = []
@@ -34,27 +30,24 @@ def prepare_pe_import_sources(
             continue
 
         entry = _import_entry(dll_name, functions)
-        candidate = [*current, entry]
 
-        if current and json_size(candidate) > PE_IMPORTS_CHUNK_SIZE:
-            sources.append((f"imports.{len(sources) + 1}", {"imports": current}))
-            current = [entry]
-        else:
-            current = candidate
+        if current and json_size([*current, entry]) > PE_IMPORTS_CHUNK_SIZE:
+            _append_import_source(sources, current)
+            current = []
+
+        current.append(entry)
 
         if json_size(current) > PE_IMPORTS_CHUNK_SIZE:
-            sources.append((f"imports.{len(sources) + 1}", {"imports": current}))
+            _append_import_source(sources, current)
             current = []
 
     if current:
-        sources.append((f"imports.{len(sources) + 1}", {"imports": current}))
+        _append_import_source(sources, current)
 
     return sources
 
 
-def prepare_pe_report_chunks(
-    pe_data: dict[str, Any],
-) -> list[dict[str, Any]]:
+def prepare_pe_report_chunks(pe_data: dict[str, Any]) -> list[dict[str, Any]]:
     chunks: list[dict[str, Any]] = []
 
     summary = _pick_existing_keys(pe_data, PE_SUMMARY_KEYS)
@@ -83,7 +76,7 @@ def prepare_pe_enrichment_sources(
 
     sections = pe_data.get("sections")
     if sections:
-        sources.append(("sections", sections))
+        sources.append(("sections", {"sections": sections}))
 
     for section_name, imports in prepare_pe_import_sources(pe_data):
         sources.append((section_name, imports))
@@ -91,15 +84,12 @@ def prepare_pe_enrichment_sources(
     for key in ["delay_imports", "exports", "resources"]:
         value = pe_data.get(key)
         if value:
-            sources.append((key, value))
+            sources.append((key, {key: value}))
 
     return sources
 
 
-def _pick_existing_keys(
-    data: dict[str, Any],
-    keys: list[str],
-) -> dict[str, Any]:
+def _pick_existing_keys(data: dict[str, Any], keys: list[str]) -> dict[str, Any]:
     return {
         key: data.get(key)
         for key in keys
@@ -114,4 +104,13 @@ def _import_entry(dll_name: str, functions: list[Any]) -> dict[str, Any]:
     }
 
 
-
+def _append_import_source(
+    sources: list[tuple[str, dict[str, Any]]],
+    imports: list[dict[str, Any]],
+) -> None:
+    sources.append(
+        (
+            f"imports.{len(sources) + 1}",
+            {"imports": imports},
+        )
+    )

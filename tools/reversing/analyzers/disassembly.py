@@ -57,13 +57,13 @@ def text_disassembly(
 ) -> dict[str, Any]:
     if not isinstance(max_instructions, int):
         raise ValueError("max_instructions must be an integer")
+    
     max_instructions = max(
         MIN_MAX_INSTRUCTIONS,
         min(max_instructions, MAX_MAX_INSTRUCTIONS),
     )
 
     details = function_details(sample, function)
-
     ops = details["instructions"]
     selected_ops = ops[:max_instructions]
 
@@ -91,30 +91,6 @@ def text_disassembly(
     }
 
 
-def _parse_address(value: str) -> int | None:
-    try:
-        return int(value, 0)
-    except ValueError:
-        return None
-
-
-def _find_containing_function(
-    functions: list[dict[str, Any]],
-    address: int,
-) -> dict[str, Any] | None:
-    for function in functions:
-        offset = function.get("offset") or function.get("addr")
-        size = function.get("size") or 0
-        if (
-            isinstance(offset, int)
-            and isinstance(size, int)
-            and offset <= address < offset + max(size, 1)
-        ):
-            return function
-
-    return None
-
-
 def _resolve_function(r2: Any, function: str) -> str:
     address = _parse_address(function)
     if address is None:
@@ -136,6 +112,33 @@ def _resolve_function(r2: Any, function: str) -> str:
 
     r2.cmd(f"af @ {hex(address)}")
     return hex(address)
+
+
+def _parse_address(value: str) -> int | None:
+    try:
+        return int(value, 0)
+    except ValueError:
+        return None
+
+
+def _find_containing_function(
+    functions: list[dict[str, Any]],
+    address: int,
+) -> dict[str, Any] | None:
+    for function in functions:
+        offset = function.get("offset") or function.get("addr")
+        size = function.get("size") or 0
+
+        if not isinstance(offset, int) or not isinstance(size, int):
+            continue
+
+        if offset <= address < offset + max(size, 1):
+            return function
+
+    return None
+
+
+
 
 
 

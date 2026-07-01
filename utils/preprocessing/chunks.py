@@ -25,21 +25,20 @@ def chunk_mapping(
     current: dict[str, Any] = {}
 
     for key, value in data.items():
-        candidate = dict(current)
-        candidate[key] = value
+        candidate = {**current, key: value}
 
         if current and json_size(candidate) > chunk_size:
-            chunks.append(make_report_chunk(f"{section}.{len(chunks) + 1}", current))
+            _append_numbered_chunk(chunks, section, current)
             current = {key: value}
         else:
             current = candidate
 
         if json_size(current) > chunk_size:
-            chunks.append(make_report_chunk(f"{section}.{len(chunks) + 1}", current))
+            _append_numbered_chunk(chunks, section, current)
             current = {}
 
     if current:
-        chunks.append(make_report_chunk(f"{section}.{len(chunks) + 1}", current))
+        _append_numbered_chunk(chunks, section, current)
 
     return chunks
 
@@ -54,18 +53,19 @@ def chunk_sequence(
 
     for value in values:
         candidate = [*current, value]
+
         if current and json_size(candidate) > chunk_size:
-            chunks.append(make_report_chunk(f"{section}.{len(chunks) + 1}", current))
+            _append_numbered_chunk(chunks, section, current)
             current = [value]
         else:
             current = candidate
 
         if json_size(current) > chunk_size:
-            chunks.append(make_report_chunk(f"{section}.{len(chunks) + 1}", current))
+            _append_numbered_chunk(chunks, section, current)
             current = []
 
     if current:
-        chunks.append(make_report_chunk(f"{section}.{len(chunks) + 1}", current))
+        _append_numbered_chunk(chunks, section, current)
 
     return chunks
 
@@ -85,15 +85,29 @@ def chunk_large_value(section: str, value: Any) -> list[dict[str, Any]]:
 
 def prepare_generic_report_chunks(tool_name: str, tool_data: Any) -> list[Any]:
     if json_size(tool_data) <= MAX_REPORT_JSON_SIZE:
-        return [tool_data]
+        return [make_report_chunk(tool_name, tool_data)]
 
     if isinstance(tool_data, dict):
-        chunks = []
+        chunks: list[dict[str, Any]] = []
         for key, value in tool_data.items():
             chunks.extend(chunk_large_value(key, value))
+            
         return chunks
 
     if isinstance(tool_data, list):
         return chunk_sequence(tool_name, tool_data)
 
     return chunk_large_value(tool_name, tool_data)
+
+
+def _append_numbered_chunk(
+    chunks: list[dict[str, Any]],
+    section: str,
+    data: Any,
+) -> None:
+    chunks.append(
+        make_report_chunk(
+            f"{section}.{len(chunks) + 1}",
+            data,
+        )
+    )

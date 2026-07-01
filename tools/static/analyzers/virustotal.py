@@ -29,6 +29,7 @@ def _request_vt(sample_hash: str) -> dict[str, Any]:
         data = response.json()
         if not isinstance(data, dict):
             raise ToolError("VirusTotal response must be a JSON object")
+        
         return data
 
     raise ToolError(f"VirusTotal returned HTTP {response.status_code}: {response.text[:300]}")

@@ -62,27 +62,33 @@ def analyze_strings(sample: str) -> dict[str, object]:
 
 def get_raw_strings(sample: str) -> list[str]:
     result = run_command(["strings", str(sample)])
+
     if result.timed_out:
         raise ToolError("strings command timed out")
     if not result.ok:
         raise ToolError(result.stderr or f"strings failed with code {result.returncode}")
 
     strings = result.stdout.splitlines()
+
     return strings
 
 
 def parse_strings(strings: list[str]) -> list[str]:
     parsed_strings: list[str] = []
+
     for string in strings:
         if not _is_noise(string):
             parsed_strings.append(string)
+
     return parsed_strings
 
 
 def find_regex(strings: list[str], regex: re.Pattern[str]) -> list[str]:
     matches: list[str] = []
+
     for string in strings:
         matches.extend(match.group(0) for match in regex.finditer(string))
+        
     return list(dict.fromkeys(matches))
 
 

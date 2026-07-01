@@ -20,6 +20,7 @@ class MarkdownDocument:
             return self.extract_body(current)
 
         self.save_body(EMPTY_DOCUMENT_BODY)
+        
         return EMPTY_DOCUMENT_BODY
 
     def save_body(self, body: str) -> None:

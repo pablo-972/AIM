@@ -22,9 +22,10 @@ class ReversingActionPolicy:
         observation: dict[str, Any],
     ) -> tuple[str, dict[str, Any]]:
         action = analysis.get("action")
-        parameters = analysis.get("parameters")
         if not isinstance(action, str):
             return "none", {}
+        
+        parameters = analysis.get("parameters")
         if not isinstance(parameters, dict):
             parameters = {}
 
@@ -77,8 +78,10 @@ class ReversingActionPolicy:
 
     def _code_targets(self, observation: dict[str, Any]) -> list[str]:
         values = observation.get("code_targets")
+
         if not isinstance(values, list):
             return []
+        
         return [value for value in values if isinstance(value, str)]
 
     def _parameters_for_code_target(
@@ -89,6 +92,8 @@ class ReversingActionPolicy:
     ) -> dict[str, Any]:
         normalized = {"function": code_target}
         max_instructions = parameters.get("max_instructions")
+
         if action == "disassembly" and isinstance(max_instructions, int):
             normalized["max_instructions"] = max_instructions
+
         return normalize_tool_parameters(action, normalized)

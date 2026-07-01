@@ -22,7 +22,7 @@ def imports(sample: str) -> list[dict[str, Any]]:
             "type": item.get("type"),
             "ordinal": item.get("ordinal"),
             "bind": item.get("bind"),
-            "plt": item.get("plt")
+            "plt": item.get("plt"),
         }
         for item in items
     ]
@@ -78,8 +78,7 @@ def callers(sample: str, function: str) -> dict[str, Any]:
         raise ValueError("function is required")
 
     with R2Session(sample) as r2:
-        r2.cmd(f"s {function}")
-        items = r2.cmdj("axtj") or []
+        items = r2.cmdj(f"axtj @ {function}") or []
 
     return {
         "function": function,
@@ -90,7 +89,7 @@ def callers(sample: str, function: str) -> dict[str, Any]:
                 "to": item.get("to"),
                 "type": item.get("type"),
                 "opcode": item.get("opcode"),
-                "perm": item.get("perm")
+                "perm": item.get("perm"),
             }
             for item in items
         ],
@@ -102,14 +101,12 @@ def callees(sample: str, function: str) -> dict[str, Any]:
         raise ValueError("function is required")
 
     with R2Session(sample) as r2:
-        r2.cmd(f"s {function}")
-        function_info = r2.cmdj("pdfj") or {}
+        function_info = r2.cmdj(f"pdfj @ {function}") or {}
 
     calls = []
     for op in function_info.get("ops", []):
         if op.get("type") in {"call", "ucall", "icall"}:
             calls.append(op)
-
 
     return {
         "function": function,

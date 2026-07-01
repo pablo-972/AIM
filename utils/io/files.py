@@ -17,12 +17,12 @@ def save_json(path: str | Path, filename: str, data: dict[str, Any]) -> None:
     ensure_dir(directory)
 
     target = directory / filename
-    tmp = target.with_suffix(target.suffix + ".tmp")
+    tmp_path = target.with_suffix(target.suffix + ".tmp")
 
-    with tmp.open("w", encoding="utf-8") as file:
+    with tmp_path.open("w", encoding="utf-8") as file:
         json.dump(data, file, indent=4, ensure_ascii=False)
 
-    os.replace(tmp, target)
+    os.replace(tmp_path, target)
 
 
 def load_json(path: str | Path, filename: str | Path) -> dict[str, Any] | None:
@@ -33,11 +33,13 @@ def load_json(path: str | Path, filename: str | Path) -> dict[str, Any] | None:
     try:
         with target.open("r", encoding="utf-8") as file:
             data = json.load(file)
-            if not isinstance(data, dict):
-                raise FileReadError(f"JSON root must be an object: {target}")
-            return data
     except json.JSONDecodeError as exc:
         raise FileReadError(f"Invalid JSON file: {target}") from exc
+    
+    if not isinstance(data, dict):
+        raise FileReadError(f"JSON root must be an object: {target}")
+    
+    return data
 
 
 def load_yaml(path: str | Path, filename: str | Path) -> dict[str, Any] | None:
@@ -48,13 +50,16 @@ def load_yaml(path: str | Path, filename: str | Path) -> dict[str, Any] | None:
     try:
         with target.open("r", encoding="utf-8") as file:
             data = yaml.safe_load(file)
-            if data is None:
-                return None
-            if not isinstance(data, dict):
-                raise FileReadError(f"YAML root must be an object: {target}")
-            return data
     except yaml.YAMLError as exc:
         raise FileReadError(f"Invalid YAML file: {target}") from exc
+    
+    if not isinstance(data, dict):
+        raise FileReadError(f"YAML root must be an object: {target}")
+    
+    if data is None:
+        return None
+
+    return data
 
 
 

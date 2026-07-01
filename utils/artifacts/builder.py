@@ -14,19 +14,10 @@ class JsonBuilder:
     ) -> None:
         self.output_path: str | Path = output_path
         self.sample_path: Path = sample_path
-        existing_data = load_json(output_path, RESULT_FILENAME)
-        self.data: dict[str, Any] = (
-            existing_data if isinstance(existing_data, dict) else {}
-        )
+        self.data: dict[str, Any] = self._load_data()
 
-        self.data["sample"] = {
-            "path": str(sample_path),
-            "sha256": sample_sha256,
-            "size": sample_path.stat().st_size,
-        }
-
-        if not isinstance(self.data.get("phases"), dict):
-            self.data["phases"] = {}
+        self._set_sample(sample_sha256)
+        self._ensure_phases()
 
     def add_phase(self, phase_name: str, tools: dict[str, Any], status: str = "completed") -> None:
         phases = self.data["phases"]
@@ -54,3 +45,19 @@ class JsonBuilder:
 
     def build(self) -> None:
         save_json(self.output_path, RESULT_FILENAME, self.data)
+
+
+    def _load_data(self) -> dict[str, Any]:
+        existing_data = load_json(self.output_path, RESULT_FILENAME)
+        return existing_data if isinstance(existing_data, dict) else {}
+    
+    def _set_sample(self, sample_sha256: str) -> None:
+        self.data["sample"] = {
+            "path": str(self.sample_path),
+            "sha256": sample_sha256,
+            "size": self.sample_path.stat().st_size,
+        }
+
+    def _ensure_phases(self) -> None:
+        if not isinstance(self.data.get("phases"), dict):
+            self.data["phases"] = {}

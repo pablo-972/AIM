@@ -11,6 +11,7 @@ def prepare_static_inference_sources(
 
     extractor = JsonExtractor(static_inference_data)
     findings = extractor.get_static_inference_findings()
+    
     if not findings:
         return []
 

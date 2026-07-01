@@ -8,21 +8,11 @@ def xrefs(sample: str, function: str) -> dict[str, Any]:
         raise ValueError("function is required")
 
     with R2Session(sample) as r2:
-        r2.cmd(f"s {function}")
-        items = r2.cmdj("axtj") or []
+        refs = r2.cmdj(f"axtj @ {function}") or []
 
     return {
         "function": function,
-        "xrefs": [
-            {
-                "from": item.get("from"),
-                "to": item.get("to"),
-                "type": item.get("type"),
-                "opcode": item.get("opcode"),
-                "fcn_name": item.get("fcn_name"),
-            }
-            for item in items
-        ],
+        "xrefs": _normalize_xrefs(refs),
     }
 
 
@@ -34,31 +24,32 @@ def string_xrefs(
     if not value:
         raise ValueError("value is required")
 
+    results: list[dict[str, Any]] = []
     command = "izzj" if include_all_strings else "izj"
+    query = value.lower()
 
     with R2Session(sample) as r2:
         items = r2.cmdj(command) or []
+        
         matches = [
             item
             for item in items
-            if value.lower() in str(item.get("string", "")).lower()
+            if query in str(item.get("string", "")).lower()
         ]
-
-        results: list[dict[str, Any]] = []
 
         for item in matches:
             address = item.get("vaddr") or item.get("paddr")
             if address is None:
                 continue
-
-            r2.cmd(f"s {address}")
+            
+            refs = r2.cmdj(f"axtj @ {address}") or []
 
             results.append(
                 {
                     "string": item.get("string"),
                     "address": address,
                     "section": item.get("section"),
-                    "xrefs": r2.cmdj("axtj") or [],
+                    "xrefs": _normalize_xrefs(refs),
                 }
             )
 
@@ -72,34 +63,32 @@ def import_xrefs(sample: str, import_name: str) -> dict[str, Any]:
     if not import_name:
         raise ValueError("import_name is required")
 
-    normalized_name = import_name.lower()
+    results: list[dict[str, Any]] = []
+    query = import_name.lower()
 
     with R2Session(sample) as r2:
         items = r2.cmdj("iij") or []
+
         matches = [
             item
             for item in items
-            if (
-                normalized_name in str(item.get("name", "")).lower()
-                or normalized_name in str(item.get("libname", "")).lower()
-            )
+            if query in str(item.get("name", "")).lower()
+            or query in str(item.get("libname", "")).lower()
         ]
-
-        results: list[dict[str, Any]] = []
 
         for item in matches:
             address = item.get("plt") or item.get("vaddr") or item.get("offset")
             if address is None:
                 continue
 
-            r2.cmd(f"s {address}")
+            refs = r2.cmdj(f"axtj @ {address}") or []
 
             results.append(
                 {
                     "import": item.get("name"),
                     "address": address,
                     "library": item.get("libname"),
-                    "xrefs": r2.cmdj("axtj") or [],
+                    "xrefs": _normalize_xrefs(refs),
                 }
             )
 
@@ -107,3 +96,16 @@ def import_xrefs(sample: str, import_name: str) -> dict[str, Any]:
         "query": import_name,
         "matches": results,
     }
+
+
+def _normalize_xrefs(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [
+        {
+            "from": item.get("from"),
+            "to": item.get("to"),
+            "type": item.get("type"),
+            "opcode": item.get("opcode"),
+            "function": item.get("fcn_name"),
+        }
+        for item in items
+    ]

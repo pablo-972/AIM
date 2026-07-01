@@ -10,20 +10,11 @@ def chunk_reversing_evidence(
     value: Any,
     chunk_size: int = MAX_REVERSING_EVIDENCE_SIZE,
 ) -> list[dict[str, Any]]:
-    if json_size(value) <= chunk_size:
+    if _fits_in_chunk(value, chunk_size):
         return [make_report_chunk(section, value)]
 
     if isinstance(value, dict):
-        chunks: list[dict[str, Any]] = []
-        for key, item in value.items():
-            chunks.extend(
-                chunk_reversing_evidence(
-                    f"{section}.{key}",
-                    item,
-                    chunk_size,
-                )
-            )
-        return chunks
+        return _chunk_mapping(section, value, chunk_size)
 
     if isinstance(value, list):
         return _chunk_sequence(section, value, chunk_size)
@@ -32,6 +23,46 @@ def chunk_reversing_evidence(
         return _chunk_text(section, value, chunk_size)
 
     return [make_report_chunk(section, str(value))]
+
+
+def _fits_in_chunk(value: Any, chunk_size: int) -> bool:
+    return json_size(value) <= chunk_size
+
+
+def _numbered_section(section: str, chunks: list[dict[str, Any]]) -> str:
+    return f"{section}.{len(chunks) + 1}"
+
+
+def _append_chunk(
+    chunks: list[dict[str, Any]],
+    section: str,
+    value: Any,
+) -> None:
+    chunks.append(
+        make_report_chunk(
+            _numbered_section(section, chunks),
+            value,
+        )
+    )
+
+
+def _chunk_mapping(
+    section: str,
+    value: dict[str, Any],
+    chunk_size: int,
+) -> list[dict[str, Any]]:
+    chunks: list[dict[str, Any]] = []
+
+    for key, item in value.items():
+        chunks.extend(
+            chunk_reversing_evidence(
+                f"{section}.{key}",
+                item,
+                chunk_size,
+            )
+        )
+
+    return chunks
 
 
 def _chunk_text(
@@ -43,31 +74,48 @@ def _chunk_text(
     offset = 0
 
     while offset < len(value):
-        low = 1
-        high = min(chunk_size, len(value) - offset)
-        accepted = 1
-
-        while low <= high:
-            length = (low + high) // 2
-            candidate = make_report_chunk(
-                f"{section}.{len(chunks) + 1}",
-                value[offset:offset + length],
-            )
-            if json_size(candidate) <= chunk_size:
-                accepted = length
-                low = length + 1
-            else:
-                high = length - 1
-
-        chunks.append(
-            make_report_chunk(
-                f"{section}.{len(chunks) + 1}",
-                value[offset:offset + accepted],
-            )
+        length = _max_text_length_for_chunk(
+            section=_numbered_section(section, chunks),
+            value=value,
+            offset=offset,
+            chunk_size=chunk_size,
         )
-        offset += accepted
+
+        _append_chunk(
+            chunks,
+            section,
+            value[offset:offset + length],
+        )
+
+        offset += length
 
     return chunks
+
+
+def _max_text_length_for_chunk(
+    section: str,
+    value: str,
+    offset: int,
+    chunk_size: int,
+) -> int:
+    low = 1
+    high = min(chunk_size, len(value) - offset)
+    accepted = 1
+
+    while low <= high:
+        length = (low + high) // 2
+        candidate = make_report_chunk(
+            section,
+            value[offset:offset + length],
+        )
+
+        if _fits_in_chunk(candidate, chunk_size):
+            accepted = length
+            low = length + 1
+        else:
+            high = length - 1
+
+    return accepted
 
 
 def _chunk_sequence(
@@ -79,15 +127,10 @@ def _chunk_sequence(
     current: list[Any] = []
 
     for index, value in enumerate(values, start=1):
-        if json_size(value) > chunk_size:
-            if current:
-                chunks.append(
-                    make_report_chunk(
-                        f"{section}.{len(chunks) + 1}",
-                        current,
-                    )
-                )
-                current = []
+        if not _fits_in_chunk(value, chunk_size):
+            _flush_current(chunks, section, current)
+            current = []
+
             chunks.extend(
                 chunk_reversing_evidence(
                     f"{section}.item_{index}",
@@ -98,23 +141,22 @@ def _chunk_sequence(
             continue
 
         candidate = [*current, value]
-        if current and json_size(candidate) > chunk_size:
-            chunks.append(
-                make_report_chunk(
-                    f"{section}.{len(chunks) + 1}",
-                    current,
-                )
-            )
+
+        if current and not _fits_in_chunk(candidate, chunk_size):
+            _append_chunk(chunks, section, current)
             current = [value]
         else:
             current = candidate
 
-    if current:
-        chunks.append(
-            make_report_chunk(
-                f"{section}.{len(chunks) + 1}",
-                current,
-            )
-        )
+    _flush_current(chunks, section, current)
 
     return chunks
+
+
+def _flush_current(
+    chunks: list[dict[str, Any]],
+    section: str,
+    current: list[Any],
+) -> None:
+    if current:
+        _append_chunk(chunks, section, current)
