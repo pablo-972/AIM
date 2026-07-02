@@ -22,7 +22,8 @@ class ModelRegistry:
 
         provider = self._get_provider(provider_name)
 
-        return ProviderFactory.create(provider_config=provider, profile_config=profile,)
+        factory = ProviderFactory(provider_config=provider, profile_config=profile)
+        return factory.create()
 
     def create_agent_client(
         self, 

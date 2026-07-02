@@ -83,8 +83,8 @@ class ProviderFactory:
 
         return float(temperature)
 
-    def _response_format(profile_config: dict[str, Any]) -> str:
-        response_format = profile_config.get("response_format", "text")
+    def _response_format(self) -> str:
+        response_format = self.profile_config.get("response_format", "text")
 
         if not isinstance(response_format, str):
             raise ConfigurationError("Profile response_format must be a string")
@@ -114,7 +114,7 @@ class ProviderFactory:
         response_format: str,
     ) -> OllamaProvider:
         return OllamaProvider(
-            base_url=ProviderFactory._base_url(self.provider_config, "ollama"),
+            base_url=self._base_url(),
             model=model,
             temperature=temperature,
             response_format=response_format,
@@ -128,8 +128,8 @@ class ProviderFactory:
         response_format: str,
     ) -> OpenAICompatibleProvider:
         return OpenAICompatibleProvider(
-            base_url=ProviderFactory._base_url(self.provider_config, provider_type),
-            api_key=ProviderFactory._api_key(self.provider_config, provider_type),
+            base_url=self._base_url(),
+            api_key=self._api_key(),
             model=model,
             temperature=temperature,
             response_format=response_format,
