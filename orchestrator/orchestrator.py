@@ -69,7 +69,7 @@ class Orchestrator:
 
     def run_enrichment_phase(self, context: AnalysisContext | None = None) -> None:
         Logger.info("Running enrichment phase")
-
+        
         context = context or self.context
 
         enrichment_runner = EnrichmentAIRunner(context, self._get_model_registry())

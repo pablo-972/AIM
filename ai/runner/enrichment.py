@@ -5,61 +5,77 @@ from config import (
     RESULT_FILENAME,
     STATIC_STRINGS_INFERENCE_RESULT_FILENAME,
 )
-from utils.io.files import load_json
 from utils.logger import Logger
+from utils.io.files import load_json
 from utils.artifacts.documents import ENRICHMENT_TITLE, MarkdownDocument
 from utils.preprocessing import (
     prepare_static_enrichment_sources,
     prepare_static_inference_sources,
 )
-from ai.inferences.enrichment import EnrichmentGenerator
+from orchestrator.context import AnalysisContext
 from ai.model_registry import ModelRegistry
 from ai.runner.base import BaseAIRunner
-from orchestrator.context import AnalysisContext
+from ai.inferences.enrichment import EnrichmentGenerator
 
 
 class EnrichmentAIRunner(BaseAIRunner):
-    def __init__(
-        self,
-        context: AnalysisContext,
-        model_registry: ModelRegistry,
-    ) -> None:
+    def __init__(self, context: AnalysisContext, model_registry: ModelRegistry) -> None:
         super().__init__(context)
 
         enrichment_path = self.context.output / ENRICHMENT_FILENAME
-        self.document: MarkdownDocument = MarkdownDocument(
-            enrichment_path,
-            ENRICHMENT_TITLE,
-        )
-
-        llm = model_registry.create_task_client("enrichment", profile_override=self.context.profile)
-        self.generator: EnrichmentGenerator = EnrichmentGenerator(llm)
+        self.document: MarkdownDocument = MarkdownDocument(enrichment_path, ENRICHMENT_TITLE)
+        
+        self.model_registry = model_registry
+        
 
     def run(self) -> None:
         Logger.info("Running AI enrichment")
 
         current_body = self.document.load_body()
+
         for source_name, source_data in self._get_sources():
             Logger.info(f"Enriching from {source_name}")
-            try:
-                updated_body = self.generator.enrich(
-                    current_enrichment=current_body,
-                    source_name=source_name,
-                    source_data=source_data,
-                )
-            except Exception as exc:
-                Logger.error(f"Enrichment failed for {source_name}: {exc}")
+
+            updated_body = self._generate_enrichment(
+                current_body,
+                source_name,
+                source_data,
+            )
+            if updated_body is None:
                 continue
 
-            updated_body = self.document.sanitize(updated_body)
-            if not updated_body:
-                Logger.warning(f"Empty enrichment response from {source_name}. Keeping previous content.")
-                continue
-
-            current_body = self.document.extract_body(updated_body)
+            current_body = updated_body
             self.document.save_body(current_body)
 
         Logger.success("Enrichment finished")
+
+
+    def _generate_enrichment(
+        self,
+        current_body: str,
+        source_name: str,
+        source_data: Any,
+    ) -> str | None:
+        generator = self._create_generator()
+
+        try:
+            updated_body = generator.enrich(
+                current_enrichment=current_body,
+                source_name=source_name,
+                source_data=source_data,
+            )
+        except Exception as exc:
+            Logger.error(f"Enrichment failed for {source_name}: {exc}")
+            return None
+
+        updated_body = self.document.sanitize(updated_body)
+        if not updated_body:
+            Logger.warning(
+                f"Empty enrichment response from {source_name}. Keeping previous content."
+            )
+            return None
+
+        return self.document.extract_body(updated_body)
 
     def _get_sources(self) -> list[tuple[str, Any]]:
         result = load_json(self.context.output, RESULT_FILENAME) or {}
@@ -73,4 +89,11 @@ class EnrichmentAIRunner(BaseAIRunner):
         ]
     
     
+    def _create_generator(self) -> EnrichmentGenerator:
+        llm = self.model_registry.create_task_client(
+            "enrichment", 
+            profile_override=self.context.profile,
+        )
+
+        return EnrichmentGenerator(llm)
 

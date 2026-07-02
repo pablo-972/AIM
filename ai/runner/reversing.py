@@ -18,11 +18,7 @@ from ai.runtime.reversing.targets import ReversingTargetQueue
 
 
 class ReversingAgentRunner(BaseAIRunner):
-    def __init__(
-        self,
-        context: AnalysisContext,
-        model_registry: ModelRegistry,
-    ) -> None:
+    def __init__(self, context: AnalysisContext, model_registry: ModelRegistry) -> None:
         super().__init__(context)
         self.model_registry = model_registry
         self.available_tools: dict[str, Any] = load_json(
@@ -41,10 +37,9 @@ class ReversingAgentRunner(BaseAIRunner):
         self.postprocessor = ReversingPostprocessor(self.available_tools)
 
     def run(self) -> None:
-        
+        agent = self._create_agent()
 
         try:
-            agent = self._create_agent()
             initialization = ReversingInvestigationInitializer(
                 context=self.context,
                 targets=self.targets,

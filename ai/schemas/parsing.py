@@ -84,14 +84,21 @@ def parse_static_inference_finding(content: str) -> dict[str, Any]:
     if finding is not None:
         if not isinstance(finding, dict):
             return _fallback_static_inference_finding("LLM returned an invalid response.")
+        
         if not isinstance(finding.get("category"), str):
             return _fallback_static_inference_finding("LLM returned an invalid response.")
+        
         if not isinstance(finding.get("tone"), str):
             return _fallback_static_inference_finding("LLM returned an invalid response.")
 
+    confidence = decision.get("confidence")
+    thought = decision.get("thought")
+    if not isinstance(thought, str):
+        thought = ""
+         
     return {
-        "thought": decision.get("thought") if isinstance(decision.get("thought"), str) else "",
-        "confidence": decision["confidence"],
+        "thought": thought,
+        "confidence": confidence,
         "action": "none",
         "parameters": {},
         "finding": finding,

@@ -134,4 +134,5 @@ class ReportGenerator:
         """
 
         response = self.llm.chat_with_assistant(SYSTEM_PROMPT, current_report, prompt)
+        
         return response.content

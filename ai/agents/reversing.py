@@ -81,14 +81,12 @@ class ReversingAgent:
         Return no more than six targets.
         """
         
-        response = self.llm.chat_json(
-            SYSTEM_PROMPT,
-            prompt,
-            REVERSING_SEED_SCHEMA,
-        )
+        response = self.llm.chat_json(SYSTEM_PROMPT, prompt, REVERSING_SEED_SCHEMA)
+
         result = parse_json_object(response.content, fallback={})
         if not isinstance(result.get("targets"), list):
             raise ValueError("Invalid reversing seed response.")
+        
         return result
 
     def analyze_evidence(
@@ -153,11 +151,8 @@ class ReversingAgent:
         provide concrete evidence that deeper assembly analysis is valuable.
         """
 
-        response = self.llm.chat_json(
-            SYSTEM_PROMPT,
-            prompt,
-            REVERSING_ANALYSIS_SCHEMA,
-        )
+        response = self.llm.chat_json(SYSTEM_PROMPT, prompt, REVERSING_ANALYSIS_SCHEMA)
+
         result = parse_json_object(response.content, fallback={})
         required = {"thought", "confidence", "action", "parameters", "finding"}
         
@@ -174,6 +169,7 @@ class ReversingAgent:
             dict,
         ):
             raise ValueError("Invalid reversing finding.")
+        
         return result
 
     def _bounded_text(self, value: str, limit: int) -> str:
@@ -181,4 +177,5 @@ class ReversingAgent:
             return value
 
         half = limit // 2
+        
         return f"{value[:half]}\n...[truncated]...\n{value[-half:]}"

@@ -25,11 +25,7 @@ from orchestrator.context import AnalysisContext
 
 
 class ReportAIRunner(BaseAIRunner):
-    def __init__(
-        self,
-        context: AnalysisContext,
-        model_registry: ModelRegistry,
-    ) -> None:
+    def __init__(self, context: AnalysisContext, model_registry: ModelRegistry) -> None:
         super().__init__(context)
 
         report_path = self.context.output / REPORT_FILENAME
@@ -41,61 +37,68 @@ class ReportAIRunner(BaseAIRunner):
             ENRICHMENT_TITLE,
         )
 
-        llm = model_registry.create_task_client("report", profile_override=self.context.profile)
-        self.generator: ReportGenerator = ReportGenerator(llm)
+        self.model_registry = model_registry
 
     def run(self) -> None:
         Logger.info("Running AI report")
 
         current_body = self.document.load_body()
+
         for source_name, source_data in self._get_sources():
             Logger.info(f"Reporting from {source_name}")
-            try:
-                updated_body = self.generator.update_report(
-                    current_report=current_body,
-                    source_name=source_name,
-                    source_data=source_data,
-                )
-            except Exception as exc:
-                Logger.error(f"Report failed for {source_name}: {exc}")
+
+            updated_body = self._generate_report_update(
+                current_body,
+                source_name,
+                source_data,
+            )
+            if updated_body is None:
                 continue
 
-            updated_body = self.document.sanitize(updated_body)
-            if not updated_body:
-                Logger.warning(f"Empty report response from {source_name}. Keeping previous content.")
-                continue
-
-            current_body = self.document.extract_body(updated_body)
+            current_body = updated_body
             self.document.save_body(current_body)
 
-        
+        Logger.success("Report finished")
 
-    def _get_static_extractor(self) -> JsonExtractor | None:
-        result = load_json(self.context.output, RESULT_FILENAME)
-        if not result:
-            Logger.warning("No static analysis data found. Skipping static report section.")
+
+    def _get_sources(self) -> list[tuple[str, Any]]:
+        return [
+            *self._get_static_sources(),
+            *self._get_static_inference_sources(),
+            *self._get_enrichment_sources(),
+            *self._get_reversing_agent_sources(),
+        ]
+
+    def _generate_report_update(
+        self,
+        current_body: str,
+        source_name: str,
+        source_data: Any,
+    ) -> str | None:
+        generator = self._create_generator()
+
+        try:
+            updated_body = generator.update_report(
+                current_report=current_body,
+                source_name=source_name,
+                source_data=source_data,
+            )
+        except Exception as exc:
+            Logger.error(f"Report failed for {source_name}: {exc}")
             return None
 
-        return JsonExtractor(result)
+        updated_body = self.document.sanitize(updated_body)
+        if not updated_body:
+            Logger.warning(
+                f"Empty report response from {source_name}. Keeping previous content."
+            )
+            return None
 
-    def _build_source_name(
-            self, 
-            tool_name: str, 
-            chunk_data: Any,
-            chunk_index: int, 
-            total_chunks: int
-        ) -> str:
-        section = chunk_data.get("section") if isinstance(chunk_data, dict) else None
-        if section:
-            return f"static.{tool_name}.{section}"
+        return self.document.extract_body(updated_body)
 
-        if total_chunks > 1:
-            return f"static.{tool_name}.{chunk_index}"
-
-        return f"static.{tool_name}"
 
     def _get_static_sources(self) -> list[tuple[str, Any]]:
-        extractor = self._get_static_extractor()
+        extractor = self._get_analysis_extractor()
         if extractor is None:
             return []
 
@@ -116,7 +119,7 @@ class ReportAIRunner(BaseAIRunner):
                 sources.append((source_name, chunk_data))
 
         return sources
-
+        
     def _get_static_inference_sources(self) -> list[tuple[str, Any]]:
         data = load_json(self.context.output, STATIC_STRINGS_INFERENCE_RESULT_FILENAME)
         findings = JsonExtractor(data).get_static_inference_findings()
@@ -134,6 +137,19 @@ class ReportAIRunner(BaseAIRunner):
             for index, finding in enumerate(findings, start=1)
         ]
 
+    def _get_enrichment_sources(self) -> list[tuple[str, Any]]:
+        text = read_text(self.enrichment_document.path)
+
+        content = self.enrichment_document.sanitize(text)
+        if not content:
+            return []
+
+        body = self.enrichment_document.extract_body(content)
+        if not body or body == EMPTY_DOCUMENT_BODY:
+            return []
+
+        return [("reverse_engineering_enrichment", body)]
+
     def _get_reversing_agent_sources(self) -> list[tuple[str, Any]]:
         data = load_json(self.context.output, REVERSING_AGENT_RESULT_FILENAME)
         findings = JsonExtractor(data).get_findings()
@@ -150,23 +166,40 @@ class ReportAIRunner(BaseAIRunner):
             for index, batch in enumerate(batches, start=1)
         ]
 
-    def _get_enrichment_sources(self) -> list[tuple[str, Any]]:
-        content = self.enrichment_document.sanitize(
-            read_text(self.enrichment_document.path)
+    def _build_source_name(
+            self, 
+            tool_name: str, 
+            chunk_data: Any,
+            chunk_index: int, 
+            total_chunks: int
+        ) -> str:
+        section = None
+        if isinstance(chunk_data, dict):
+            section = chunk_data.get("section")
+
+        if section:
+            return f"static.{tool_name}.{section}"
+
+        if total_chunks > 1:
+            return f"static.{tool_name}.{chunk_index}"
+
+        return f"static.{tool_name}"
+
+
+    def _create_generator(self) -> ReportGenerator:
+        llm = self.model_registry.create_task_client(
+            "report", 
+            profile_override=self.context.profile,
         )
-        if not content:
-            return []
 
-        body = self.enrichment_document.extract_body(content)
-        if not body or body == EMPTY_DOCUMENT_BODY:
-            return []
+        return ReportGenerator(llm)
 
-        return [("reverse_engineering_enrichment", body)]
+    def _get_analysis_extractor(self) -> JsonExtractor | None:
+        result = load_json(self.context.output, RESULT_FILENAME)
 
-    def _get_sources(self) -> list[tuple[str, Any]]:
-        return [
-            *self._get_static_sources(),
-            *self._get_static_inference_sources(),
-            *self._get_enrichment_sources(),
-            *self._get_reversing_agent_sources(),
-        ]
+        if not result:
+            Logger.warning("No analysis data found. Skipping static report section.")
+            return None
+
+        return JsonExtractor(result)
+

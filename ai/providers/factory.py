@@ -27,52 +27,109 @@ def resolve_value(value: Any) -> Any:
 
 
 class ProviderFactory:
-    @staticmethod
-    def create(provider_config: dict[str, Any], profile_config: dict[str, Any]) -> BaseLLMProvider:
-        provider_type = provider_config.get("type")
-        
+    def __init__(
+        self,
+        provider_config: dict[str, Any],
+        profile_config: dict[str, Any],
+    ) -> None:
+        self.provider_config = provider_config
+        self.profile_config = profile_config
+
+    def create(self) -> BaseLLMProvider:
+        provider_type = self._provider_type()
+
+        model = self._model()
+        temperature = self._temperature()
+        response_format = self._response_format()
+
+        if provider_type == "ollama":
+            return self._create_ollama(
+                model,
+                temperature,
+                response_format,
+            )
+
+        return self._create_openai_compatible(
+            provider_type,
+            model,
+            temperature,
+            response_format,
+        )
+
+    def _provider_type(self) -> str:
+        provider_type = self.provider_config.get("type")
+
         if (
             not isinstance(provider_type, str)
             or provider_type not in SUPPORTED_PROVIDER_TYPES
         ):
             raise ConfigurationError(f"Unsupported provider type: {provider_type}")
 
-        model = resolve_value(profile_config.get("model"))
-        temperature = profile_config.get("temperature", 0.2)
-        response_format = profile_config.get("response_format", "text")
+        return provider_type
+
+    def _model(self) -> str:
+        model = resolve_value(self.profile_config.get("model"))
 
         if not isinstance(model, str) or not model:
             raise ConfigurationError("Model is empty for selected profile")
+
+        return model
+
+    def _temperature(self) -> float:
+        temperature = self.profile_config.get("temperature", 0.2)
+
         if not isinstance(temperature, int | float):
             raise ConfigurationError("Profile temperature must be numeric")
+
+        return float(temperature)
+
+    def _response_format(profile_config: dict[str, Any]) -> str:
+        response_format = profile_config.get("response_format", "text")
+
         if not isinstance(response_format, str):
             raise ConfigurationError("Profile response_format must be a string")
 
-        if provider_type == "ollama":
-            base_url = resolve_value(provider_config.get("base_url"))
+        return response_format
 
-            if not isinstance(base_url, str) or not base_url:
-                raise ConfigurationError("Missing base_url for Ollama provider")
-
-            return OllamaProvider(
-                base_url=base_url,
-                model=model,
-                temperature=temperature,
-                response_format=response_format,
-            )
-
-        base_url = resolve_value(provider_config.get("base_url"))
-        api_key = resolve_value(provider_config.get("api_key"))
+    def _base_url(self) -> str:
+        base_url = resolve_value(self.provider_config.get("base_url"))
 
         if not isinstance(base_url, str) or not base_url:
-            raise ConfigurationError(f"Missing base_url for provider: {provider_type}")
+            raise ConfigurationError(f"Missing base_url for provider: {self.provider_type}")
+
+        return base_url
+
+    def _api_key(self) -> str:
+        api_key = resolve_value(self.provider_config.get("api_key"))
 
         if not isinstance(api_key, str) or not api_key:
-            raise ConfigurationError(f"Missing API key for provider: {provider_type}")
+            raise ConfigurationError(f"Missing API key for provider: {self.provider_type}")
 
+        return api_key
+
+    def _create_ollama(
+        self,
+        model: str,
+        temperature: float,
+        response_format: str,
+    ) -> OllamaProvider:
+        return OllamaProvider(
+            base_url=ProviderFactory._base_url(self.provider_config, "ollama"),
+            model=model,
+            temperature=temperature,
+            response_format=response_format,
+        )
+
+    def _create_openai_compatible(
+        self,
+        provider_type: str,
+        model: str,
+        temperature: float,
+        response_format: str,
+    ) -> OpenAICompatibleProvider:
         return OpenAICompatibleProvider(
-            base_url=base_url,
-            api_key=api_key,
+            base_url=ProviderFactory._base_url(self.provider_config, provider_type),
+            api_key=ProviderFactory._api_key(self.provider_config, provider_type),
             model=model,
             temperature=temperature,
             response_format=response_format,

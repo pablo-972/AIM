@@ -116,9 +116,6 @@ with:
 
 If the block is not relevant, return finding=null.
 
-Do not return line-level findings and do not reconstruct the text. The system
-will save the original input block as the finding text.
-
 The "thought" field must be a short operational summary, not a step-by-step reasoning trace.
 Maximum 1 sentence.
 Do not include "Thinking Process", numbered reasoning, hidden reasoning, chain-of-thought, or detailed analysis.
@@ -141,5 +138,6 @@ class StaticInference:
         """
 
         response = self.llm.chat_json(SYSTEM_PROMPT, prompt, STATIC_INFERENCE_FINDING_SCHEMA)
+        
         return parse_static_inference_finding(response.content)
         

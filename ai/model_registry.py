@@ -13,28 +13,43 @@ class ModelRegistry:
         profile = self._get_profile(profile_name)
         provider_name = profile.get("provider")
 
-        if not isinstance(provider_name, str) or not provider_name:
-            raise ConfigurationError(f"Model profile '{profile_name}' does not define a provider")
+        if not provider_name:
+            raise ConfigurationError(
+                f"Model profile '{profile_name}' does not define a provider"
+            )
+        if not isinstance(provider_name, str):
+            raise ConfigurationError("Invalid provider name format.")
 
         provider = self._get_provider(provider_name)
+
         return ProviderFactory.create(provider_config=provider, profile_config=profile,)
 
-    def create_agent_client(self, agent_name: str, profile_override: str | None = None) -> BaseLLMProvider:
+    def create_agent_client(
+        self, 
+        agent_name: str, 
+        profile_override: str | None = None,
+    ) -> BaseLLMProvider:
         agent = self._get_agent(agent_name)
         profile_name = self._resolve_profile_name(
             override=profile_override,
             default=agent.get("default_profile"),
             owner=f"agent '{agent_name}'",
         )
+
         return self.create_client_from_profile(profile_name)
 
-    def create_task_client(self, task_name: str, profile_override: str | None = None) -> BaseLLMProvider:
+    def create_task_client(
+        self, 
+        task_name: str, 
+        profile_override: str | None = None,
+    ) -> BaseLLMProvider:
         task = self._get_task(task_name)
         profile_name = self._resolve_profile_name(
             override=profile_override,
             default=task.get("default_profile"),
             owner=f"task '{task_name}'",
         )
+
         return self.create_client_from_profile(profile_name)
 
     def _get_config_entry(
@@ -57,6 +72,7 @@ class ModelRegistry:
 
         return entry
 
+
     def _get_profile(self, profile_name: str) -> dict[str, Any]:
         return self._get_config_entry("profiles", profile_name, "model profile")
 
@@ -71,21 +87,30 @@ class ModelRegistry:
 
     def _get_fallback_profile(self) -> str:
         defaults = self.config.get("defaults")
-        fallback = (
-            defaults.get("fallback_profile")
-            if isinstance(defaults, dict)
-            else None
-        )
-        if not isinstance(fallback, str) or not fallback:
+
+        fallback = None
+        if isinstance(defaults, dict):
+            fallback = defaults.get("fallback_profile")
+
+        if not fallback:
             raise ConfigurationError(
-                "Missing defaults.fallback_profile in model configuration"
+                "Missing defaults.fallback_profile in model configuration."
             )
+        if not isinstance(fallback, str):
+            raise ConfigurationError("Invalid fallback format.")
+
         return fallback
 
-    def _resolve_profile_name(self, override: str | None, default: str | None, owner: str) -> str:
+    def _resolve_profile_name(
+        self, 
+        override: str | None, 
+        default: str | None, 
+        owner: str,
+    ) -> str:
         profile_name = override or default or self._get_fallback_profile()
         if not profile_name:
             raise ConfigurationError(f"No profile configured for {owner}")
+        
         return profile_name
 
 

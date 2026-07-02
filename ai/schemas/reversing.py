@@ -33,7 +33,6 @@ REVERSING_TARGET_SCHEMA = {
     "additionalProperties": False,
 }
 
-
 REVERSING_SEED_SCHEMA = {
     "type": "object",
     "properties": {
@@ -47,7 +46,6 @@ REVERSING_SEED_SCHEMA = {
     "required": ["reasoning", "targets"],
     "additionalProperties": False,
 }
-
 
 ADDRESS_RANGE_SCHEMA = {
     "type": "object",
@@ -68,7 +66,6 @@ ADDRESS_RANGE_SCHEMA = {
     "required": ["start", "end"],
     "additionalProperties": False,
 }
-
 
 REVERSING_FINDING_SCHEMA = {
     "type": "object",
@@ -124,7 +121,6 @@ REVERSING_FINDING_SCHEMA = {
     ],
     "additionalProperties": False,
 }
-
 
 REVERSING_ANALYSIS_SCHEMA = {
     "type": "object",

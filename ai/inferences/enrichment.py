@@ -146,6 +146,7 @@ class EnrichmentGenerator:
         """
 
         response = self.llm.chat_with_assistant(SYSTEM_PROMPT, current_enrichment, prompt)
+        
         return response.content
 
 

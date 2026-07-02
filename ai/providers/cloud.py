@@ -101,6 +101,7 @@ class OpenAICompatibleProvider(BaseLLMProvider):
 
         return LLMResponse(content=content)
 
+
     def _build_payload(
         self,
         messages: list[Message],
@@ -122,8 +123,10 @@ class OpenAICompatibleProvider(BaseLLMProvider):
 
     def _post_with_retries(self, payload: dict[str, Any]) -> dict[str, Any]:
         last_error: Exception | None = None
+
         for attempt in range(self.max_retries + 1):
             self._wait_for_rate_limit()
+
             try:
                 response = requests.post(
                     f"{self.base_url}/chat/completions",
@@ -131,30 +134,53 @@ class OpenAICompatibleProvider(BaseLLMProvider):
                     json=payload,
                     timeout=REQUEST_TIMEOUT,
                 )
-
-                if response.status_code == 429:
-                    self._sleep_before_retry(response, attempt)
-                    continue
-
-                response.raise_for_status()
-                data = response.json()
-                if not isinstance(data, dict):
-                    raise ProviderError(
-                        f"{self.provider_type} response must be a JSON object"
-                    )
-                return data
-
             except requests.RequestException as exc:
                 last_error = exc
-                if attempt >= self.max_retries:
+                if self._is_last_attempt(attempt):
                     break
 
                 self._sleep_before_retry(None, attempt)
+                continue
 
+            if response.status_code == 429:
+                if attempt >= self.max_retries:
+                    last_error = ProviderError("Rate limit exceeded")
+                    break
+
+                self._sleep_before_retry(response, attempt)
+                continue
+
+            try:
+                response.raise_for_status()
+                return self._parse_response(response)
+            except requests.RequestException as exc:
+                last_error = exc
+                if self._is_last_attempt(attempt):
+                    break
+
+                self._sleep_before_retry(response, attempt)
             except ValueError as exc:
-                raise ProviderError(f"Invalid JSON response from {self.provider_type}") from exc
+                raise ProviderError(
+                    f"Invalid JSON response from {self.provider_type}"
+                ) from exc
 
-        raise ProviderError(f"{self.provider_type} request failed after retries: {last_error}")
+        raise ProviderError(
+            f"{self.provider_type} request failed after retries: {last_error}"
+        )
+
+    def _extract_content(self, data: dict[str, Any]) -> str:
+        try:
+            content = data["choices"][0]["message"]["content"]
+        except (KeyError, IndexError, TypeError) as exc:
+            raise ProviderError(
+                f"{self.provider_type} response does not contain choices[0].message.content"
+            ) from exc
+
+        if not isinstance(content, str) or not content.strip():
+            raise ProviderError(f"{self.provider_type} response content is empty")
+
+        return content
+
 
     def _wait_for_rate_limit(self) -> None:
         elapsed = time.monotonic() - self._last_request_at
@@ -167,8 +193,10 @@ class OpenAICompatibleProvider(BaseLLMProvider):
 
     def _sleep_before_retry(self, response: requests.Response | None, attempt: int) -> None:
         retry_after = None
+
         if response is not None:
             retry_after_header = response.headers.get("Retry-After")
+
             if retry_after_header:
                 try:
                     retry_after = float(retry_after_header)
@@ -178,22 +206,10 @@ class OpenAICompatibleProvider(BaseLLMProvider):
         delay = retry_after or min(60.0, (2 ** attempt) + random.uniform(0, 1))
         time.sleep(delay)
 
-    def _extract_content(self, data: dict[str, Any]) -> str:
-        try:
-            content = data["choices"][0]["message"]["content"]
-        except (KeyError, IndexError, TypeError) as exc:
-            raise ProviderError(f"{self.provider_type} response does not contain choices[0].message.content") from exc
+    def _parse_response(self, response: requests.Response) -> dict[str, Any]:
+        data = response.json()
 
-        if not isinstance(content, str) or not content.strip():
-            raise ProviderError(f"{self.provider_type} response content is empty")
+        if not isinstance(data, dict):
+            raise ProviderError(f"{self.provider_type} response must be a JSON object")
 
-        return content
-    
-
-
-
-
-
-
-
-
+        return data

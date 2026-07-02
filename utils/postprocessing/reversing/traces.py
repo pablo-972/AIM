@@ -22,17 +22,22 @@ class ReversingTraceBuilder:
             target,
             observation,
         )
+
         trace_action = (
-            next_action if next_action in NO_TOOL_ACTIONS else target["tool"]
+            next_action
+            if next_action in NO_TOOL_ACTIONS
+            else target.get("tool")
         )
+
+        parameters = {}
+        if trace_action not in NO_TOOL_ACTIONS:
+            parameters = target.get("parameters")
 
         return {
             "thought": self._thought(analysis.get("thought"), observation),
             "confidence": analysis.get("confidence", "low"),
             "action": trace_action,
-            "parameters": (
-                {} if trace_action in NO_TOOL_ACTIONS else target["parameters"]
-            ),
+            "parameters": parameters,
         }
 
     def build_follow_up(
@@ -46,52 +51,72 @@ class ReversingTraceBuilder:
             target,
             observation,
         )
+
         if action in NO_TOOL_ACTIONS:
             return None
+        
+        reason = self._thought(analysis.get("thought"), observation)
+        if not reason:
+            reason = f"Follow code evidence from {target.get("tool")}."
 
         return {
             "tool": action,
             "parameters": parameters,
             "priority": min(100, target["priority"] + 5),
-            "reason": self._thought(
-                analysis.get("thought"),
-                observation,
-            ) or f"Follow code evidence from {target['tool']}.",
+            "reason": reason
         }
-
-    def _thought(
-        self,
-        thought: Any,
-        observation: dict[str, Any],
-    ) -> str:
+    
+    def _thought(self, thought: Any, observation: dict[str, Any]) -> str:
         normalized = str(thought or "").strip()
-        lower = normalized.lower()
-        matches_count = observation.get("matches_count")
-        xrefs_count = observation.get("xrefs_count")
 
-        if (
-            isinstance(matches_count, int)
-            and matches_count > 0
-            and any(phrase in lower for phrase in ("no match", "none were found"))
-        ):
-            return (
-                f"The tool returned {matches_count} matches; "
-                "follow the reported code references."
-            )
-
-        if (
-            isinstance(xrefs_count, int)
-            and xrefs_count > 0
-            and any(
-                phrase in lower
-                for phrase in ("no cross-reference", "no xref")
-            )
-        ):
-            return (
-                f"The tool returned {xrefs_count} code references; "
-                "follow the reported functions or addresses."
-            )
+        correction = self._correct_contradictory_thought(normalized, observation)
+        if correction:
+            return correction
 
         if is_empty_code_observation(observation):
             return "No instructions were returned; no code conclusion was made."
+
         return normalized
+    
+    def _correct_contradictory_thought(
+        self,
+        thought: str,
+        observation: dict[str, Any],
+    ) -> str | None:
+        lower = thought.lower()
+
+        if self._contradicts_matches(lower, observation):
+            return (
+                f"The tool returned {observation['matches_count']} matches; "
+                "follow the reported code references."
+            )
+
+        if self._contradicts_xrefs(lower, observation):
+            return (
+                f"The tool returned {observation['xrefs_count']} code references; "
+                "follow the reported functions or addresses."
+            )
+
+        return None
+
+    def _contradicts_matches(self, thought: str, observation: dict[str, Any]) -> bool:
+        matches_count = observation.get("matches_count")
+
+        return (
+            isinstance(matches_count, int)
+            and matches_count > 0
+            and self._contains_any(thought, ("no match", "none were found"))
+        )
+
+    def _contradicts_xrefs(self, thought: str, observation: dict[str, Any]) -> bool:
+        xrefs_count = observation.get("xrefs_count")
+
+        return (
+            isinstance(xrefs_count, int)
+            and xrefs_count > 0
+            and self._contains_any(thought, ("no cross-reference", "no xref"))
+        )
+
+    def _contains_any(self, text: str, phrases: tuple[str, ...]) -> bool:
+        return any(phrase in text for phrase in phrases)
+

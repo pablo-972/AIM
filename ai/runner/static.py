@@ -20,17 +20,11 @@ class StaticInferenceRunner(BaseAIRunner):
     ) -> None:
         super().__init__(context)
 
-        self.model_registry: ModelRegistry = model_registry
+        self.model_registry = model_registry
         self.strings: list[str] = strings
         
     def run(self) -> None:
-        
-
-        llm = self.model_registry.create_task_client(
-            "static", 
-            profile_override=self.context.profile
-        )
-        inference = StaticInference(llm)
+        inference = self._create_inference_model()
         memory = TraceMemory(
             output_dir=self.context.output,
             filename=STATIC_STRINGS_INFERENCE_RESULT_FILENAME,
@@ -39,34 +33,11 @@ class StaticInferenceRunner(BaseAIRunner):
 
         try:
             for chunk_index, strings_chunk in enumerate(self._iter_string_chunks(), start=1):
-                input_ref = {
-                    "type": "strings_chunk",
-                    "index": chunk_index,
-                    "value": None,
-                }
-
-                try:
-                    decision = inference.analyze_strings_chunk(strings_chunk)
-                except Exception as exc:
-                    error = f"Static inference failed on chunk {chunk_index}: {exc}"
-                    Logger.error(error)
-                    memory.record(
-                        decision={
-                            "thought": "The chunk could not be analyzed.",
-                            "confidence": "low",
-                            "action": "none",
-                            "parameters": {},
-                        },
-                        input_ref=input_ref,
-                        error=error,
-                    )
-                    continue
-
-                finding = self._finding(decision, strings_chunk)
-                memory.record(
-                    decision=decision,
-                    input_ref=input_ref,
-                    finding=finding,
+                self._process_chunk(
+                    inference,
+                    memory,
+                    chunk_index,
+                    strings_chunk,
                 )
         except Exception as exc:
             memory.fail(str(exc))
@@ -74,12 +45,58 @@ class StaticInferenceRunner(BaseAIRunner):
         else:
             memory.close()
 
-        
-    
-    def _iter_string_chunks(self, chunk_size: int = STRING_CHUNK_SIZE) -> Iterator[list[str]]:
+
+    def _process_chunk(
+        self,
+        inference: StaticInference,
+        memory: TraceMemory,
+        chunk_index: int,
+        strings_chunk: list[str],
+    ) -> None:
+        input_ref = self._input_ref(chunk_index)
+
+        try:
+            decision = inference.analyze_strings_chunk(strings_chunk)
+        except Exception as exc:
+            error = f"Static inference failed on chunk {chunk_index}: {exc}"
+            Logger.error(error)
+
+            memory.record(
+                decision=self._failed_decision(),
+                input_ref=input_ref,
+                error=error,
+            )
+            return
+
+        memory.record(
+            decision=decision,
+            input_ref=input_ref,
+            finding=self._finding(decision, strings_chunk),
+        )
+
+
+    def _iter_string_chunks(
+            self, 
+            chunk_size: int = STRING_CHUNK_SIZE,
+        ) -> Iterator[list[str]]:
         for index in range(0, len(self.strings), chunk_size):
             yield self.strings[index:index + chunk_size]
 
+    def _input_ref(self, chunk_index: int) -> dict[str, Any]:
+        return {
+            "type": "strings_chunk",
+            "index": chunk_index,
+            "value": None,
+        }
+
+    def _failed_decision(self) -> dict[str, Any]:
+        return {
+            "thought": "The chunk could not be analyzed.",
+            "confidence": "low",
+            "action": "none",
+            "parameters": {},
+        }
+    
     def _finding(
         self,
         decision: dict[str, Any],
@@ -91,6 +108,7 @@ class StaticInferenceRunner(BaseAIRunner):
 
         category = raw_finding.get("category")
         tone = raw_finding.get("tone")
+
         return {
             "type": "threat_actor_message",
             "confidence": decision.get("confidence", "low"),
@@ -98,3 +116,10 @@ class StaticInferenceRunner(BaseAIRunner):
             "category": category if isinstance(category, str) and category else "unknown",
             "tone": tone if isinstance(tone, str) and tone else "unknown",
         }
+
+    def _create_inference_model(self) -> StaticInference:
+        llm = self.model_registry.create_task_client(
+            "static", 
+            profile_override=self.context.profile,
+        )
+        return StaticInference(llm)

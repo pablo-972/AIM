@@ -68,11 +68,14 @@ class TraceMemory:
         steps = self.data["steps"]
         step_number = len(steps) + 1
         normalized_decision = self._normalize_decision(decision)
-        normalized_decision = self._align_decision_with_tool(
-            normalized_decision,
-            tool_name,
-        )
+        normalized_decision = self._align_decision_with_tool(normalized_decision, tool_name)
         normalized_error = error or self._tool_error(tool_output)
+        normalized_tool = self._normalize_tool(
+            decision=normalized_decision,
+            tool_name=tool_name,
+            tool_output=tool_output,
+            artifact_ref=artifact_ref,
+        )
 
         step = {
             "step": step_number,
@@ -81,12 +84,7 @@ class TraceMemory:
                 "value": None,
             },
             "decision": normalized_decision,
-            "tool": self._normalize_tool(
-                decision=normalized_decision,
-                tool_name=tool_name,
-                tool_output=tool_output,
-                artifact_ref=artifact_ref,
-            ),
+            "tool": normalized_tool,
             "finding": finding,
             "error": normalized_error,
         }
@@ -113,10 +111,6 @@ class TraceMemory:
 
         self._mark_dirty()
 
-    def close(self, status: str = "completed") -> None:
-        self.data["status"] = status
-        self.flush(force=True)
-
     def record_queue_event(
         self,
         action: str,
@@ -134,6 +128,7 @@ class TraceMemory:
                 "queue_size": queue_size,
             }
         )
+
         self._mark_dirty()
 
     def fail(self, error: str) -> None:
@@ -153,14 +148,20 @@ class TraceMemory:
         save_json(self.output_dir, self.filename, self.data)
         self._pending_events = 0
 
+    def close(self, status: str = "completed") -> None:
+        self.data["status"] = status
+        self.flush(force=True)
+
+
     def _mark_dirty(self) -> None:
         self._pending_events += 1
         self.flush()
 
+
     def _normalize_decision(self, decision: dict[str, Any]) -> dict[str, Any]:
         confidence = decision.get("confidence")
         if confidence not in {"low", "medium", "high"}:
-            confidence = "low"
+            confidence = "unknown"
 
         action = decision.get("action")
         if not isinstance(action, str) or not action:
@@ -186,11 +187,11 @@ class TraceMemory:
         decision: dict[str, Any],
         tool_name: str | None,
     ) -> dict[str, Any]:
-        if (
-            tool_name
-            and tool_name not in NO_TOOL_ACTIONS
-            and decision["action"] not in {"none", "finish", tool_name}
-        ):
+        if not tool_name or tool_name in NO_TOOL_ACTIONS:
+            return decision
+
+        action = decision.get("action")
+        if action not in {"none", "finish", tool_name}:
             decision["action"] = tool_name
 
         return decision
@@ -203,30 +204,35 @@ class TraceMemory:
         artifact_ref: dict[str, Any] | None,
     ) -> dict[str, Any]:
         action = decision["action"]
-        if tool_name is None and tool_output is not None and action not in NO_TOOL_ACTIONS:
+        if (
+            tool_name is None
+            and tool_output is not None
+            and action not in NO_TOOL_ACTIONS
+        ):
             tool_name = action
 
+        output = self._compact_tool_output(tool_output)
+
         if tool_name is None or tool_name in NO_TOOL_ACTIONS:
-            status = "error" if tool_output is not None else "skipped"
             return {
                 "name": "none",
-                "status": status,
-                "output": self._compact_tool_output(tool_output),
+                "status": "error" if tool_output else "skipped",
+                "output": output,
                 "artifact_ref": artifact_ref,
             }
 
-        success = tool_output.get("success") if isinstance(tool_output, dict) else False
+        success = False
+        if isinstance(tool_output, dict):
+            success = tool_output.get("success")
+
         return {
             "name": tool_name,
-            "status": "ok" if success is True else "error",
-            "output": self._compact_tool_output(tool_output),
+            "status": "ok" if success else "error",
+            "output": output,
             "artifact_ref": artifact_ref,
         }
 
-    def _compact_tool_output(
-        self,
-        tool_output: dict[str, Any] | None,
-    ) -> dict[str, Any] | None:
+    def _compact_tool_output(self, tool_output: dict[str, Any] | None) -> dict[str, Any] | None:
         if not isinstance(tool_output, dict):
             return None
 
@@ -235,6 +241,7 @@ class TraceMemory:
         self._add_collection_counts(tool_output, compact)
 
         data = tool_output.get("data")
+
         if isinstance(data, dict):
             self._copy_compact_fields(data, compact)
             self._add_collection_counts(data, compact)
@@ -243,11 +250,7 @@ class TraceMemory:
 
         return compact or None
 
-    def _copy_compact_fields(
-        self,
-        source: dict[str, Any],
-        target: dict[str, Any],
-    ) -> None:
+    def _copy_compact_fields(self, source: dict[str, Any], target: dict[str, Any]) -> None:
         for key in COMPACT_OUTPUT_KEYS:
             value = source.get(key)
             if value is not None and not isinstance(value, (dict, list)):
@@ -257,11 +260,7 @@ class TraceMemory:
         if isinstance(item, dict) and item.get("id") is not None:
             target["item_id"] = item["id"]
 
-    def _add_collection_counts(
-        self,
-        source: dict[str, Any],
-        target: dict[str, Any],
-    ) -> None:
+    def _add_collection_counts(self, source: dict[str, Any], target: dict[str, Any]) -> None:
         for key, value in source.items():
             if key in LARGE_OUTPUT_KEYS and isinstance(value, (dict, list)):
                 target.setdefault(f"{key}_count", len(value))
@@ -269,19 +268,25 @@ class TraceMemory:
                 target.setdefault(f"{key}_count", len(value))
 
             if key == "matches" and isinstance(value, list):
-                xrefs_count = sum(
-                    len(item.get("xrefs", []))
-                    for item in value
-                    if isinstance(item, dict)
-                    and isinstance(item.get("xrefs"), list)
-                )
+                xrefs_count = 0
+
+                for item in value:
+                    if not isinstance(item, dict):
+                        continue
+
+                    xrefs = item.get("xrefs", [])
+                    if isinstance(item.get("xrefs"), list):
+                        xrefs_count += len(xrefs)
+
                 target.setdefault("xrefs_count", xrefs_count)
 
     def _tool_error(self, tool_output: dict[str, Any] | None) -> str | None:
         if not isinstance(tool_output, dict):
             return None
+        
         if tool_output.get("success") is not False:
             return None
 
         error = tool_output.get("error") or tool_output.get("reason")
+        
         return str(error) if error else "Tool execution failed."

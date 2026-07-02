@@ -79,6 +79,38 @@ class OllamaProvider(BaseLLMProvider):
         messages: list[Message],
         schema: JsonSchema | None = None,
     ) -> LLMResponse:
+        payload = self._build_payload(messages, schema)
+
+        try:
+            response = requests.post( 
+                f"{self.base_url}/api/chat", 
+                json=payload, 
+                timeout=REQUEST_TIMEOUT,
+            )
+        except requests.RequestException as exc:
+            raise ProviderError(
+                f"Ollama connection failed for {self.base_url}/api/chat: {exc}"
+            ) from exc
+
+        if not response.ok:
+            error_message = self._http_error_message(response)
+            raise ProviderError(error_message)
+
+        try:
+            data = response.json()
+        except ValueError as exc:
+                raise ProviderError("Invalid JSON response from Ollama") from exc
+
+        content = self._extract_content(data)
+
+        return LLMResponse(content=content)
+    
+
+    def _build_payload(
+        self,
+        messages: list[Message],
+        schema: JsonSchema | None,
+    ) -> dict[str, Any]:
         payload: dict[str, Any] = {
             "model": self.model,
             "messages": messages,
@@ -87,59 +119,55 @@ class OllamaProvider(BaseLLMProvider):
                 "temperature": self.temperature,
             },
         }
-
+    
         if schema is not None:
             payload["format"] = schema
         elif self.response_format == "json":
             payload["format"] = "json"
 
-        try:
-            response = requests.post( 
-                f"{self.base_url}/api/chat", 
-                json=payload, 
-                timeout=REQUEST_TIMEOUT
-            )
+        return payload
 
-            if not response.ok:
-                error_body = response.text.strip()
-                if len(error_body) > MAX_ERROR_BODY_LENGTH:
-                    error_body = f"{error_body[:MAX_ERROR_BODY_LENGTH]}..."
+    def _http_error_message(self, response: requests.Response) -> str:
+        error_body = response.text.strip()
 
-                details = error_body or "<empty response body>"
-                raise ProviderError(
-                    f"Ollama request failed with HTTP {response.status_code}: "
-                    f"{details}"
-                )
+        if len(error_body) > MAX_ERROR_BODY_LENGTH:
+            error_body = f"{error_body[:MAX_ERROR_BODY_LENGTH]}..."
 
-            data = response.json()
-            if not isinstance(data, dict):
-                raise ProviderError("Ollama response must be a JSON object")
+        details = error_body or "<empty response body>"
 
-            message = data.get("message")
-            content = message.get("content") if isinstance(message, dict) else None
-            if not isinstance(content, str) or not content.strip():
-                diagnostics = {
-                    "done": data.get("done"),
-                    "done_reason": data.get("done_reason"),
-                    "prompt_eval_count": data.get("prompt_eval_count"),
-                    "eval_count": data.get("eval_count"),
-                    "message_keys": (
-                        sorted(message)
-                        if isinstance(message, dict)
-                        else []
-                    ),
-                }
-                raise ProviderError(
-                    "Ollama response does not contain message.content. "
-                    f"Diagnostics: {diagnostics}"
-                )
-
-            return LLMResponse(content=content)
-
-        except requests.RequestException as exc:
-            raise ProviderError(
-                f"Ollama connection failed for {self.base_url}/api/chat: {exc}"
-            ) from exc
+        return (
+            f"Ollama request failed with HTTP {response.status_code}: "
+            f"{details}"
+        )
     
-        except ValueError as exc:
-            raise ProviderError("Invalid JSON response from Ollama") from exc
+    def _extract_content(self, data: Any) -> str:
+        if not isinstance(data, dict):
+            raise ProviderError("Ollama response must be a JSON object")
+
+        message = data.get("message")
+
+        content = None
+        if isinstance(message, dict):
+            content = message.get("content")
+
+        if isinstance(content, str) and content.strip():
+            return content
+        
+        diagnostics = self._response_diagnostics(data, message)
+        raise ProviderError(
+            "Ollama response does not contain message.content. "
+            f"Diagnostics: {diagnostics}"
+        )
+    
+    def _response_diagnostics(
+        self,
+        data: dict[str, Any],
+        message: Any,
+    ) -> dict[str, Any]:
+        return {
+            "done": data.get("done"),
+            "done_reason": data.get("done_reason"),
+            "prompt_eval_count": data.get("prompt_eval_count"),
+            "eval_count": data.get("eval_count"),
+            "message_keys": sorted(message) if isinstance(message, dict) else [],
+        }
