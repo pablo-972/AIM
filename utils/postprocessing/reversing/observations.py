@@ -190,5 +190,5 @@ class ReversingObservationBuilder:
         
         return None
 
-    def _unique(values: list[str]) -> list[str]:
+    def _unique(self, values: list[str]) -> list[str]:
         return list(dict.fromkeys(values))
