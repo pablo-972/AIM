@@ -2,7 +2,7 @@ import argparse
 
 from exceptions import CLIValidationError
 
-STATIC_MODES = [
+STATIC_TOOLS = [
     "file",
     "hash",
     "metadata",
@@ -15,15 +15,15 @@ STATIC_MODES = [
 
 
 def validate_static_args(args: argparse.Namespace) -> None:
-    selected_modes = set(args.static_modes)
+    selected_tools = set(args.static_tools)
 
-    if len(selected_modes) < 1:
+    if len(selected_tools) < 1:
         raise CLIValidationError("Select at least one static mode with --mode")
 
-    if "full" in selected_modes and len(selected_modes) > 1:
+    if "full" in selected_tools and len(selected_tools) > 1:
         raise CLIValidationError("'full' cannot be combined with other static modes")
 
-    if args.static_ai and not {"strings", "full"} & selected_modes:
+    if args.static_ai and not {"strings", "full"} & selected_tools:
         raise CLIValidationError("--ai is only valid with 'strings' or 'full'")
 
     if args.profile != "local-static" and not args.static_ai:
@@ -41,12 +41,12 @@ def add_static_module(
     )
 
     parser.add_argument(
-        "--mode",
-        dest="static_modes",
+        "--tool",
+        dest="static_tools",
         action="append",
-        choices=STATIC_MODES,
+        choices=STATIC_TOOLS,
         default=[],
-        help="Static analysis mode"
+        help="Static analysis tool"
     )
     parser.add_argument(
         "--ai",

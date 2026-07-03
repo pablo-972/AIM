@@ -32,7 +32,7 @@ class StaticToolRunner(BaseToolRunner):
         return ToolResult.ok(data).to_dict()
 
     def _resolve_modes(self) -> list[str]:
-        modes = list(self.context.static_modes)
+        modes = list(self.context.static_tools)
         if "full" in modes:
             return list(STATIC_MANUAL_TOOLS)
 

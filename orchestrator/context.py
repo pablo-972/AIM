@@ -14,8 +14,8 @@ class AnalysisContext:
     output_format: str
     phase: str
     func: str | None
-    static_modes: list[str]
-    reversing_modes: list[str]
+    static_tools: list[str]
+    reversing_tools: list[str]
     value: str | None
     function: str | None
     profile: str | None
@@ -45,8 +45,8 @@ class AnalysisContext:
             output_format=args.format,
             phase=args.phase,
             func=getattr(args, "func", None),
-            static_modes=getattr(args, "static_modes", []),
-            reversing_modes=getattr(args, "reversing_modes", []),
+            static_tools=getattr(args, "static_tools", []),
+            reversing_tools=getattr(args, "reversing_tools", []),
             value=getattr(args, "value", None),
             function=getattr(args, "function", None),
             profile=getattr(args, "profile", None),

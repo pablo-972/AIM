@@ -34,7 +34,7 @@ class ReversingToolRunner(BaseToolRunner):
         return ToolResult.ok(data).to_dict()
 
     def _resolve_modes(self) -> list[str]:
-        modes = list(self.context.reversing_modes)
+        modes = list(self.context.reversing_tools)
         if "full" in modes:
             return ["info", "imports", "strings"]
 

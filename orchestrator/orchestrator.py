@@ -116,7 +116,7 @@ class Orchestrator:
             self.context,
             phase="static",
             func="run_static",
-            static_modes=["full"],
+            static_tools=["full"],
             static_ai=True,
             profile=self.context.full_static_profile,
         )
@@ -134,7 +134,7 @@ class Orchestrator:
             self.context,
             phase="reversing",
             func="run_reversing",
-            reversing_modes=["full"],
+            reversing_tools=["full"],
             reversing_agent=False,
             profile=None,
         )
@@ -144,7 +144,7 @@ class Orchestrator:
             self.context,
             phase="reversing",
             func="run_reversing",
-            reversing_modes=[],
+            reversing_tools=[],
             reversing_agent=True,
             profile=self.context.full_reversing_profile,
         )

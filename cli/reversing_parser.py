@@ -2,7 +2,7 @@ import argparse
 
 from exceptions import CLIValidationError
 
-REVERSING_MODES = [
+REVERSING_TOOLS = [
     "info",
     "imports",
     "functions",
@@ -18,36 +18,36 @@ REVERSING_MODES = [
 
 
 def validate_reversing_args(args: argparse.Namespace) -> None:
-    selected_modes = set(args.reversing_modes)
+    selected_tools = set(args.reversing_tools)
 
-    if "full" in selected_modes and len(selected_modes) > 1:
+    if "full" in selected_tools and len(selected_tools) > 1:
         raise CLIValidationError("'full' cannot be combined with other reversing modes")
 
-    if args.reversing_agent and selected_modes:
+    if args.reversing_agent and selected_tools:
         raise CLIValidationError("--agent cannot be combined with manual reversing modes")
 
-    if not args.reversing_agent and not selected_modes:
+    if not args.reversing_agent and not selected_tools:
         raise CLIValidationError("Select at least one reversing mode or use --agent")
 
     if args.reversing_max_targets < 1:
         raise CLIValidationError("--max-targets must be greater than zero")
 
-    if "disasm" in selected_modes and not args.function:
+    if "disasm" in selected_tools and not args.function:
         raise CLIValidationError("reversing disasm requires --function")
 
-    if "xrefs" in selected_modes and not args.function:
+    if "xrefs" in selected_tools and not args.function:
         raise CLIValidationError("reversing xrefs requires --function")
     
-    if "string-xrefs" in selected_modes and not args.value:
+    if "string-xrefs" in selected_tools and not args.value:
         raise CLIValidationError("reversing string-xrefs requires --value")
 
-    if "import-xrefs" in selected_modes and not args.value:
+    if "import-xrefs" in selected_tools and not args.value:
         raise CLIValidationError("reversing import-xrefs requires --value")
 
-    if "callers" in selected_modes and not args.function:
+    if "callers" in selected_tools and not args.function:
         raise CLIValidationError("reversing callers requires --function")
 
-    if "callees" in selected_modes and not args.function:
+    if "callees" in selected_tools and not args.function:
         raise CLIValidationError("reversing callees requires --function")
 
 
@@ -62,12 +62,12 @@ def add_reversing_module(
     )
 
     parser.add_argument(
-        "--mode",
-        dest="reversing_modes",
+        "--tool",
+        dest="reversing_tools",
         action="append",
-        choices=REVERSING_MODES,
+        choices=REVERSING_TOOLS,
         default=[],
-        help="Reverse mode to run. Can be used multiple times",
+        help="Reverse tool to run. Can be used multiple times",
     )
     parser.add_argument(
         "--function",
