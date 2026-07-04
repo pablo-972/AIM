@@ -186,6 +186,11 @@ samples/
 # Output data
 output/
 
+# Shared folder for dynamic analysis
+shared/
+
 # Logs
 logs/
-entrypoint.sh
+
+
+

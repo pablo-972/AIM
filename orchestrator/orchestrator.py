@@ -10,6 +10,7 @@ from utils.artifacts.builder import JsonBuilder
 from utils.artifacts.extractor import get_static_strings_from_tool_results
 from orchestrator.context import AnalysisContext
 from tools.runner.static import StaticToolRunner
+from tools.runner.dynamic import DynamicToolRunner
 from tools.runner.reversing import ReversingToolRunner
 from ai.model_registry import ModelRegistry
 from ai.runner.static import StaticInferenceRunner
@@ -26,6 +27,7 @@ class ToolRunner(Protocol):
 class Orchestrator:
     PHASE_HANDLERS: dict[str,str] = {
         "static": "run_static_phase",
+        "dynamic": "run_dynamic_phase",
         "enrichment": "run_enrichment_phase",
         "reversing": "run_reversing_phase",
         "report": "run_report_phase",
@@ -66,6 +68,24 @@ class Orchestrator:
         self._run_static_strings_inference(context, results)
         
         Logger.success("Static phase finished")
+
+    def run_dynamic_phase(
+        self,
+        context: AnalysisContext | None = None,
+        persist_json: bool = False,
+    ) -> None:
+        Logger.info("Running dynamic phase")
+
+        context = context or self.context
+
+        self._run_tools(
+            "dynamic",
+            DynamicToolRunner(context),
+            context,
+            persist_json,
+        )
+
+        Logger.success("Dynamic phase finished")
 
     def run_enrichment_phase(self, context: AnalysisContext | None = None) -> None:
         Logger.info("Running enrichment phase")

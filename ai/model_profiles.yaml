@@ -30,6 +30,12 @@ profiles:
     temperature: 0.2
     response_format: json
 
+  local-dynamic:
+    provider: ollama
+    model: gemma4:e2b
+    temperature: 0.2
+    response_format: text
+
   local-enrichment:
     provider: ollama
     model: llama3.1:8b
@@ -52,6 +58,13 @@ profiles:
     provider: openai
     model:
       env: OPENAI_STATIC_MODEL
+      default: ""
+    temperature: 0.1
+
+  openai-dynamic:
+    provider: openai
+    model:
+      env: OPENAI_DYNAMIC_MODEL
       default: ""
     temperature: 0.1
 
@@ -84,6 +97,13 @@ profiles:
       default: "gemini-2.5-flash"
     temperature: 0.1
 
+  gemini-dynamic:
+    provider: gemini
+    model:
+      env: GEMINI_DYNAMIC_MODEL
+      default: "gemini-2.5-flash"
+    temperature: 0.1
+
   gemini-enrichment:
     provider: gemini
     model:
@@ -113,6 +133,8 @@ agents:
 tasks:
   static:
     default_profile: local-static
+  dynamic:
+    default_profile: local-dynamic
   report:
     default_profile: local-report
   enrichment:

@@ -12,16 +12,23 @@ class AnalysisContext:
     sample_sha256: str
     output: Path
     output_format: str
+
     phase: str
     func: str | None
+    profile: str | None
+
     static_tools: list[str]
+    static_ai: bool
+
+    dynamic_tools: list[str]
+    dynamic_ai: bool
+
     reversing_tools: list[str]
     value: str | None
     function: str | None
-    profile: str | None
-    static_ai: bool
     reversing_agent: bool
     reversing_max_targets: int
+
     full_static_profile: str | None
     full_enrichment_profile: str | None
     full_reversing_profile: str | None
@@ -43,16 +50,23 @@ class AnalysisContext:
             sample_sha256=sample_sha256,
             output=base_output / sample_sha256,
             output_format=args.format,
+
             phase=args.phase,
             func=getattr(args, "func", None),
+            profile=getattr(args, "profile", None),
+
             static_tools=getattr(args, "static_tools", []),
+            static_ai=getattr(args, "static_ai", False),
+
+            dynamic_tools=getattr(args, "dynamic_tools", []),
+            dynamic_ai=getattr(args, "dynamic_ai", False),
+
             reversing_tools=getattr(args, "reversing_tools", []),
             value=getattr(args, "value", None),
             function=getattr(args, "function", None),
-            profile=getattr(args, "profile", None),
-            static_ai=getattr(args, "static_ai", False),
             reversing_agent=getattr(args, "reversing_agent", False),
             reversing_max_targets=getattr(args, "reversing_max_targets", 12),
+            
             full_static_profile=getattr(args, "static_profile", None),
             full_enrichment_profile=getattr(args, "enrichment_profile", None),
             full_reversing_profile=getattr(args, "reversing_profile", None),
