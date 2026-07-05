@@ -2,6 +2,7 @@ import argparse
 
 from cli.full_parser import add_full_module
 from cli.static_parser import add_static_module
+from cli.dynamic_parser import add_dynamic_module
 from cli.enrichment_parser import add_enrichment_module
 from cli.reversing_parser import add_reversing_module
 from cli.report_parser import add_report_module
@@ -36,6 +37,7 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="phase", required=True, metavar="phase")
 
     add_static_module(subparsers, common)
+    add_dynamic_module(subparsers, common)
     add_enrichment_module(subparsers, common)
     add_reversing_module(subparsers, common)
     add_report_module(subparsers, common)

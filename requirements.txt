@@ -4,3 +4,6 @@ requests
 pefile
 yara
 r2pipe
+
+# fastapi
+# uvicorn

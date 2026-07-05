@@ -22,6 +22,8 @@ class AnalysisContext:
 
     dynamic_tools: list[str]
     dynamic_ai: bool
+    dynamic_start: bool
+    dynamic_stop: bool
 
     reversing_tools: list[str]
     value: str | None
@@ -60,6 +62,8 @@ class AnalysisContext:
 
             dynamic_tools=getattr(args, "dynamic_tools", []),
             dynamic_ai=getattr(args, "dynamic_ai", False),
+            dynamic_start=getattr(args, "dynamic_start", False),
+            dynamic_stop=getattr(args, "dynamic_stop", False),
 
             reversing_tools=getattr(args, "reversing_tools", []),
             value=getattr(args, "value", None),
