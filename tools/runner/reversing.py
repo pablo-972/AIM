@@ -36,7 +36,7 @@ class ReversingToolRunner(BaseToolRunner):
     def _resolve_modes(self) -> list[str]:
         modes = list(self.context.reversing_tools)
         if "full" in modes:
-            return ["info", "imports", "strings"]
+            return ["info", "imports"]
 
         unknown_modes = [mode for mode in modes if mode not in REVERSING_MANUAL_TOOLS]
         if unknown_modes:
