@@ -5,7 +5,11 @@ from tools.results import CommandResult
 DEFAULT_COMMAND_TIMEOUT = 30
 
 
-def run_command(command: list[str], timeout: int = DEFAULT_COMMAND_TIMEOUT) -> CommandResult:
+def run_command(
+        command: list[str], 
+        timeout: int = DEFAULT_COMMAND_TIMEOUT,
+        check: bool = False,
+    ) -> CommandResult:
     try:
         result = subprocess.run(
             command,
@@ -14,6 +18,7 @@ def run_command(command: list[str], timeout: int = DEFAULT_COMMAND_TIMEOUT) -> C
             encoding="utf-8",
             errors="replace",
             timeout=timeout,
+            check=check,
         )
     except subprocess.TimeoutExpired as exc:
         stdout = (

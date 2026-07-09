@@ -197,7 +197,7 @@ class Orchestrator:
         if save_json:
             json_builder = self._get_json_builder(context)
             json_builder.save_phase(phase_name, results)
-        if print_text:
+        elif print_text:
             print(json.dumps(results, indent=4))
 
         Logger.success("Tools executed successfully")

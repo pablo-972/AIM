@@ -3,7 +3,9 @@ from config.settings import (
     CONFIG_PATH,
     ORCHESTRATOR_PATH,
     OUTPUT_PATH,
+    SHARED_PATH,
     MODEL_PROFILES_PATH,
+    VBOXMANAGE_PATH,
 
     TOOLS_PATH,
     STATIC_TOOLS_PATH,
@@ -16,6 +18,8 @@ from config.settings import (
     REPORT_FILENAME,
     ENRICHMENT_FILENAME,
 
+    SHARED_FOLDER,
+
     get_env,
 )
 
@@ -24,7 +28,9 @@ __all__ = [
     "CONFIG_PATH",
     "ORCHESTRATOR_PATH",
     "OUTPUT_PATH",
+    "SHARED_PATH",
     "MODEL_PROFILES_PATH",
+    "VBOXMANAGE_PATH",
     "TOOLS_PATH",
     "STATIC_TOOLS_PATH",
     "REVERSING_TOOLS_PATH",
@@ -34,5 +40,6 @@ __all__ = [
     "REVERSING_AGENT_RESULT_FILENAME",
     "REPORT_FILENAME",
     "ENRICHMENT_FILENAME",
+    "SHARED_FOLDER",
     "get_env",
 ]
