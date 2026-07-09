@@ -7,20 +7,15 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
+from config import get_env, SHARED_PATH, VICTIM_WORKING_PATH
 from exceptions import ToolError
 from tools.dynamic.manual import build_dynamic_tools_config
 
-DEFAULT_CONTROLLER_BASE_URL = "http://192.168.56.10:8080"
-DEFAULT_CONTROLLER_TIMEOUT = 60
-DEFAULT_SHARED_DIR = Path(__file__).resolve().parents[3] / "shared"
-DEFAULT_WORKING_DIR = "desktop"
-
-ENV_CONTROLLER_BASE_URL = "AIM_DYNAMIC_CONTROLLER_BASE_URL"
-ENV_CONTROLLER_TIMEOUT = "AIM_DYNAMIC_CONTROLLER_TIMEOUT"
-ENV_SHARED_DIR = "AIM_DYNAMIC_SHARED_DIR"
+COLLECTOR_BASE_URL = get_env("AIM_DYNAMIC_ANALYSIS_BASE_URL")
+COLLECTOR_TIMEOUT = get_env("AIM_DYNAMIC_ANALYSIS_TIMEOUT")
 
 
-def build_dynamic_job(
+def build_dynamic_config(
     sample: Path,
     analysis_id: str,
     selected_tools: list[str],
@@ -30,20 +25,20 @@ def build_dynamic_job(
         "sample": {
             "filename": sample.name,
             "sha256": analysis_id,
-            "working_dir": DEFAULT_WORKING_DIR,
+            "working_dir": VICTIM_WORKING_PATH,
         },
-        "controller": {
-            "base_url": os.getenv(ENV_CONTROLLER_BASE_URL, DEFAULT_CONTROLLER_BASE_URL),
-            "timeout": _env_int(ENV_CONTROLLER_TIMEOUT, DEFAULT_CONTROLLER_TIMEOUT),
+        "collector": {
+            "base_url": COLLECTOR_BASE_URL,
+            "timeout": COLLECTOR_TIMEOUT 
         },
         "tools": build_dynamic_tools_config(selected_tools),
     }
 
 
-def prepare_dynamic_job_files(
+def prepare_dynamic_config_files(
     sample: Path,
     analysis_id: str,
-    job: dict[str, Any],
+    config: dict[str, Any],
     shared_dir: Path | None = None,
 ) -> dict[str, Any]:
     shared_root = shared_dir or dynamic_shared_dir()
@@ -53,15 +48,15 @@ def prepare_dynamic_job_files(
     _clear_previous_dynamic_job(job_dir)
 
     sample_target = job_dir / sample.name
-    job_target = job_dir / "job.json"
+    job_target = job_dir / "config.json"
 
     shutil.copy2(sample, sample_target)
     _save_json(job_target, job)
 
     return {
         "shared_dir": str(shared_root),
-        "job_dir": str(job_dir),
-        "job_path": str(job_target),
+        "config_dir": str(job_dir),
+        "config_path": str(job_target),
         "sample_path": str(sample_target),
         "result_path": str(dynamic_result_path(analysis_id, shared_root)),
     }
@@ -89,25 +84,6 @@ def wait_for_dynamic_result(
         f"Dynamic result did not reach a terminal status before timeout "
         f"({last_status}): {result_path}"
     )
-
-
-def check_collector_health(base_url: str, timeout: int) -> dict[str, Any]:
-    url = f"{base_url.rstrip('/')}/health"
-    try:
-        with urllib.request.urlopen(url, timeout=timeout) as response:
-            body = response.read().decode("utf-8", errors="replace")
-    except (urllib.error.URLError, TimeoutError) as exc:
-        return {
-            "status": "unavailable",
-            "url": url,
-            "error": str(exc),
-        }
-
-    return {
-        "status": "available",
-        "url": url,
-        "response": body,
-    }
 
 
 def dynamic_shared_dir() -> Path:
@@ -167,12 +143,3 @@ def _clear_previous_dynamic_job(path: Path) -> None:
             item.unlink()
 
 
-def _env_int(name: str, default: int) -> int:
-    value = os.getenv(name)
-    if value is None:
-        return default
-
-    try:
-        return int(value)
-    except ValueError as exc:
-        raise ToolError(f"Invalid integer in {name}: {value}") from exc

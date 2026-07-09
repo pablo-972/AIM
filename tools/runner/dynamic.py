@@ -3,14 +3,13 @@ from typing import Any
 from utils.logger import Logger
 from tools.dynamic.manual import DYNAMIC_MANUAL_TOOLS
 from tools.dynamic.analyzers.config import (
-    build_dynamic_job,
-    check_collector_health,
-    prepare_dynamic_job_files,
+    build_dynamic_config,
+    prepare_dynamic_config_files,
     wait_for_dynamic_result,
 )
+from tools.dynamic.virtualbox.session import VirtualBoxSession
 from tools.results import ToolResult
 from tools.runner.base import BaseToolRunner
-from tools.dynamic.virtualbox.session import VirtualBoxSession
 
 
 class DynamicToolRunner(BaseToolRunner):
@@ -75,35 +74,29 @@ class DynamicToolRunner(BaseToolRunner):
         results: dict[str, dict[str, Any]] = {}
         
         try:
-            machine_state = session.prepare_tool_run()
-            results["machines"] = ToolResult.ok(machine_state).to_dict()
+            start = session.prepare_tool_run()
+            results["start"] = ToolResult.ok(start).to_dict()
 
             selected_tools = self._resolve_tools()
-            job = build_dynamic_job(
+
+            config = build_dynamic_config(
                 sample=self.sample,
                 analysis_id=self.context.sample_sha256,
                 selected_tools=selected_tools,
             )
-            controller = job["controller"]
-            results["collector"] = ToolResult.ok(
-                check_collector_health(
-                    controller["base_url"],
-                    controller["timeout"],
-                )
-            ).to_dict()
-            results["job"] = ToolResult.ok(
-                prepare_dynamic_job_files(
-                    sample=self.sample,
-                    analysis_id=self.context.sample_sha256,
-                    job=job,
-                )
-            ).to_dict()
-            results["dynamic_result"] = ToolResult.ok(
-                wait_for_dynamic_result(
-                    analysis_id=self.context.sample_sha256,
-                    timeout=VM_TIMEOUT_SECONDS,
-                )
-            ).to_dict()
+
+            files_data = prepare_dynamic_config_files(
+                sample=self.sample,
+                analysis_id=self.context.sample_sha256,
+                config=config,
+            )
+            results["config"] = ToolResult.ok(files_data).to_dict()
+
+            dynamic_final_result = wait_for_dynamic_result(
+                analysis_id=self.context.sample_sha256,
+                timeout=VM_TIMEOUT_SECONDS,
+            )
+            results["dynamic_result"] = ToolResult.ok(dynamic_final_result).to_dict()
         except Exception as exc:
             Logger.error(f"Dynamic tool flow failed: {exc}")
             results.setdefault("machines", ToolResult.failed(exc).to_dict())
@@ -121,11 +114,11 @@ class DynamicToolRunner(BaseToolRunner):
         if "full" in tools:
             return list(DYNAMIC_MANUAL_TOOLS)
 
-        unknown_tools = [
-            tool
-            for tool in tools
-            if tool not in DYNAMIC_MANUAL_TOOLS
-        ]
+        unknown_tools = []
+        for tool in tools:
+            if tool not in DYNAMIC_MANUAL_TOOLS:
+                unknown_tools.append(tool)
+        
         if unknown_tools:
             raise ValueError(f"Unknown dynamic tool(s): {', '.join(unknown_tools)}")
 

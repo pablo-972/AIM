@@ -14,6 +14,8 @@ AI_PATH = ROOT_PATH / "ai"
 MODEL_PROFILES_PATH = AI_PATH / "model_profiles.yaml"
 
 VBOXMANAGE_PATH = "/mnt/c/Program Files/Oracle/VirtualBox/VBoxManage.exe"
+SHARED_PATH = ROOT_PATH / "shared"
+VICTIM_WORKING_PATH = "C:\\AIM"
 
 TOOLS_PATH = ROOT_PATH / "tools"
 STATIC_TOOLS_PATH = TOOLS_PATH / "static"
