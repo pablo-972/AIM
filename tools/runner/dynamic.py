@@ -1,19 +1,22 @@
+from collections.abc import Callable
 from typing import Any
 
-from utils.logger import Logger
-from tools.dynamic.manual import DYNAMIC_MANUAL_TOOLS
-from tools.dynamic.analyzers.config import (
-    build_dynamic_config,
-    prepare_dynamic_config_files,
-    wait_for_dynamic_result,
+from tools.dynamic.analyzers.job import (
+    build_dynamic_job,
+    prepare_dynamic_files,
+    wait_for_dynamic_artifacts,
 )
+from tools.dynamic.manual import DYNAMIC_MANUAL_TOOLS
 from tools.dynamic.virtualbox.session import VirtualBoxSession
 from tools.results import ToolResult
 from tools.runner.base import BaseToolRunner
+from utils.logger import Logger
+
 
 
 class DynamicToolRunner(BaseToolRunner):
     ALLOWED_RUNNERS = {"run_dynamic"}
+    DYNAMIC_RESULT_TIMEOUT = 300
 
     def run_dynamic(self) -> dict[str, dict[str, Any]]:
         try:
@@ -79,30 +82,31 @@ class DynamicToolRunner(BaseToolRunner):
 
             selected_tools = self._resolve_tools()
 
-            config = build_dynamic_config(
+            config = build_dynamic_job(
                 sample=self.sample,
-                analysis_id=self.context.sample_sha256,
+                sha256=self.context.sample_sha256,
                 selected_tools=selected_tools,
+                procmon_filter=self.context.dynamic_filter,
             )
 
-            files_data = prepare_dynamic_config_files(
+            files_data = prepare_dynamic_files(
                 sample=self.sample,
-                analysis_id=self.context.sample_sha256,
                 config=config,
+                procmon_filter=self.context.dynamic_filter,
             )
             results["config"] = ToolResult.ok(files_data).to_dict()
 
-            dynamic_final_result = wait_for_dynamic_result(
-                analysis_id=self.context.sample_sha256,
-                timeout=VM_TIMEOUT_SECONDS,
-            )
-            results["dynamic_result"] = ToolResult.ok(dynamic_final_result).to_dict()
+            artifacts = wait_for_dynamic_artifacts(config=config, timeout=300)
+            results["artifacts"] = ToolResult.ok(artifacts).to_dict()
+
         except Exception as exc:
             Logger.error(f"Dynamic tool flow failed: {exc}")
-            results.setdefault("machines", ToolResult.failed(exc).to_dict())
+            results["error"] = ToolResult.failed(exc).to_dict()
+            
         finally:
             try:
-                results["cleanup"] = ToolResult.ok(session.stop()).to_dict()
+                cleanup = session.stop()
+                results["cleanup"] = ToolResult.ok(cleanup).to_dict()
             except Exception as exc:
                 Logger.error(f"Dynamic VM cleanup failed: {exc}")
                 results["cleanup"] = ToolResult.failed(exc).to_dict()

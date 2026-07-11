@@ -57,16 +57,18 @@ class VirtualBoxAPIClient:
     def configure_shared_folder(
         self,
         vm_name: str,
+        shared_folder: str,
         readonly: bool,
         mount_point: str | None = None,
     ) -> VMOperationResult:
         encoded_vm_name = _url_quote(vm_name)
+        encoded_shared_folder = _url_quote(shared_folder)
 
         params: dict[str, str | bool] = {"readonly": readonly}
         if mount_point:
             params["mount_point"] = mount_point
         
-        endpoint = f"/vms/{encoded_vm_name}/shared-folders/shared"
+        endpoint = f"/vms/{encoded_vm_name}/shared-folders/{encoded_shared_folder}"
         response = self._request("POST", endpoint=endpoint, params=params)
 
         result = validate_operation_result(response)

@@ -1,4 +1,5 @@
 import time
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -26,25 +27,29 @@ GRACEFUL_SHUTDOWN_POLL_SECONDS = 2
 
 @dataclass(frozen=True)
 class VirtualBoxManager:
-    shared_path: Path
+    shared_paths: Mapping[str, Path]
     vboxmanage_path: str = VBOXMANAGE_PATH
     timeout: int = COMMAND_TIMEOUT_SECONDS
 
     def __post_init__(self) -> None:
-        self.shared_path.mkdir(parents=True, exist_ok=True)
+        sanitized_shared_paths = {}
 
-        object.__setattr__(
-            self,
-            "shared_path",
-            sanitize_path_for_windows(self.shared_path),
-        )
+        for name, shared_path in self.shared_paths.items():
+            shared_path.mkdir(parents=True, exist_ok=True)
+            sanitized_shared_paths[name] = sanitize_path_for_windows(shared_path)
+
+        object.__setattr__(self, "shared_paths", sanitized_shared_paths)
 
 
-    def health(self) -> dict[str, str]:
+    def health(self) -> dict[str, Any]:
+        shared_dirs = {}
+        for name, path in self.shared_paths.items():
+            shared_dirs[name] = str(path)
+
         return {
             "status": "ok",
             "vboxmanage": self.vboxmanage_path,
-            "shared_dir": str(self.shared_path),
+            "shared_dirs": shared_dirs
         }
 
     def running_vms(self) -> RunningVMsResult:
@@ -148,6 +153,7 @@ class VirtualBoxManager:
     def configure_shared_folder(
         self,
         vm_name: str,
+        shared_folder: str,
         readonly: bool = False,
         mount_point: str | None = None,
     ) -> VMOperationResult:
@@ -162,7 +168,7 @@ class VirtualBoxManager:
                 status_code=409,
             )
 
-        desired_hostpath = str(self.shared_path)
+        desired_hostpath = self._shared_hostpath(shared_folder)
         existing = self._get_shared_folder(vm_name)
 
         if existing:
@@ -196,6 +202,7 @@ class VirtualBoxManager:
         details: dict[str, Any] = {
             "shared_folder": {
                 "name": SHARED_FOLDER,
+                "source": shared_folder,
                 "hostpath": desired_hostpath,
                 "readonly": readonly,
                 "automount": True,
@@ -214,14 +221,28 @@ class VirtualBoxManager:
             details=details,
         )
 
+    def _shared_hostpath(self, shared_folder: str) -> str:
+        shared_path = self.shared_paths.get(shared_folder)
+
+        if shared_path is None:
+            raise VirtualBoxError(
+                {
+                    "message": f"Unknown shared folder source: {shared_folder}",
+                    "available": sorted(self.shared_paths),
+                },
+                status_code=400,
+            )
+
+        return str(shared_path)
+
 
     def _is_vm_running(self, vm_name: str) -> bool:
-        args = ["showvminfo", vm_name, "--machinereadable"]
+        args = ["list", "runningvms"]
         result = self._run(args)
         
         self._require_success(
             result,
-            f"Could not read VM state for {vm_name}",
+            "Could not list running VMs",
         )
 
         running_vms = parse_running_vm_names(result.stdout)

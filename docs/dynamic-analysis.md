@@ -59,15 +59,15 @@ sudo nano /etc/systemd/system/aim-remnux-collector.service
 
 ```ini
 [Unit]
-Description=AIM REMnux Dynamic Collector
+Description=AIM REMnux Dynamic Receiver
 After=network-online.target vboxadd-service.service
 Wants=network-online.target
 
 [Service]
 Type=simple
-WorkingDirectory=/home/remnux/aim/agents
-ExecStartPre=/bin/sh -c 'for i in $(seq 1 60); do test -f /home/remnux/aim/agents/remnux_collector_api.py && exit 0; sleep 2; done; exit 1'
-ExecStart=/home/remnux/aim/agents/env/bin/python /home/remnux/aim/agents/remnux_collector_api.py
+WorkingDirectory=/home/remnux/Receiver
+ExecStartPre=/bin/sh -c 'for i in $(seq 1 60); do test -f /home/remnux/Receiver/receiver.py && exit 0; sleep 2; done; exit 1'
+ExecStart=/home/remnux/Receiver/env/bin/python /home/remnux/Receiver/receiver.py
 Restart=always
 RestartSec=5
 
@@ -88,8 +88,8 @@ Then enable the service:
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable aim-remnux-collector
-sudo systemctl start aim-remnux-collector
+sudo systemctl enable aim-remnux-receiver
+sudo systemctl start aim-remnux-receiver
 
 sudo systemctl enable inetsim
 sudo systemctl start inetsim

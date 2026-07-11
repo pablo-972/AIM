@@ -4,7 +4,8 @@ from exceptions import CLIValidationError
 
 DYNAMIC_TOOLS = [
     "autoruns",
-    "regshot",
+    "registry",
+    "procmon",
     "full",
 ]
 
@@ -24,6 +25,16 @@ def validate_dynamic_args(args: argparse.Namespace) -> None:
 
     if "full" in selected_tools and len(selected_tools) > 1:
         raise CLIValidationError("'full' cannot be combined with other dynamic tools")
+
+    if args.dynamic_filter:
+        if machine_action:
+            raise CLIValidationError("--filter cannot be combined with --start/--stop")
+        
+        if "procmon" not in selected_tools and "full" not in selected_tools:
+            raise CLIValidationError("--filter can only be used with --tool procmon or --tool full")
+        
+        if not args.dynamic_filter.lower().endswith(".pmc"):
+            raise CLIValidationError("--filter must point to a .pmc file")
 
     if args.profile != "local-dynamic" and not args.dynamic_ai:
         raise CLIValidationError("--profile can only be used together with --ai")
@@ -70,6 +81,11 @@ def add_dynamic_module(
         dest="dynamic_stop",
         action="store_true",
         help="Stop the configured VMs",
+    )
+    parser.add_argument(
+        "--filter",
+        dest="dynamic_filter",
+        help="Procmon .pmc filter configuration to copy into the execution folder",
     )
     
     parser.set_defaults(

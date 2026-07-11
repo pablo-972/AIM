@@ -24,6 +24,7 @@ class AnalysisContext:
     dynamic_ai: bool
     dynamic_start: bool
     dynamic_stop: bool
+    dynamic_filter: Path | None
 
     reversing_tools: list[str]
     value: str | None
@@ -47,6 +48,17 @@ class AnalysisContext:
         sample_sha256 = sha256_file(sample)
         base_output = Path(args.output).expanduser().resolve()
 
+        dynamic_filter = getattr(args, "dynamic_filter", None)
+        dynamic_filter_path = None
+        if dynamic_filter:
+            dynamic_filter_path = Path(dynamic_filter).expanduser().resolve() 
+
+        if dynamic_filter_path is not None:
+            if not dynamic_filter_path.exists():
+                raise CLIValidationError(f"Procmon filter does not exist: {dynamic_filter_path}")
+            if not dynamic_filter_path.is_file():
+                raise CLIValidationError(f"Procmon filter is not a file: {dynamic_filter_path}")
+
         return cls(
             sample=sample,
             sample_sha256=sample_sha256,
@@ -64,6 +76,7 @@ class AnalysisContext:
             dynamic_ai=getattr(args, "dynamic_ai", False),
             dynamic_start=getattr(args, "dynamic_start", False),
             dynamic_stop=getattr(args, "dynamic_stop", False),
+            dynamic_filter=dynamic_filter_path,
 
             reversing_tools=getattr(args, "reversing_tools", []),
             value=getattr(args, "value", None),

@@ -25,6 +25,20 @@ def save_json(path: str | Path, filename: str, data: dict[str, Any]) -> None:
     os.replace(tmp_path, target)
 
 
+def save_pmc(path: str | Path, filename: str, data: bytes | str) -> None:
+    directory = Path(path)
+    ensure_dir(directory)
+
+    target = directory / filename
+    tmp_path = target.with_suffix(target.suffix + ".tmp")
+    raw_data = data.encode("utf-8") if isinstance(data, str) else data
+
+    with tmp_path.open("wb") as file:
+        file.write(raw_data)
+
+    os.replace(tmp_path, target)
+
+
 def load_json(path: str | Path, filename: str | Path) -> dict[str, Any] | None:
     target = Path(path) / filename
     if not target.exists():

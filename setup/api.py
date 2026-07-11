@@ -1,9 +1,10 @@
 import uvicorn
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI
 
-from config import SHARED_PATH
-from exceptions import VirtualBoxError
+from config import (
+    DYNAMIC_ARTIFACTS_PATH,
+    DYNAMIC_EXECUTION_PATH,
+)
 from setup.manager import VirtualBoxManager
 from utils.virtualbox.contracts import (
     RunningVMsResult,
@@ -15,11 +16,16 @@ API_PORT = 8090
 
 
 app = FastAPI(title="AIM VirtualBox Host API")
-vbox = VirtualBoxManager(shared_path=SHARED_PATH)
+vbox = VirtualBoxManager(
+    shared_paths={
+        "execution": DYNAMIC_EXECUTION_PATH,
+        "artifacts": DYNAMIC_ARTIFACTS_PATH,
+    },
+)
 
 
 @app.get("/health")
-def health() -> dict[str, str]:
+def health() -> dict[str, object]:
     result = vbox.health()
 
     return result
@@ -56,13 +62,19 @@ def restore_snapshot(
     return result
 
 
-@app.post("/vms/{vm_name}/shared-folders/shared")
+@app.post("/vms/{vm_name}/shared-folders/{shared_folder}")
 def configure_shared_folder(
     vm_name: str,
+    shared_folder: str,
     readonly: bool = False,
     mount_point: str | None = None,
 ) -> VMOperationResult:
-    result = vbox.configure_shared_folder(vm_name, readonly, mount_point)
+    result = vbox.configure_shared_folder(
+        vm_name=vm_name,
+        shared_folder=shared_folder,
+        readonly=readonly,
+        mount_point=mount_point,
+    )
 
     return result
 

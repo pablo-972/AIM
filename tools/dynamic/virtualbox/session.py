@@ -120,6 +120,7 @@ class VirtualBoxSession:
     def _configure_analysis_shared_folder(self) -> VMOperationResult:
         return self.api_client.configure_shared_folder(
             self.machines.analysis_vm,
+            shared_folder="artifacts",
             readonly=False,
             mount_point=ANALYSIS_SHARED_MOUNT_POINT,
         )
@@ -127,6 +128,7 @@ class VirtualBoxSession:
     def _configure_victim_shared_folder(self) -> VMOperationResult:
         return self.api_client.configure_shared_folder(
             self.machines.victim_vm,
+            shared_folder="execution",
             readonly=True,
         )
 
