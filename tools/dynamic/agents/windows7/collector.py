@@ -25,6 +25,7 @@ JOB_FILENAME = "job.json"
 MONITOR_URL = "http://127.0.0.1:8765"
 
 POLL_SECONDS = 2
+RECEIVER_HEALTH_POLL_SECONDS = 2
 
 SHARED_PATH_TIMEOUT_SECONDS = 120
 HTTP_TIMEOUT_SECONDS = 60
@@ -103,6 +104,25 @@ def monitor_config():
     return {
         "base_url": MONITOR_URL.rstrip("/"),
         "timeout": HTTP_TIMEOUT_SECONDS,
+    }
+
+
+def receiver_config(job):
+    receiver = job.get("receiver")
+    if not isinstance(receiver, dict):
+        raise RuntimeError("job missing receiver configuration")
+
+    base_url = receiver.get("base_url")
+    if not base_url:
+        raise RuntimeError("job missing receiver base_url")
+
+    timeout = receiver.get("timeout")
+    if not timeout:
+        timeout = HTTP_TIMEOUT_SECONDS
+
+    return {
+        "base_url": str(base_url).rstrip("/"),
+        "timeout": int(timeout),
     }
 
 
@@ -204,6 +224,24 @@ def wait_monitor_health(monitor):
     raise RuntimeError("monitor is not healthy: {0}".format(last_error))
 
 
+def wait_receiver_health(receiver):
+    deadline = monotonic_time() + receiver["timeout"]
+    last_error = None
+
+    while monotonic_time() < deadline:
+        try:
+            result = http_json(receiver, "GET", "/health")
+            if result.get("status") == "ok":
+                return
+        except Exception as exc:
+            last_error = exc
+
+        log("waiting for receiver health: {0}".format(receiver["base_url"]))
+        time.sleep(RECEIVER_HEALTH_POLL_SECONDS)
+
+    raise RuntimeError("receiver is not healthy: {0}".format(last_error))
+
+
 def wait_monitor_completed(monitor, timeout):
     deadline = monotonic_time() + timeout
     last_status = None
@@ -259,8 +297,12 @@ def process_job(job_path):
     local_sample = copy_sample_as_exe(sample_path)
 
     monitor = monitor_config()
+    receiver = receiver_config(job)
 
     log("processing job: {0}".format(job_path))
+    log("using receiver: {0}".format(receiver["base_url"]))
+    wait_receiver_health(receiver)
+
     log("using monitor: {0}".format(monitor["base_url"]))
     wait_monitor_health(monitor)
 
