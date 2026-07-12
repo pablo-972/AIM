@@ -26,6 +26,7 @@ VICTIM_WORKING_PATH = "C:\\AIM"
 # Filenames
 RESULT_FILENAME = "analysis.json"
 STATIC_STRINGS_INFERENCE_RESULT_FILENAME = "static_strings_inference.json"
+DYNAMIC_INFERENCE_RESULT_FILENAME = "dynamic_inference.json"
 DYNAMIC_JOB_FILENAME = "job.json"
 REVERSING_AGENT_RESULT_FILENAME = "reversing_agent.json"
 REPORT_FILENAME = "report.md"

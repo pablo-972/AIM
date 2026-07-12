@@ -16,6 +16,17 @@ def make_report_chunk(section: str, data: Any) -> dict[str, Any]:
     }
 
 
+def batched(values: list[Any], batch_size: int) -> list[list[Any]]:
+    size = max(1, batch_size)
+    batches = []
+
+    for index in range(0, len(values), size):
+        batch = values[index:index + size]
+        batches.append(batch)
+
+    return batches
+
+
 def chunk_mapping(
     section: str,
     data: dict[str, Any],

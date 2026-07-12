@@ -14,6 +14,7 @@ from tools.runner.dynamic import DynamicToolRunner
 from tools.runner.reversing import ReversingToolRunner
 from ai.model_registry import ModelRegistry
 from ai.runner.static import StaticInferenceRunner
+from ai.runner.dynamic import DynamicInferenceRunner
 from ai.runner.reversing import ReversingAgentRunner
 from ai.runner.enrichment import EnrichmentAIRunner
 from ai.runner.report import ReportAIRunner
@@ -78,12 +79,13 @@ class Orchestrator:
 
         context = context or self.context
 
-        self._run_tools(
+        results = self._run_tools(
             "dynamic",
             DynamicToolRunner(context),
             context,
             persist_json,
         )
+        self._run_dynamic_inference(context, results)
 
         Logger.success("Dynamic phase finished")
 
@@ -224,6 +226,22 @@ class Orchestrator:
         static_inference_runner.run()
 
         Logger.success("Static strings AI inference finished")
+
+    def _run_dynamic_inference(
+        self,
+        context: AnalysisContext,
+        results: dict[str, Any],
+    ) -> None:
+        if not context.dynamic_ai:
+            return
+
+        Logger.info("Running dynamic AI inference")
+
+        model = self._get_model_registry()
+        dynamic_inference_runner = DynamicInferenceRunner(context, model, results)
+        dynamic_inference_runner.run()
+
+        Logger.success("Dynamic AI inference finished")
 
     def _run_reversing_agent(self, context: AnalysisContext) -> None:
         if not context.reversing_agent:

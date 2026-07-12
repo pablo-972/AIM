@@ -1,15 +1,17 @@
-from utils.preprocessing.enrichment import prepare_static_enrichment_sources
-from utils.preprocessing.report import (
+from utils.preprocessing.enrichment.enrichment import prepare_static_enrichment_sources
+from utils.preprocessing.dynamic.dynamic import prepare_dynamic_inference_inputs
+from utils.preprocessing.report.report import (
     prepare_report_chunks,
     prepare_strings_report_data,
     prepare_tool_data,
 )
-from utils.preprocessing.static_inference import prepare_static_inference_sources
+from utils.preprocessing.static.static_inference import prepare_static_inference_sources
 
 __all__ = [
     "prepare_report_chunks",
     "prepare_static_enrichment_sources",
     "prepare_static_inference_sources",
     "prepare_strings_report_data",
+    "prepare_dynamic_inference_inputs",
     "prepare_tool_data",
 ]

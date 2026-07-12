@@ -34,7 +34,7 @@ profiles:
     provider: ollama
     model: gemma4:e2b
     temperature: 0.2
-    response_format: text
+    response_format: json
 
   local-enrichment:
     provider: ollama
@@ -139,5 +139,4 @@ tasks:
     default_profile: local-report
   enrichment:
     default_profile: local-enrichment
-
 

@@ -1,8 +1,8 @@
 from typing import Any
 
 from utils.artifacts.extractor import JsonExtractor
-from utils.preprocessing.pe import prepare_pe_enrichment_sources
-from utils.preprocessing.virustotal import prepare_vt_enrichment_data
+from utils.preprocessing.static.pe import prepare_pe_enrichment_sources
+from utils.preprocessing.static.virustotal import prepare_vt_enrichment_data
 
 
 def prepare_static_enrichment_sources(result: dict[str, Any]) -> list[tuple[str, Any]]:
