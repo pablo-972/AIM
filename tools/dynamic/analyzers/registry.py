@@ -35,28 +35,32 @@ def build_registry_job(
 
 
 def parse_registry_artifacts(path: Path) -> dict[str, Any]:
-    return {
-        phase: parse_registry_phase(path / phase)
-        for phase in PHASES
-    }
+    artifacts: dict[str, Any] = {}
+    
+    for phase in PHASES:
+        reg_path = path / phase
+        artifacts[phase] = parse_registry_phase(reg_path)
+    
+    return artifacts
 
 
-def parse_registry_phase(path: Path) -> dict[str, dict[str, str]]:
+def parse_registry_phase(path: Path) -> list[dict[str, str]]:
     if not path.exists():
-        return {}
+        return []
 
-    parsed: dict[str, dict[str, str]] = {}
+    parsed: list[dict[str, str]] = []
     for reg_file in sorted(path.glob("*.reg")):
-        parsed.update(parse_registry_file(reg_file))
+        parsed_reg_file = parse_registry_file(reg_file)
+        parsed.extend(parsed_reg_file)
 
     return parsed
 
 
-def parse_registry_file(path: Path) -> dict[str, dict[str, str]]:
+def parse_registry_file(path: Path) -> list[dict[str, str]]:
     text = _read_registry_text(path)
     current_key = None
     current_values: dict[str, str] = {}
-    parsed: dict[str, dict[str, str]] = {}
+    parsed: list[dict[str, str]] = []
 
     for raw_line in text.splitlines():
         line = raw_line.strip()
@@ -71,35 +75,44 @@ def parse_registry_file(path: Path) -> dict[str, dict[str, str]]:
 
         if current_key and "=" in line:
             name, value = line.split("=", 1)
-            current_values[_registry_value_name(name)] = value.strip()
+            registry_name = _registry_value_name(name)
+            current_values[registry_name] = value.strip()
 
     _store_registry_key(parsed, current_key, current_values)
     return parsed
 
 
 def _store_registry_key(
-    parsed: dict[str, dict[str, str]],
+    parsed: list[dict[str, str]],
     key: str | None,
     values: dict[str, str],
 ) -> None:
     if key and values:
-        parsed[key] = values
+        entry = {"Entry": key}
+        entry.update(values)
+        parsed.append(entry)
 
 
 def _registry_value_name(name: str) -> str:
     name = name.strip()
+
     if name == "@":
         return "default"
+    
     if len(name) >= 2 and name[0] == '"' and name[-1] == '"':
         return name[1:-1]
+    
     return name
 
 
 def _read_registry_text(path: Path) -> str:
     raw = path.read_bytes()
-    for encoding in ("utf-16", "utf-8-sig", "latin-1"):
+    encoders = ("utf-16", "utf-8-sig", "latin-1")
+
+    for encoding in encoders:
         try:
             return raw.decode(encoding)
         except UnicodeError:
             continue
+        
     return raw.decode("latin-1", errors="replace")

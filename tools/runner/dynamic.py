@@ -96,13 +96,14 @@ class DynamicToolRunner(BaseToolRunner):
             )
             results["config"] = ToolResult.ok(files_data).to_dict()
 
-            artifacts = wait_for_dynamic_artifacts(config=config, timeout=300)
+            artifacts = wait_for_dynamic_artifacts(config=config, timeout=360)
             results["artifacts"] = ToolResult.ok(artifacts).to_dict()
 
             parsed_artifacts = parse_dynamic_artifacts(
                 config=config,
                 sample=self.sample,
             )
+            
             for tool_name, data in parsed_artifacts.items():
                 results[tool_name] = ToolResult.ok(data).to_dict()
 

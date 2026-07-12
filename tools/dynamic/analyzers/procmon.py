@@ -77,8 +77,10 @@ def parse_procmon_artifacts(path: Path, sample: Path) -> dict[str, Any]:
     csv_path = path / CSV_FILE
     sample_process_names = _sample_process_names(sample)
 
+    events = parse_procmon_csv(csv_path, sample_process_names)
+
     return {
-        "events": parse_procmon_csv(csv_path, sample_process_names),
+        "events": events,
     }
 
 
@@ -88,14 +90,19 @@ def parse_procmon_csv(path: Path, process_names: set[str]) -> list[dict[str, str
 
     _raise_csv_field_limit()
     events: list[dict[str, str]] = []
+
     with io.StringIO(_read_csv_text(path), newline="") as file:
         reader = csv.DictReader(file)
+
         for row in reader:
-            parsed = {
-                _normalize_field_name(key): (value or "").strip()
-                for key, value in row.items()
-                if key
-            }
+            parsed = {}
+
+            for key, value in row.items():
+                if not key:
+                    continue
+
+                normalized_key = _normalize_field_name(key)
+                parsed[normalized_key] = (value or "").strip()
 
             process_name = parsed.get("process_name", "").lower()
             if process_name not in process_names:
@@ -108,6 +115,7 @@ def parse_procmon_csv(path: Path, process_names: set[str]) -> list[dict[str, str
 
 def _sample_process_names(sample: Path) -> set[str]:
     process_names = {sample.name.lower()}
+
     if sample.suffix.lower() == ".exe":
         process_names.add(sample.name.lower())
     else:
@@ -120,21 +128,26 @@ def _sample_process_names(sample: Path) -> set[str]:
 def _normalize_field_name(value: str) -> str:
     value = value.strip().lower()
     value = re.sub(r"[^a-z0-9]+", "_", value)
+
     return value.strip("_")
 
 
 def _read_csv_text(path: Path) -> str:
     raw = path.read_bytes()
-    for encoding in ("utf-16", "utf-8-sig", "latin-1"):
+    encoders = ("utf-16", "utf-8-sig", "latin-1")
+
+    for encoding in encoders:
         try:
             return raw.decode(encoding)
         except UnicodeError:
             continue
+        
     return raw.decode("latin-1", errors="replace")
 
 
 def _raise_csv_field_limit() -> None:
     limit = sys.maxsize
+
     while True:
         try:
             csv.field_size_limit(limit)
