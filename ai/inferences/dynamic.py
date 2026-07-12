@@ -39,6 +39,9 @@ If there is relevant behavior, return finding with:
   "process_execution", "file_modification", "file_deletion", or "file_rename".
 - tone: concise behavior label such as "persistence", "network", "filesystem",
   "process", "registry", "ransomware", or "unknown".
+- explanation: a brief plain-language explanation of what the behavior means
+  and why the evidence supports it. Mention concrete evidence such as the file,
+  registry key, process, or network endpoint when available.
 
 If the evidence is not relevant, return finding=null.
 The "thought" field must be a short operational summary, maximum 1 sentence.
@@ -89,6 +92,7 @@ class DynamicInference:
         Task:
         Inspect this dynamic-analysis evidence chunk. Decide if it contains one
         malware-relevant finding. If it does not, return finding=null.
+        If it does, explain the concrete behavior in finding.explanation.
 
         Tool: {tool}
         Section: {section}

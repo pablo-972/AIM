@@ -14,8 +14,9 @@ DYNAMIC_INFERENCE_FINDING_SCHEMA = {
                     "properties": {
                         "category": {"type": "string"},
                         "tone": {"type": "string"},
+                        "explanation": {"type": "string"},
                     },
-                    "required": ["category", "tone"],
+                    "required": ["category", "tone", "explanation"],
                     "additionalProperties": False,
                 },
             ],

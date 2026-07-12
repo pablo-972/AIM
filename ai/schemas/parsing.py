@@ -70,6 +70,7 @@ def parse_static_inference_finding(content: str) -> dict[str, Any]:
     return _parse_inference_finding(
         content,
         REQUIRED_STATIC_INFERENCE_KEYS,
+        required_finding_keys={"category", "tone"},
     )
 
 
@@ -77,12 +78,14 @@ def parse_dynamic_inference_finding(content: str) -> dict[str, Any]:
     return _parse_inference_finding(
         content,
         REQUIRED_DYNAMIC_INFERENCE_KEYS,
+        required_finding_keys={"category", "tone", "explanation"},
     )
 
 
 def _parse_inference_finding(
     content: str,
     required_keys: set[str],
+    required_finding_keys: set[str],
 ) -> dict[str, Any]:
     content = (content or "").strip()
     if not content:
@@ -107,14 +110,13 @@ def _parse_inference_finding(
         if not isinstance(finding, dict):
             return _fallback_inference_finding("LLM returned an invalid response.")
         
-        if not isinstance(finding.get("category"), str):
-            return _fallback_inference_finding("LLM returned an invalid response.")
-        
-        if not isinstance(finding.get("tone"), str):
-            return _fallback_inference_finding("LLM returned an invalid response.")
+        for key in required_finding_keys:
+            if not isinstance(finding.get(key), str):
+                return _fallback_inference_finding("LLM returned an invalid response.")
 
     confidence = decision.get("confidence")
     thought = decision.get("thought")
+    
     if not isinstance(thought, str):
         thought = ""
          

@@ -88,6 +88,9 @@ def _index_entries(values: Any) -> dict[str, dict[str, str]]:
         if not isinstance(entry_name, str) or not entry_name:
             continue
 
+        if _contains_procmon(entry):
+            continue
+
         normalized_entry = {}
         for key, value in entry.items():
             if value is None:
@@ -98,6 +101,17 @@ def _index_entries(values: Any) -> dict[str, dict[str, str]]:
         indexed[entry_name] = normalized_entry
 
     return indexed
+
+
+def _contains_procmon(entry: dict[str, Any]) -> bool:
+    for key, value in entry.items():
+        if "procmon" in str(key).lower():
+            return True
+
+        if "procmon" in str(value).lower():
+            return True
+
+    return False
 
 
 def _values(entry: dict[str, str] | None) -> dict[str, str]:

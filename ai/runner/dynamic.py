@@ -84,6 +84,7 @@ class DynamicInferenceRunner(BaseAIRunner):
         confidence = decision.get("confidence", "low")
         category = raw_finding.get("category")
         tone = raw_finding.get("tone")
+        explanation = raw_finding.get("explanation")
         source = self._source(input_ref)
         evidence = input_ref.get("value")
 
@@ -93,11 +94,15 @@ class DynamicInferenceRunner(BaseAIRunner):
         if not (isinstance(tone, str) and tone):
             tone = "unknown"
 
+        if not (isinstance(explanation, str) and explanation):
+            explanation = "The dynamic evidence shows behavior relevant to malware analysis."
+
         return {
             "type": "dynamic_behavior",
             "confidence": confidence,
             "category": category,
             "tone": tone,
+            "explanation": explanation,
             "source": source,
             "evidence": evidence,
         }
