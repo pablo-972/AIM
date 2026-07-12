@@ -1,8 +1,9 @@
 import csv
 import io
-import sys
 from typing import Any
 from pathlib import Path
+
+from utils.io.files import read_csv_text, raise_csv_field_limit
 
 EXECUTABLE = "autorunsc.exe"
 ARGUMENTS = [
@@ -57,10 +58,10 @@ def parse_autoruns_csv(path: Path) -> list[dict[str, str]]:
     if not path.exists():
         return []
 
-    _raise_csv_field_limit()
+    raise_csv_field_limit()
     entries: list[dict[str, str]] = []
 
-    with io.StringIO(_read_csv_text(path), newline="") as file:
+    with io.StringIO(read_csv_text(path), newline="") as file:
         reader = csv.DictReader(file)
 
         for row in reader:
@@ -90,27 +91,3 @@ def _autoruns_row(row: dict[str, str]) -> dict[str, str]:
         return {}
 
     return parsed
-
-
-def _read_csv_text(path: Path) -> str:
-    raw = path.read_bytes()
-    encoders = ("utf-16", "utf-8-sig", "latin-1")
-
-    for encoding in encoders:
-        try:
-            return raw.decode(encoding)
-        except UnicodeError:
-            continue
-
-    return raw.decode("latin-1", errors="replace")
-
-
-def _raise_csv_field_limit() -> None:
-    limit = sys.maxsize
-
-    while True:
-        try:
-            csv.field_size_limit(limit)
-            return
-        except OverflowError:
-            limit = int(limit / 10)

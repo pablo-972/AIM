@@ -1,9 +1,10 @@
 import csv
 import io
-from pathlib import Path
 import re
-import sys
 from typing import Any
+from pathlib import Path
+
+from utils.io.files import read_csv_text, raise_csv_field_limit
 
 EXECUTABLE = "procmon.exe"
 START_ARGUMENTS = [
@@ -156,10 +157,10 @@ def parse_procmon_csv(path: Path, process_names: set[str]) -> dict[str, Any]:
     if not path.exists():
         return behavior
 
-    _raise_csv_field_limit()
+    raise_csv_field_limit()
     indexes = _empty_indexes()
 
-    with io.StringIO(_read_csv_text(path), newline="") as file:
+    with io.StringIO(read_csv_text(path), newline="") as file:
         reader = csv.DictReader(file)
 
         for row in reader:
@@ -433,8 +434,8 @@ def _classify_registry_event(
     operation = event.get("operation", "")
     detail = event.get("detail", "")
 
-    has_created_registry_key = has_created_registry_key(detail)
-    if operation in REGISTRY_CREATED_OPERATIONS and has_created_registry_key:
+    created_registry_key = _has_created_registry_key(detail)
+    if operation in REGISTRY_CREATED_OPERATIONS and created_registry_key:
         item = _registry_event(event)
         key = _registry_event_key(item)
         registry_created = behavior["registry"]["created"]
@@ -924,27 +925,3 @@ def _normalize_field_name(value: str) -> str:
     value = re.sub(r"[^a-z0-9]+", "_", value)
 
     return value.strip("_")
-
-
-def _read_csv_text(path: Path) -> str:
-    raw = path.read_bytes()
-    encoders = ("utf-16", "utf-8-sig", "latin-1")
-
-    for encoding in encoders:
-        try:
-            return raw.decode(encoding)
-        except UnicodeError:
-            continue
-        
-    return raw.decode("latin-1", errors="replace")
-
-
-def _raise_csv_field_limit() -> None:
-    limit = sys.maxsize
-
-    while True:
-        try:
-            csv.field_size_limit(limit)
-            return
-        except OverflowError:
-            limit = int(limit / 10)

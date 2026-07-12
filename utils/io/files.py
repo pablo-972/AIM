@@ -1,7 +1,9 @@
+import csv
 import json
 import os
-from pathlib import Path
+import sys
 from typing import Any
+from pathlib import Path
 
 import yaml
 
@@ -76,7 +78,28 @@ def load_yaml(path: str | Path, filename: str | Path) -> dict[str, Any] | None:
     return data
 
 
+def read_csv_text(path: str | Path) -> str:
+    raw = Path(path).read_bytes()
+    encoders = ("utf-16", "utf-8-sig", "latin-1")
 
+    for encoding in encoders:
+        try:
+            return raw.decode(encoding)
+        except UnicodeError:
+            continue
+
+    return raw.decode("latin-1", errors="replace")
+
+
+def raise_csv_field_limit() -> None:
+    limit = sys.maxsize
+
+    while True:
+        try:
+            csv.field_size_limit(limit)
+            return
+        except OverflowError:
+            limit = int(limit / 10)
 
 
 
