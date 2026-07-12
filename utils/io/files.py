@@ -80,7 +80,7 @@ def load_yaml(path: str | Path, filename: str | Path) -> dict[str, Any] | None:
 
 def read_csv_text(path: str | Path) -> str:
     raw = Path(path).read_bytes()
-    encoders = ("utf-16", "utf-8-sig", "latin-1")
+    encoders = ("utf-8-sig", "utf-16", "latin-1")
 
     for encoding in encoders:
         try:
