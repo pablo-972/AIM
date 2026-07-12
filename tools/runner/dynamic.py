@@ -77,9 +77,11 @@ class DynamicToolRunner(BaseToolRunner):
         results: dict[str, dict[str, Any]] = {}
         
         try:
+            Logger.info("Preparing and starting dynamic analysis virtual machines")
             start = session.prepare_tool_run()
             results["start"] = ToolResult.ok(start).to_dict()
 
+            Logger.success("Dynamic analysis virtual machines are ready")
             selected_tools = self._resolve_tools()
 
             config = build_dynamic_job(
@@ -96,9 +98,11 @@ class DynamicToolRunner(BaseToolRunner):
             )
             results["config"] = ToolResult.ok(files_data).to_dict()
 
+            Logger.info("Waiting for dynamic analysis artifacts")
             artifacts = wait_for_dynamic_artifacts(config=config, timeout=360)
             results["artifacts"] = ToolResult.ok(artifacts).to_dict()
 
+            Logger.info("Processing dynamic tool data")
             parsed_artifacts = parse_dynamic_artifacts(
                 config=config,
                 sample=self.sample,
@@ -113,6 +117,8 @@ class DynamicToolRunner(BaseToolRunner):
             
         finally:
             try:
+                Logger.success("Dynamic analysis virtual machines stopped")
+
                 cleanup = session.stop()
                 results["cleanup"] = ToolResult.ok(cleanup).to_dict()
             except Exception as exc:

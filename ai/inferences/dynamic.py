@@ -16,6 +16,10 @@ malware-relevant behavior.
 # Evidence Types
 - Procmon section chunks contain raw normalized events grouped by behavior.
 - Autoruns and registry chunks contain only before/after differences.
+- Procmon chunks may contain only a representative subset of a larger section.
+  Use total_items, selected_items, truncated, and selection_strategy to
+  understand coverage. Do not claim that no other behavior occurred outside the
+  provided chunk.
 
 # What To Report
 Report a finding only for concrete behavior supported by the evidence:
@@ -87,6 +91,7 @@ class DynamicInference:
         section = input_ref.get("section", "unknown")
         evidence = input_ref.get("value")
         hint = self._hint(tool, section)
+        coverage = self._coverage(input_ref)
 
         return f"""
         Task:
@@ -97,6 +102,8 @@ class DynamicInference:
         Tool: {tool}
         Section: {section}
         Focus: {hint}
+        Coverage:
+        {json.dumps(coverage, ensure_ascii=False, default=str)}
 
         Evidence:
         {json.dumps(evidence, ensure_ascii=False, default=str)}
@@ -113,3 +120,18 @@ class DynamicInference:
             section, 
             "Look only for concrete behavior supported by this evidence.",
         )
+
+    def _coverage(self, input_ref: dict[str, Any]) -> dict[str, Any]:
+        coverage_fields = (
+            "total_items",
+            "selected_items",
+            "truncated",
+            "selection_strategy",
+        )
+        coverage = {}
+
+        for field in coverage_fields:
+            if field in input_ref:
+                coverage[field] = input_ref.get(field)
+
+        return coverage or {"type": "complete_or_not_provided"}

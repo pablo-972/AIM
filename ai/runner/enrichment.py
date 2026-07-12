@@ -1,6 +1,7 @@
 from typing import Any
 
 from config import (
+    DYNAMIC_INFERENCE_RESULT_FILENAME,
     ENRICHMENT_FILENAME,
     RESULT_FILENAME,
     STATIC_STRINGS_INFERENCE_RESULT_FILENAME,
@@ -9,6 +10,7 @@ from utils.logger import Logger
 from utils.io.files import load_json
 from utils.artifacts.documents import ENRICHMENT_TITLE, MarkdownDocument
 from utils.preprocessing import (
+    prepare_dynamic_inference_sources,
     prepare_static_enrichment_sources,
     prepare_static_inference_sources,
 )
@@ -79,13 +81,19 @@ class EnrichmentAIRunner(BaseAIRunner):
 
     def _get_sources(self) -> list[tuple[str, Any]]:
         result = load_json(self.context.output, RESULT_FILENAME) or {}
+        
         static_inference_data = (
             load_json(self.context.output, STATIC_STRINGS_INFERENCE_RESULT_FILENAME)
+            or {}
+        )
+        dynamic_inference_data = (
+            load_json(self.context.output, DYNAMIC_INFERENCE_RESULT_FILENAME)
             or {}
         )
         return [
             *prepare_static_enrichment_sources(result),
             *prepare_static_inference_sources(static_inference_data),
+            *prepare_dynamic_inference_sources(dynamic_inference_data),
         ]
     
     

@@ -144,6 +144,18 @@ class Orchestrator:
         )
         self.run_static_phase(static_context, persist_json=True)
 
+        dynamic_context = replace(
+            self.context,
+            phase="dynamic",
+            func="run_dynamic",
+            dynamic_tools=["full"],
+            dynamic_ai=True,
+            dynamic_start=False,
+            dynamic_stop=False,
+            profile=None,
+        )
+        self.run_dynamic_phase(dynamic_context, persist_json=True)
+
         enrichment_context = replace(
             self.context,
             phase="enrichment",
