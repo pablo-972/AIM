@@ -12,6 +12,9 @@ from config import (
 )
 from exceptions import ToolError
 from utils.io.files import save_json, save_pmc
+from tools.dynamic.analyzers.autoruns import parse_autoruns_artifacts
+from tools.dynamic.analyzers.procmon import parse_procmon_artifacts
+from tools.dynamic.analyzers.registry import parse_registry_artifacts
 from tools.dynamic.manual import build_dynamic_tools_config
 
 RECEIVER_BASE_URL = get_env("AIM_DYNAMIC_ANALYSIS_BASE_URL")
@@ -78,12 +81,8 @@ def wait_for_dynamic_artifacts(
     expected = _expected_artifacts(config)
     deadline = time.monotonic() + timeout
     
-    missing = []
     while time.monotonic() < deadline:
-        for path in expected:
-            if not path.exists():
-                missing.append(path)
-
+        missing = [path for path in expected if not path.exists()]
         if not missing:
             return {
                 "status": "completed",
@@ -92,14 +91,36 @@ def wait_for_dynamic_artifacts(
             
         time.sleep(poll_interval)
 
-    for path in expected:
-        if not path.exists():
-            missing.append(path)
+    missing = [path for path in expected if not path.exists()]
 
     raise ToolError(
         "Dynamic artifacts did not arrive before timeout: "
         + ", ".join(str(path) for path in missing)
     )
+
+
+def parse_dynamic_artifacts(
+    config: dict[str, Any],
+    sample: Path,
+) -> dict[str, Any]:
+    tools = config.get("tools")
+    if not isinstance(tools, dict):
+        return {}
+
+    parsed: dict[str, Any] = {}
+    for name, tool_config in tools.items():
+        if not isinstance(tool_config, dict) or not tool_config.get("enabled"):
+            continue
+
+        tool_name = str(name)
+        if tool_name == "autoruns":
+            parsed[tool_name] = parse_autoruns_artifacts(DYNAMIC_ARTIFACTS_PATH / "autoruns")
+        elif tool_name == "registry":
+            parsed[tool_name] = parse_registry_artifacts(DYNAMIC_ARTIFACTS_PATH / "registry")
+        elif tool_name == "procmon":
+            parsed[tool_name] = parse_procmon_artifacts(DYNAMIC_ARTIFACTS_PATH / "procmon", sample)
+
+    return parsed
 
 
 def _expected_artifacts(config: dict[str, Any]) -> list[Path]:

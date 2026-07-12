@@ -3,6 +3,7 @@ from typing import Any
 
 from tools.dynamic.analyzers.job import (
     build_dynamic_job,
+    parse_dynamic_artifacts,
     prepare_dynamic_files,
     wait_for_dynamic_artifacts,
 )
@@ -11,7 +12,6 @@ from tools.dynamic.virtualbox.session import VirtualBoxSession
 from tools.results import ToolResult
 from tools.runner.base import BaseToolRunner
 from utils.logger import Logger
-
 
 
 class DynamicToolRunner(BaseToolRunner):
@@ -98,6 +98,13 @@ class DynamicToolRunner(BaseToolRunner):
 
             artifacts = wait_for_dynamic_artifacts(config=config, timeout=300)
             results["artifacts"] = ToolResult.ok(artifacts).to_dict()
+
+            parsed_artifacts = parse_dynamic_artifacts(
+                config=config,
+                sample=self.sample,
+            )
+            for tool_name, data in parsed_artifacts.items():
+                results[tool_name] = ToolResult.ok(data).to_dict()
 
         except Exception as exc:
             Logger.error(f"Dynamic tool flow failed: {exc}")
