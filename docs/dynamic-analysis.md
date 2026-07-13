@@ -1,61 +1,112 @@
 # Dynamic analysis setup
 
-The dynamic phase assumes the VM agents are installed and started inside the guest machines. AIM does not copy or execute those agents through VirtualBox Guest Control.
+The dynamic phase runs a Windows victim VM and a REMnux analysis VM through the
+VirtualBox host API. The Windows side executes the sample and collects raw
+artifacts. The REMnux side receives and stores those artifacts.
+
+Dynamic tool output is parsed on the host after the artifacts arrive. The
+Windows agent should not analyze tool output.
 
 ## Host side
 
 Start the VirtualBox host API outside Docker:
 
 ```bash
-python setup/virtualbox_api.py
+python setup/api.py
 ```
 
 AIM uses this API to:
 
 - restore the victim snapshot;
-- configure the shared folder named `shared`;
-- start and stop the victim and analysis VMs.
+- configure VirtualBox shared folders;
+- start the victim and analysis VMs;
+- stop the VMs during cleanup.
 
-VM stop operations use a graceful ACPI shutdown first. If a VM does not stop within the configured grace window, the VirtualBox API falls back to a forced `poweroff`. This is used both by `--stop` and by dynamic-run cleanup after a timeout.
-
-The shared folder points to the repository `shared/` directory. AIM writes each job directly in:
-
-```text
-shared/
-```
-
-The shared directory contains:
-
-- the malware sample;
-- `job.json`.
-
-REMnux writes the final dynamic result under:
+The host API exposes two shared-folder sources from `config.settings`:
 
 ```text
-shared/dynamic_result.json
+shared/execution
+shared/artifacts
 ```
+
+The victim VM receives the `execution` folder as read-only. AIM writes the
+sample, `job.json`, and optional Procmon `.pmc` filter files there.
+
+The REMnux VM receives the `artifacts` folder as read-write. The receiver writes
+tool artifacts there as soon as the Windows tools upload them.
+
+Required environment values:
+
+```text
+AIM_VBOXMANAGE_API_HOST
+AIM_VBOXMANAGE_API_PORT
+AIM_DYNAMIC_VICTIM_VM
+AIM_DYNAMIC_VICTIM_SNAPSHOT
+AIM_DYNAMIC_ANALYSIS_VM
+AIM_DYNAMIC_ANALYSIS_SHARED_MOUNT_POINT
+AIM_DYNAMIC_ANALYSIS_BASE_URL
+AIM_DYNAMIC_ANALYSIS_TIMEOUT
+```
+
+## CLI
+
+Start or stop the configured dynamic VMs:
+
+```bash
+python main.py dynamic sample.exe --start
+python main.py dynamic sample.exe --stop
+```
+
+Run selected dynamic tools:
+
+```bash
+python main.py dynamic sample.exe --tool autoruns
+python main.py dynamic sample.exe --tool registry --tool procmon
+python main.py dynamic sample.exe --tool full --ai
+```
+
+Use a Procmon filter configuration:
+
+```bash
+python main.py dynamic sample.exe --tool procmon --filter config/ProcmonConfiguration.pmc
+python main.py dynamic sample.exe --tool full --filter config/ProcmonConfiguration.pmc
+```
+
+The `full` pipeline also runs the dynamic phase before enrichment.
 
 ## REMnux analysis VM
 
-Install the collector manually inside REMnux.
-
-Recommended shared mount path:
+Install the receiver manually inside REMnux:
 
 ```text
-/home/remnux/aim
+tools/dynamic/agents/remnux/receiver.py
 ```
 
-The collector script is:
+The current receiver stores artifacts under:
 
 ```text
-tools/dynamic/remnux_collector_api.py
+/home/remnux/AIM
 ```
 
-Install it inside the VM and run it with a persistent service. A simple systemd unit is the preferred approach:
+Configure `AIM_DYNAMIC_ANALYSIS_SHARED_MOUNT_POINT` so the VirtualBox shared
+folder named `shared` maps to that path, or adjust the receiver path if your lab
+uses another mount point.
+
+Install FastAPI and Uvicorn in the receiver environment:
 
 ```bash
-sudo nano /etc/systemd/system/aim-remnux-collector.service
+python3 -m venv env
+. env/bin/activate
+pip install fastapi uvicorn
 ```
+
+Run it manually while testing:
+
+```bash
+python receiver.py
+```
+
+For persistent execution, use a systemd unit. Example:
 
 ```ini
 [Unit]
@@ -66,7 +117,6 @@ Wants=network-online.target
 [Service]
 Type=simple
 WorkingDirectory=/home/remnux/Receiver
-ExecStartPre=/bin/sh -c 'for i in $(seq 1 60); do test -f /home/remnux/Receiver/receiver.py && exit 0; sleep 2; done; exit 1'
 ExecStart=/home/remnux/Receiver/env/bin/python /home/remnux/Receiver/receiver.py
 Restart=always
 RestartSec=5
@@ -75,16 +125,7 @@ RestartSec=5
 WantedBy=multi-user.target
 ```
 
-Before enabling it, create the virtual environment once:
-
-```bash
-cd /home/remnux/aim/agents
-python3 -m venv env
-. env/bin/activate
-pip install fastapi uvicorn
-```
-
-Then enable the service:
+Enable the service and INetSim if your lab uses simulated network services:
 
 ```bash
 sudo systemctl daemon-reload
@@ -95,7 +136,7 @@ sudo systemctl enable inetsim
 sudo systemctl start inetsim
 ```
 
-The collector listens on:
+The receiver listens on:
 
 ```text
 0.0.0.0:8080
@@ -103,126 +144,78 @@ The collector listens on:
 
 ## Windows victim VM
 
-Install the Windows agent manually inside the victim VM.
+Install the Windows agents manually inside the victim VM:
 
-Recommended shared path for automatic/headless execution:
+```text
+tools/dynamic/agents/windows7/monitor.py
+tools/dynamic/agents/windows7/collector.py
+tools/dynamic/agents/windows7/start.bat
+```
+
+Recommended destination:
+
+```text
+C:\AIM
+```
+
+The victim reads the shared execution folder through:
 
 ```text
 \\VBOXSVR\shared
 ```
 
-If you run the agent manually after logging in, VirtualBox may also expose the share as `Z:\`, but startup tasks should not depend on that mapped drive.
+Startup tasks should not depend on a mapped drive such as `Z:\`. Mapped drive
+letters may not exist for `SYSTEM` or during early boot.
 
-The recommended Windows agent is the Python one:
+The Windows split is:
 
-```text
-tools/dynamic/windows_agent.py
-```
+- `monitor.py`: long-lived local HTTP service on `127.0.0.1:8765`; it runs
+  Autoruns, Registry exports, and Procmon collection.
+- `collector.py`: watches `\\VBOXSVR\shared\job.json`, copies the sample to
+  `C:\AIM`, launches the sample, and tells the monitor when to collect.
 
-It is compatible with Python 3.5.1 and uses only the Python standard library. Copy it into the VM, for example:
-
-```text
-C:\AIM\windows_agent.py
-```
-
-The helper batch file is:
-
-```text
-tools/dynamic/start_windows_agent.bat
-```
-
-Copy it as:
-
-```text
-C:\AIM\start_windows_agent.bat
-```
-
-There is also a PowerShell fallback:
-
-```text
-tools/dynamic/windows7_agent.ps1
-```
-
-Configure Windows persistence using your preferred method, for example:
-
-- Task Scheduler at system startup;
-- a Windows service wrapper;
-- a startup folder entry for lab-only usage.
-
-For headless execution, do not depend on a logged-in user. Also avoid using the `Z:\` mapped drive in startup tasks, because mapped drive letters may not exist for `SYSTEM` or before VirtualBox Guest Additions finishes mounting shared folders. Prefer the UNC path:
-
-```text
-\\VBOXSVR\shared
-```
-
-On Windows 7, the most reliable lab setup is usually:
-
-1. enable automatic login for the analysis user, for example `practicas`;
-2. create the task as `ONLOGON` for that user;
-3. launch the VM with VirtualBox `--type headless`.
-
-VirtualBox headless mode only means there is no visible VM window. It does not automatically create a Windows user session. If no user logs in and the task is configured as `ONLOGON`, the agent will not start.
-
-Example Task Scheduler action:
+For headless Windows tasks, run them as `SYSTEM` at startup. Recommended task
+commands:
 
 ```powershell
-schtasks /create /tn "AIM Agent" ^
-/tr "C:\AIM\start_windows_agent.bat" ^
-/sc onstart ^
-/ru SYSTEM ^
-/rl highest ^
-/f
+schtasks /Create /TN Monitor /TR C:\AIM\start.bat /SC ONSTART /RU SYSTEM
 ```
 
-If `SYSTEM` cannot access `\\VBOXSVR\shared`, use the auto-login user instead:
+or, if you prefer to call the Python script directly:
 
 ```powershell
-schtasks /create /tn "AIM Agent" ^
-/tr "C:\AIM\start_windows_agent.bat" ^
-/sc onlogon ^
-/ru practicas ^
-/rl highest ^
-/f
+schtasks /Create /TN Monitor /TR C:\AIM\monitor.py /SC ONSTART /RU SYSTEM
 ```
 
-Manual run:
+Start the collector after a short delay so the monitor and shared folder have
+time to become available:
 
 ```powershell
-C:\Python35\python.exe C:\AIM\windows_agent.py --shared-path \\VBOXSVR\shared
+schtasks /Create /TN Collector /TR C:\AIM\collector.py /SC ONSTART /RU SYSTEM /DELAY 0000:05
 ```
 
-If `autorunsc.exe` is not in `PATH`, pass its real full path:
+If direct `.py` execution is not associated with Python in the VM, point the
+task action to the Python executable explicitly.
 
-```powershell
-C:\Python35\python.exe C:\AIM\windows_agent.py --shared-path \\VBOXSVR\shared --autorunsc C:\Tools\Sysinternals\autorunsc.exe
-```
+## Dynamic tools
 
-The Python agent writes a local debug log to:
+Supported dynamic tools:
+
+- `autoruns`: captures `before_execution.csv` and `after_execution.csv`.
+- `registry`: exports selected persistence-related registry keys before and
+  after execution with `reg.exe export`.
+- `procmon`: captures `procmon.pml`, stops Procmon, converts the log to CSV, and
+  uploads the CSV.
+
+The monitor uploads artifacts immediately to REMnux. The host waits for the
+expected files in `shared/artifacts`, then parses them into the dynamic phase of
+`analysis.json`.
+
+When dynamic AI inference is enabled, AIM creates:
 
 ```text
-C:\AIM\windows_agent.log
+output/<sample-sha256>/dynamic_inference.json
 ```
 
-The Windows agent watches:
-
-```text
-\\VBOXSVR\shared
-```
-
-When AIM creates a new `job.json`, the agent performs only this flow:
-
-1. copy the sample to the local working directory as an `.exe`;
-2. run one Autoruns capture and send the raw output to REMnux as `before_execution`;
-3. execute the sample;
-4. wait `collect_interval_seconds` from `job.json`;
-5. run one final Autoruns capture and send the raw output to REMnux as `after_execution`;
-6. stop the sample process if it is still running.
-
-## Shared folder permissions
-
-AIM configures the VirtualBox shared folder as:
-
-- REMnux analysis VM: read-write;
-- Windows victim VM: read-only.
-
-The victim should only read jobs and samples from the shared folder. It should not write the final dynamic result. REMnux owns result aggregation and writes `dynamic_result.json`.
+Those findings are later passed to enrichment and report generation as compact
+behavior summaries with supporting evidence.
