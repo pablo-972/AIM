@@ -33,6 +33,7 @@ class AnalysisContext:
     reversing_max_targets: int
 
     full_static_profile: str | None
+    full_dynamic_profile: str | None
     full_enrichment_profile: str | None
     full_reversing_profile: str | None
 
@@ -85,6 +86,7 @@ class AnalysisContext:
             reversing_max_targets=getattr(args, "reversing_max_targets", 12),
             
             full_static_profile=getattr(args, "static_profile", None),
+            full_dynamic_profile=getattr(args, "dynamic_profile", None),
             full_enrichment_profile=getattr(args, "enrichment_profile", None),
             full_reversing_profile=getattr(args, "reversing_profile", None),
         )

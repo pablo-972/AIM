@@ -152,7 +152,7 @@ class Orchestrator:
             dynamic_ai=True,
             dynamic_start=False,
             dynamic_stop=False,
-            profile=None,
+            profile=self.context.full_dynamic_profile,
         )
         self.run_dynamic_phase(dynamic_context, persist_json=True)
 
