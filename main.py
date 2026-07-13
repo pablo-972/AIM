@@ -19,7 +19,7 @@ def main() -> None:
     if hasattr(args, "validator") and args.validator is not None:
         args.validator(args)
 
-    from orchestrator.orchestrator import Orchestrator
+    from core.orchestrator.orchestrator import Orchestrator
     orchestrator = Orchestrator(args)
     orchestrator.run()
 

@@ -5,20 +5,20 @@ from pathlib import Path
 from typing import Any
 
 from config import SHARED_FOLDER, VBOXMANAGE_PATH
-from exceptions import VirtualBoxError
-from utils.io.commands import run_command
-from utils.virtualbox.commands import sanitize_path_for_windows
-from utils.virtualbox.contracts import (
+from core.exceptions import VirtualBoxError
+from core.utils.io.commands import run_command
+from core.utils.virtualbox.commands import sanitize_path_for_windows
+from core.utils.virtualbox.contracts import (
     RunningVMsResult,
     VMOperationResult,
     operation_result,
 )
-from utils.virtualbox.parsers import (
+from core.utils.virtualbox.parsers import (
     SharedFolder,
     parse_running_vm_names,
     parse_shared_folder,
 )
-from tools.results import CommandResult
+from core.tools.results import CommandResult
 
 COMMAND_TIMEOUT_SECONDS = 30
 GRACEFUL_SHUTDOWN_TIMEOUT_SECONDS = 60
