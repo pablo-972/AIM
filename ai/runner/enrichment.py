@@ -25,7 +25,10 @@ class EnrichmentAIRunner(BaseAIRunner):
         super().__init__(context)
 
         enrichment_path = self.context.output / ENRICHMENT_FILENAME
-        self.document: MarkdownDocument = MarkdownDocument(enrichment_path, ENRICHMENT_TITLE)
+        self.document: MarkdownDocument = MarkdownDocument(
+            enrichment_path, 
+            ENRICHMENT_TITLE,
+        )
         
         self.model_registry = model_registry
         
