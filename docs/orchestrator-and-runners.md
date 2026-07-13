@@ -15,8 +15,10 @@ AnalysisContext
 Orchestrator
     |
     +-- StaticToolRunner
+    +-- DynamicToolRunner
     +-- ReversingToolRunner
     +-- StaticInferenceRunner
+    +-- DynamicInferenceRunner
     +-- ReversingAgentRunner
     +-- EnrichmentAIRunner
     `-- ReportAIRunner
@@ -30,7 +32,7 @@ Orchestrator
 - Resolves and validates the sample path.
 - Calculates the sample SHA-256.
 - Creates the sample-specific output path.
-- Normalizes phase, mode, profile, AI/inference, agent, function, value, and maximum-target options.
+- Normalizes phase, tool, profile, AI/inference, agent, function, value, and maximum-target options.
 
 The output directory is:
 
@@ -53,6 +55,7 @@ formatting.
 Available phase handlers are:
 
 - `static`
+- `dynamic`
 - `reversing`
 - `enrichment`
 - `report`
@@ -69,15 +72,17 @@ separate sequential stages:
 ```text
 static full
     -> static strings inference
+    -> dynamic full
+    -> dynamic inference
     -> enrichment
     -> reversing full (info, imports, strings)
     -> reversing agent
 ```
 
 `Orchestrator.run_full_phase()` creates a phase-specific `AnalysisContext` for
-each stage and reuses `run_static_phase()`, `run_enrichment_phase()`, and
-`run_reversing_phase()`. Reversing is invoked twice with different contexts:
-first for manual tools and then for the agent.
+each stage and reuses `run_static_phase()`, `run_dynamic_phase()`,
+`run_enrichment_phase()`, and `run_reversing_phase()`. Reversing is invoked
+twice with different contexts: first for manual tools and then for the agent.
 
 The pipeline accepts independent profiles through `--static-profile`,
 `--enrichment-profile`, and `--reversing-profile`. Intermediate deterministic
@@ -130,11 +135,16 @@ exceptions, and enforces the agent-tool result object contract.
 The static strings inference does not call tools. It classifies strings chunks and stores
 victim-facing message findings directly in `static_strings_inference.json`.
 
+The dynamic inference does not run tools directly. It receives parsed Autoruns,
+Registry, and Procmon artifacts from the dynamic phase and stores behavior
+findings in `dynamic_inference.json`.
+
 ## AI Runners
 
 AI runners own workflow state and call agents, tools, and persistence helpers:
 
 - `StaticInferenceRunner` processes strings in chunks.
+- `DynamicInferenceRunner` processes dynamic behavior chunks and diffs.
 - `ReversingAgentRunner` executes a prioritized investigation queue.
 - `EnrichmentAIRunner` updates `enrichment.md`.
 - `ReportAIRunner` updates `report.md`.

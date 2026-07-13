@@ -1,6 +1,7 @@
 from typing import Any
 
 from config import (
+    DYNAMIC_INFERENCE_RESULT_FILENAME,
     ENRICHMENT_FILENAME,
     REPORT_FILENAME,
     RESULT_FILENAME,
@@ -17,7 +18,11 @@ from utils.artifacts.documents import (
 from utils.io.files import load_json
 from utils.io.text import read_text
 from utils.logger import Logger
-from utils.preprocessing import prepare_report_chunks
+from utils.preprocessing import (
+    prepare_dynamic_inference_sources,
+    prepare_report_chunks,
+    prepare_static_inference_sources,
+)
 from ai.inferences.report import ReportGenerator
 from ai.model_registry import ModelRegistry
 from ai.runner.base import BaseAIRunner
@@ -65,6 +70,7 @@ class ReportAIRunner(BaseAIRunner):
         return [
             *self._get_static_sources(),
             *self._get_static_inference_sources(),
+            *self._get_dynamic_inference_sources(),
             *self._get_enrichment_sources(),
             *self._get_reversing_agent_sources(),
         ]
@@ -122,20 +128,15 @@ class ReportAIRunner(BaseAIRunner):
         
     def _get_static_inference_sources(self) -> list[tuple[str, Any]]:
         data = load_json(self.context.output, STATIC_STRINGS_INFERENCE_RESULT_FILENAME)
-        findings = JsonExtractor(data).get_static_inference_findings()
+        findings = prepare_static_inference_sources(data or {})
 
-        return [
-            (
-                f"static_strings_inference.findings.{index}",
-                {
-                    "confidence": finding.get("confidence"),
-                    "text": finding.get("text"),
-                    "category": finding.get("category"),
-                    "tone": finding.get("tone"),
-                },
-            )
-            for index, finding in enumerate(findings, start=1)
-        ]
+        return findings
+
+    def _get_dynamic_inference_sources(self) -> list[tuple[str, Any]]:
+        data = load_json(self.context.output, DYNAMIC_INFERENCE_RESULT_FILENAME)
+        findings = prepare_dynamic_inference_sources(data or {})
+
+        return findings
 
     def _get_enrichment_sources(self) -> list[tuple[str, Any]]:
         text = read_text(self.enrichment_document.path)
@@ -202,4 +203,3 @@ class ReportAIRunner(BaseAIRunner):
             return None
 
         return JsonExtractor(result)
-

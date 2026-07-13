@@ -14,8 +14,8 @@ class ReversingToolRunner(BaseToolRunner):
     def run_reversing(self) -> dict[str, dict[str, Any]]:
         results: dict[str, dict[str, Any]] = {}
 
-        for mode in self._resolve_modes():
-            results[mode] = self._execute_tool(mode)
+        for tool in self._resolve_tools():
+            results[tool] = self._execute_tool(tool)
 
         return results
 
@@ -33,16 +33,20 @@ class ReversingToolRunner(BaseToolRunner):
 
         return ToolResult.ok(data).to_dict()
 
-    def _resolve_modes(self) -> list[str]:
-        modes = list(self.context.reversing_tools)
-        if "full" in modes:
-            return ["info", "imports", "strings"]
+    def _resolve_tools(self) -> list[str]:
+        tools = list(self.context.reversing_tools)
+        if "full" in tools:
+            return ["info", "imports"]
 
-        unknown_modes = [mode for mode in modes if mode not in REVERSING_MANUAL_TOOLS]
-        if unknown_modes:
-            raise ValueError(f"Unknown reversing mode(s): {', '.join(unknown_modes)}")
+        unknown_tools = []
+        for tool in tools:
+            if tool not in REVERSING_MANUAL_TOOLS:
+                unknown_tools.append(tool)
 
-        return modes
+        if unknown_tools:
+            raise ValueError(f"Unknown reversing mode(s): {', '.join(unknown_tools)}")
+
+        return tools
 
     def _build_tool_kwargs(self, mode: str) -> dict[str, Any]:
         if mode == "disasm":

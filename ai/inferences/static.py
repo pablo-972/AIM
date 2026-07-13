@@ -137,7 +137,11 @@ class StaticInference:
         {json.dumps(strings_chunk, ensure_ascii=False)}
         """
 
-        response = self.llm.chat_json(SYSTEM_PROMPT, prompt, STATIC_INFERENCE_FINDING_SCHEMA)
+        response = self.llm.chat_json(
+          SYSTEM_PROMPT, 
+          prompt, 
+          STATIC_INFERENCE_FINDING_SCHEMA,
+        )
         
         return parse_static_inference_finding(response.content)
         

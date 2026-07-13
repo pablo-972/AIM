@@ -6,13 +6,13 @@ the next operation.
 ## Common CLI
 
 ```text
-python main.py <phase> <sample> --mode <mode> [options]
+python main.py <phase> <sample> --tool <tool> [options]
 ```
 
-Repeat `--mode` to run several tools:
+Repeat `--tool` to run several tools:
 
 ```bash
-python main.py static sample.exe --mode file --mode hash
+python main.py static sample.exe --tool file --tool hash
 ```
 
 Common options:
@@ -40,8 +40,8 @@ Available static modes:
 Examples:
 
 ```bash
-python main.py static sample.exe --mode full
-python main.py static sample.exe --mode metadata --mode pe
+python main.py static sample.exe --tool full
+python main.py static sample.exe --tool metadata --tool pe
 ```
 
 `full` cannot be combined with another static mode.
@@ -79,14 +79,14 @@ Reversing tools use radare2 through `r2pipe`.
 Examples:
 
 ```bash
-python main.py reversing sample.exe --mode functions
-python main.py reversing sample.exe --mode disasm --function fcn.401000
-python main.py reversing sample.exe --mode disasm --function 0x401000
-python main.py reversing sample.exe --mode xrefs --function sym.main
-python main.py reversing sample.exe --mode string-xrefs --value "example.com"
-python main.py reversing sample.exe --mode import-xrefs --value kernel32.dll
-python main.py reversing sample.exe --mode import-xrefs --value VirtualAlloc
-python main.py reversing sample.exe --mode callers --function fcn.401000
+python main.py reversing sample.exe --tool functions
+python main.py reversing sample.exe --tool disasm --function fcn.401000
+python main.py reversing sample.exe --tool disasm --function 0x401000
+python main.py reversing sample.exe --tool xrefs --function sym.main
+python main.py reversing sample.exe --tool string-xrefs --value "example.com"
+python main.py reversing sample.exe --tool import-xrefs --value kernel32.dll
+python main.py reversing sample.exe --tool import-xrefs --value VirtualAlloc
+python main.py reversing sample.exe --tool callers --function fcn.401000
 ```
 
 Function-oriented operations accept a radare2 function name or an address. When
@@ -98,6 +98,31 @@ performed against both the import `name` and `libname` fields.
 
 Reversing analyzers are implemented in `tools/reversing/analyzers/` and
 registered in `tools/reversing/manual.py`.
+
+## Dynamic Tools
+
+Dynamic tools run inside the Windows victim VM and upload raw artifacts to the
+REMnux receiver before host-side parsing.
+
+| Tool | Purpose |
+| --- | --- |
+| `autoruns` | Capture autorun entries before and after execution. |
+| `registry` | Export selected persistence-related registry keys before and after execution. |
+| `procmon` | Capture Procmon activity and convert it to CSV. |
+| `full` | Run every registered dynamic tool. |
+
+Examples:
+
+```bash
+python main.py dynamic sample.exe --tool autoruns
+python main.py dynamic sample.exe --tool registry --tool procmon
+python main.py dynamic sample.exe --tool full --ai
+```
+
+Dynamic analyzers are implemented in `tools/dynamic/analyzers/` and registered
+in `tools/dynamic/manual.py`.
+
+See [Dynamic analysis setup](dynamic-analysis.md) for VM and agent setup.
 
 ## Adding a Manual Tool
 

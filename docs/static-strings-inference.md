@@ -11,8 +11,8 @@ produce a general malware verdict.
 The inference requires the `strings` tool or `full`:
 
 ```bash
-python main.py static sample.exe --mode strings --ai
-python main.py static sample.exe --mode full --ai --profile local-static
+python main.py static sample.exe --tool strings --ai
+python main.py static sample.exe --tool full --ai --profile local-static
 ```
 
 Supported profiles:

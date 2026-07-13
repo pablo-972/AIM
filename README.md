@@ -16,18 +16,19 @@ output/<sample-sha256>/
 - Static analysis: file type, hashes, metadata, packer detection, strings, PE
   data, and VirusTotal.
 - Manual reverse engineering through radare2 and `r2pipe`.
+- Dynamic analysis with a Windows victim VM and REMnux receiver.
 - Static strings AI inference for detecting victim-facing threat actor messages.
+- Dynamic AI inference over Autoruns, Registry, and Procmon artifacts.
 - Queue-driven reversing agent focused on executable code and assembly.
 - Incremental enrichment and malware report generation.
 - Ollama, OpenAI, and Gemini model profiles.
-
-Dynamic analysis is not implemented.
 
 ## Documentation
 
 - [Orchestrator and runners](docs/orchestrator-and-runners.md)
 - [Manual analysis tools](docs/manual-tools.md)
-- [Static strings inference](docs/static-agent.md)
+- [Dynamic analysis setup](docs/dynamic-analysis.md)
+- [Static strings inference](docs/static-strings-inference.md)
 - [Reversing agent](docs/reversing-agent.md)
 
 ## Installation
@@ -61,26 +62,32 @@ profiles are defined in `ai/model_profiles.yaml`.
 Run all static tools:
 
 ```bash
-python main.py static samples/sample.exe --mode full
+python main.py static samples/sample.exe --tool full
 ```
 
 Run selected static tools:
 
 ```bash
-python main.py static samples/sample.exe --mode file --mode hash --mode strings
+python main.py static samples/sample.exe --tool file --tool hash --tool strings
 ```
 
 Run static strings AI inference:
 
 ```bash
-python main.py static samples/sample.exe --mode strings --ai
+python main.py static samples/sample.exe --tool strings --ai
+```
+
+Run dynamic tools:
+
+```bash
+python main.py dynamic samples/sample.exe --tool full --ai
 ```
 
 Run manual reversing:
 
 ```bash
-python main.py reversing samples/sample.exe --mode disasm --function main
-python main.py reversing samples/sample.exe --mode import-xrefs --value kernel32.dll
+python main.py reversing samples/sample.exe --tool disasm --function main
+python main.py reversing samples/sample.exe --tool import-xrefs --value kernel32.dll
 ```
 
 Run the reversing agent:
@@ -95,8 +102,9 @@ Run the complete implemented pipeline:
 python main.py full samples/sample.exe
 ```
 
-The `full` phase runs all static tools, static strings inference, enrichment, the
-manual reversing `full` set, and finally the reversing agent.
+The `full` phase runs all static tools, static strings inference, dynamic tools,
+dynamic inference, enrichment, the manual reversing `full` set, and finally the
+reversing agent.
 
 Generate enrichment and a report:
 
@@ -115,6 +123,7 @@ Depending on the selected workflows, AIM creates:
 output/<sample-sha256>/
 |-- analysis.json
 |-- static_strings_inference.json
+|-- dynamic_inference.json
 |-- reversing_agent.json
 |-- enrichment.md
 `-- report.md
@@ -122,7 +131,8 @@ output/<sample-sha256>/
 
 `analysis.json` is updated additively by phase and tool. Agent traces keep
 steps compact; static strings inference findings are stored in
-`static_strings_inference.json`.
+`static_strings_inference.json`, and dynamic behavior findings are stored in
+`dynamic_inference.json`.
 
 ## Configuration
 

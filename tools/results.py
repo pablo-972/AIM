@@ -36,3 +36,12 @@ class CommandResult:
     @property
     def ok(self) -> bool:
         return self.returncode == 0 and not self.timed_out
+    
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "stdout": self.stdout,
+            "stderr": self.stderr,
+            "returncode": self.returncode,
+            "timed_out": self.timed_out,
+            "ok": self.ok,
+        }

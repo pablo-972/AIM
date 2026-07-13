@@ -10,9 +10,11 @@ from utils.artifacts.builder import JsonBuilder
 from utils.artifacts.extractor import get_static_strings_from_tool_results
 from orchestrator.context import AnalysisContext
 from tools.runner.static import StaticToolRunner
+from tools.runner.dynamic import DynamicToolRunner
 from tools.runner.reversing import ReversingToolRunner
 from ai.model_registry import ModelRegistry
 from ai.runner.static import StaticInferenceRunner
+from ai.runner.dynamic import DynamicInferenceRunner
 from ai.runner.reversing import ReversingAgentRunner
 from ai.runner.enrichment import EnrichmentAIRunner
 from ai.runner.report import ReportAIRunner
@@ -26,6 +28,7 @@ class ToolRunner(Protocol):
 class Orchestrator:
     PHASE_HANDLERS: dict[str,str] = {
         "static": "run_static_phase",
+        "dynamic": "run_dynamic_phase",
         "enrichment": "run_enrichment_phase",
         "reversing": "run_reversing_phase",
         "report": "run_report_phase",
@@ -66,6 +69,25 @@ class Orchestrator:
         self._run_static_strings_inference(context, results)
         
         Logger.success("Static phase finished")
+
+    def run_dynamic_phase(
+        self,
+        context: AnalysisContext | None = None,
+        persist_json: bool = False,
+    ) -> None:
+        Logger.info("Running dynamic phase")
+
+        context = context or self.context
+
+        results = self._run_tools(
+            "dynamic",
+            DynamicToolRunner(context),
+            context,
+            persist_json,
+        )
+        self._run_dynamic_inference(context, results)
+
+        Logger.success("Dynamic phase finished")
 
     def run_enrichment_phase(self, context: AnalysisContext | None = None) -> None:
         Logger.info("Running enrichment phase")
@@ -122,6 +144,18 @@ class Orchestrator:
         )
         self.run_static_phase(static_context, persist_json=True)
 
+        dynamic_context = replace(
+            self.context,
+            phase="dynamic",
+            func="run_dynamic",
+            dynamic_tools=["full"],
+            dynamic_ai=True,
+            dynamic_start=False,
+            dynamic_stop=False,
+            profile=None,
+        )
+        self.run_dynamic_phase(dynamic_context, persist_json=True)
+
         enrichment_context = replace(
             self.context,
             phase="enrichment",
@@ -177,7 +211,7 @@ class Orchestrator:
         if save_json:
             json_builder = self._get_json_builder(context)
             json_builder.save_phase(phase_name, results)
-        if print_text:
+        elif print_text:
             print(json.dumps(results, indent=4))
 
         Logger.success("Tools executed successfully")
@@ -204,6 +238,22 @@ class Orchestrator:
         static_inference_runner.run()
 
         Logger.success("Static strings AI inference finished")
+
+    def _run_dynamic_inference(
+        self,
+        context: AnalysisContext,
+        results: dict[str, Any],
+    ) -> None:
+        if not context.dynamic_ai:
+            return
+
+        Logger.info("Running dynamic AI inference")
+
+        model = self._get_model_registry()
+        dynamic_inference_runner = DynamicInferenceRunner(context, model, results)
+        dynamic_inference_runner.run()
+
+        Logger.success("Dynamic AI inference finished")
 
     def _run_reversing_agent(self, context: AnalysisContext) -> None:
         if not context.reversing_agent:

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# This script sets up AIM-SA Framework
+# This script sets up AIM Framework
 set -eu
 
 # Ensures the script is being run as root
@@ -27,7 +27,7 @@ system_update_and_dependencies(){
 
     echo "Installing dependencies"
     apt install -y curl git cmake make g++ zstd python3 python3-venv python3-pip p7zip-full binutils file exiftool upx \
-        libboost-filesystem-dev libboost-program-options-dev libboost-regex-dev libboost-system-dev libssl-dev libyara-dev yara
+        libboost-filesystem-dev libboost-program-options-dev libboost-regex-dev libboost-system-dev libssl-dev libyara-dev yara 
 }
 
 
@@ -61,6 +61,5 @@ install_ollama_and_model
 
 
 echo ""
-echo "✅ Setup completed"
+echo "Setup completed"
 echo "Execute framework: python3 main.py -h"
-

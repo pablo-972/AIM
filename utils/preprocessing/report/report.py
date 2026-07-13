@@ -1,8 +1,8 @@
 from typing import Any
 
 from utils.preprocessing.chunks import prepare_generic_report_chunks
-from utils.preprocessing.pe import prepare_pe_report_chunks
-from utils.preprocessing.virustotal import prepare_vt_report_chunks
+from utils.preprocessing.static.pe import prepare_pe_report_chunks
+from utils.preprocessing.static.virustotal import prepare_vt_report_chunks
 
 
 def prepare_strings_report_data(tool_data: dict[str, Any]) -> dict[str, Any]:

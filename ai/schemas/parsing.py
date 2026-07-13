@@ -13,6 +13,11 @@ REQUIRED_STATIC_INFERENCE_KEYS = {
     "confidence",
     "finding",
 }
+REQUIRED_DYNAMIC_INFERENCE_KEYS = {
+    "thought",
+    "confidence",
+    "finding",
+}
 VALID_CONFIDENCE_LEVELS = {
     "low",
     "medium",
@@ -62,37 +67,56 @@ def parse_agent_decision(content: str) -> dict[str, Any]:
 
 
 def parse_static_inference_finding(content: str) -> dict[str, Any]:
+    return _parse_inference_finding(
+        content,
+        REQUIRED_STATIC_INFERENCE_KEYS,
+        required_finding_keys={"category", "tone"},
+    )
+
+
+def parse_dynamic_inference_finding(content: str) -> dict[str, Any]:
+    return _parse_inference_finding(
+        content,
+        REQUIRED_DYNAMIC_INFERENCE_KEYS,
+        required_finding_keys={"category", "tone", "explanation"},
+    )
+
+
+def _parse_inference_finding(
+    content: str,
+    required_keys: set[str],
+    required_finding_keys: set[str],
+) -> dict[str, Any]:
     content = (content or "").strip()
     if not content:
-        return _fallback_static_inference_finding("LLM returned an empty response.")
+        return _fallback_inference_finding("LLM returned an empty response.")
 
     try:
         decision = json.loads(content)
     except (JSONDecodeError, TypeError):
-        return _fallback_static_inference_finding("LLM returned an invalid response.")
+        return _fallback_inference_finding("LLM returned an invalid response.")
 
     if not isinstance(decision, dict):
-        return _fallback_static_inference_finding("LLM returned an invalid response.")
+        return _fallback_inference_finding("LLM returned an invalid response.")
 
-    if not REQUIRED_STATIC_INFERENCE_KEYS.issubset(decision):
-        return _fallback_static_inference_finding("LLM returned an invalid response.")
+    if not required_keys.issubset(decision):
+        return _fallback_inference_finding("LLM returned an invalid response.")
 
     if decision["confidence"] not in VALID_CONFIDENCE_LEVELS:
-        return _fallback_static_inference_finding("LLM returned an invalid response.")
+        return _fallback_inference_finding("LLM returned an invalid response.")
 
     finding = decision.get("finding")
     if finding is not None:
         if not isinstance(finding, dict):
-            return _fallback_static_inference_finding("LLM returned an invalid response.")
+            return _fallback_inference_finding("LLM returned an invalid response.")
         
-        if not isinstance(finding.get("category"), str):
-            return _fallback_static_inference_finding("LLM returned an invalid response.")
-        
-        if not isinstance(finding.get("tone"), str):
-            return _fallback_static_inference_finding("LLM returned an invalid response.")
+        for key in required_finding_keys:
+            if not isinstance(finding.get(key), str):
+                return _fallback_inference_finding("LLM returned an invalid response.")
 
     confidence = decision.get("confidence")
     thought = decision.get("thought")
+    
     if not isinstance(thought, str):
         thought = ""
          
@@ -115,6 +139,10 @@ def _fallback_agent_decision(reason: str) -> dict[str, Any]:
 
 
 def _fallback_static_inference_finding(reason: str) -> dict[str, Any]:
+    return _fallback_inference_finding(reason)
+
+
+def _fallback_inference_finding(reason: str) -> dict[str, Any]:
     return {
         "thought": reason,
         "confidence": "low",
