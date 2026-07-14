@@ -1,6 +1,7 @@
 from config.settings import (
     ROOT_PATH,
     CONFIG_PATH,
+    CORE_PATH,
     ORCHESTRATOR_PATH,
     OUTPUT_PATH,
     SHARED_PATH,
@@ -32,6 +33,7 @@ from config.settings import (
 __all__ = [
     "ROOT_PATH",
     "CONFIG_PATH",
+    "CORE_PATH",
     "ORCHESTRATOR_PATH",
     "OUTPUT_PATH",
     "MODEL_PROFILES_PATH",

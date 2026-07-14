@@ -194,5 +194,11 @@ shared/execution/
 # Logs
 logs/
 
+# Node modules
+frontend/node_modules/
+
+# Workspace dir for web
+workspace/
+
 
 

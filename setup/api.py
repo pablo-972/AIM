@@ -6,7 +6,7 @@ from config import (
     DYNAMIC_EXECUTION_PATH,
 )
 from setup.manager import VirtualBoxManager
-from utils.virtualbox.contracts import (
+from core.utils.virtualbox.contracts import (
     RunningVMsResult,
     VMOperationResult,
 )

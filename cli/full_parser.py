@@ -1,12 +1,17 @@
 import argparse
 
-from exceptions import CLIValidationError
+from core.exceptions import CLIValidationError
 
 
 STATIC_PROFILES = [
     "local-static",
     "openai-static",
     "gemini-static",
+]
+DYNAMIC_PROFILES = [
+    "local-dynamic",
+    "openai-dynamic",
+    "gemini-dynamic",
 ]
 ENRICHMENT_PROFILES = [
     "local-enrichment",
@@ -40,6 +45,12 @@ def add_full_module(
         choices=STATIC_PROFILES,
         default="local-static",
         help="Model profile for static strings inference",
+    )
+    parser.add_argument(
+        "--dynamic-profile",
+        choices=DYNAMIC_PROFILES,
+        default="local-dynamic",
+        help="Model profile for dynamic inference",
     )
     parser.add_argument(
         "--enrichment-profile",

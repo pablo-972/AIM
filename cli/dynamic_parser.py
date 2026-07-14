@@ -1,6 +1,6 @@
 import argparse
 
-from exceptions import CLIValidationError
+from core.exceptions import CLIValidationError
 
 DYNAMIC_TOOLS = [
     "autoruns",

@@ -9,10 +9,11 @@ Windows agent should not analyze tool output.
 
 ## Host side
 
-Start the VirtualBox host API outside Docker:
+Before running any dynamic phase, start the VirtualBox host API from WSL. Keep
+this process running while AIM controls the VMs:
 
 ```bash
-python setup/api.py
+python3 -B -m setup.api
 ```
 
 AIM uses this API to:
@@ -47,6 +48,28 @@ AIM_DYNAMIC_ANALYSIS_SHARED_MOUNT_POINT
 AIM_DYNAMIC_ANALYSIS_BASE_URL
 AIM_DYNAMIC_ANALYSIS_TIMEOUT
 ```
+
+Set the VirtualBox VM names and snapshot in `.env` before running the dynamic
+pipeline:
+
+```env
+AIM_VBOXMANAGE_API_HOST=host.docker.internal
+AIM_VBOXMANAGE_API_PORT=8090
+
+AIM_DYNAMIC_VICTIM_VM=W7X64SP1
+AIM_DYNAMIC_VICTIM_SNAPSHOT=Agent
+AIM_DYNAMIC_VICTIM_SHARED_PATH=Z:\execution
+
+AIM_DYNAMIC_ANALYSIS_VM=REMnux
+AIM_DYNAMIC_ANALYSIS_SHARED_MOUNT_POINT=/home/remnux/AIM
+
+AIM_DYNAMIC_ANALYSIS_BASE_URL=http://192.168.255.1:8080
+AIM_DYNAMIC_ANALYSIS_TIMEOUT=10
+```
+
+`AIM_DYNAMIC_VICTIM_VM` and `AIM_DYNAMIC_ANALYSIS_VM` must match the VirtualBox
+machine names exactly. `AIM_DYNAMIC_VICTIM_SNAPSHOT` must match the snapshot
+that AIM restores before executing the sample.
 
 ## CLI
 
