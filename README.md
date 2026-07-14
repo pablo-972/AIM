@@ -54,6 +54,19 @@ Docker Compose starts two separate containers:
 - `aim`: Python runtime with AIM, radare2, `r2pipe`, and static/reversing tools.
 - `ollama`: CUDA/NVIDIA-based Ollama runtime exposed on `localhost:11434`.
 
+To also start the web backend, enable the backend Compose profile:
+
+```bash
+docker compose --profile backend up -d --build
+```
+
+The backend API is exposed on `http://localhost:8000`. The normal CLI
+container is still available with:
+
+```bash
+docker exec -it aim sh
+```
+
 Copy `.env.example` to `.env`, then configure the providers you use. Model
 profiles are defined in `ai/model_profiles.yaml`.
 
