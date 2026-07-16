@@ -179,11 +179,13 @@ def parse_procmon_csv(path: Path, process_names: set[str]) -> dict[str, Any]:
 
             _record_procmon_event(behavior, indexes, parsed)
 
+    _update_statistics(behavior)
     return behavior
 
 
 def _empty_behavior() -> dict[str, Any]:
     return {
+        "info": {},
         "processes": {
             "created": [],
             "terminated": [],
@@ -209,6 +211,7 @@ def _empty_behavior() -> dict[str, Any]:
             },
             "udp": [],
         },
+        "statistics": {},
     }
 
 
@@ -237,12 +240,12 @@ def _record_procmon_event(
     indexes: dict[str, dict[tuple[Any, ...], dict[str, Any]]],
     event: dict[str, str],
 ) -> None:
-    operation = event.get("operation", "")
     result = event.get("result", "")
 
     if not _is_success(result):
         return
 
+    _update_info(behavior, event)
     _classify_process_event(behavior, indexes, event)
     _classify_filesystem_event(behavior, indexes, event)
     _classify_registry_event(behavior, indexes, event)
@@ -260,6 +263,7 @@ def _classify_process_event(
         detail = event.get("detail", "")
         process_detail = _process_create_detail(detail)
         item = _process_created_path(event, process_detail)
+
         if not item:
             return
 
@@ -328,9 +332,9 @@ def _classify_filesystem_event(
         return
     
     detail = event.get("detail", "")
-    has_creation_disponition = _has_creation_disposition(detail)
+    has_disponition = _has_creation_disposition(detail)
 
-    if operation in FILESYSTEM_CREATED_OPERATIONS and has_creation_disponition:
+    if operation in FILESYSTEM_CREATED_OPERATIONS and has_disponition:
         item = event.get("path", "")
         if not item:
             return
@@ -417,7 +421,12 @@ def _classify_filesystem_event(
         filesystem_renamed = behavior["filesystem"]["renamed"]
         filesystem_renamed_indexes = indexes["filesystem.renamed"]
 
-        _add_aggregated(filesystem_renamed, filesystem_renamed_indexes, key, item)
+        _add_aggregated(
+            filesystem_renamed, 
+            filesystem_renamed_indexes, 
+            key, 
+            item,
+        )
 
 
 def _classify_registry_event(
@@ -491,8 +500,8 @@ def _classify_network_event(
         item = _network_event(event, "tcp")
         if not item:
             return
-        
-        key = _network_event_key(item)
+
+        _update_network_info(behavior, item)
 
         _add_tcp_connection(behavior, indexes, item)
 
@@ -516,7 +525,8 @@ def _classify_network_event(
         item = _network_event(event, "udp")
         if not item:
             return
-        
+
+        _update_network_info(behavior, item)
         key = _network_event_key(item)
 
         network_udp = behavior["network"]["udp"]
@@ -526,7 +536,7 @@ def _classify_network_event(
             network_udp,
             network_udp_indexes,
             key,
-            _network_connection(item),
+            _connection_endpoint(item),
         )
 
         if _is_dns_transport(item):
@@ -551,7 +561,6 @@ def _add_aggregated(
     index: dict[tuple[Any, ...], Any],
     key: tuple[Any, ...],
     item: Any,
-    numeric_fields: tuple[str, ...] = (),
 ) -> None:
     existing = index.get(key)
 
@@ -560,6 +569,66 @@ def _add_aggregated(
         collection.append(item)
 
         return
+
+
+def _update_info(
+    behavior: dict[str, Any],
+    event: dict[str, str],
+) -> None:
+    info = behavior["info"]
+
+    if not info.get("process_name"):
+        process_name = event.get("process_name")
+        if process_name:
+            info["process_name"] = process_name
+
+    if not info.get("pid"):
+        pid = event.get("pid")
+        if pid:
+            info["pid"] = _int_or_string(pid)
+
+
+def _update_network_info(
+    behavior: dict[str, Any],
+    item: dict[str, Any],
+) -> None:
+    info = behavior["info"]
+
+    if not info.get("local_address"):
+        local_address = item.get("local_address")
+        if local_address:
+            info["local_address"] = local_address
+
+
+def _update_statistics(behavior: dict[str, Any]) -> None:
+    processes = behavior["processes"]
+    filesystem = behavior["filesystem"]
+    registry = behavior["registry"]
+    network = behavior["network"]
+    tcp = network["tcp"]
+
+    behavior["statistics"] = {
+        "processes_created": len(processes["created"]),
+        "processes_terminated": len(processes["terminated"]),
+        "images_loaded": len(processes["loaded_images"]),
+        "filesystem_created": len(filesystem["created"]),
+        "filesystem_modified": len(filesystem["modified"]),
+        "filesystem_deleted": len(filesystem["deleted"]),
+        "filesystem_renamed": len(filesystem["renamed"]),
+        "registry_created": len(registry["created"]),
+        "registry_modified": len(registry["modified"]),
+        "registry_deleted": len(registry["deleted"]),
+        "tcp_connections": (
+            len(tcp["urls"]) 
+            + len(tcp["ips"]) 
+            + len(tcp["domains"])
+        ),
+        "tcp_urls": len(tcp["urls"]),
+        "tcp_ips": len(tcp["ips"]),
+        "tcp_domains": len(tcp["domains"]),
+        "udp_connections": len(network["udp"]),
+        "dns_connections": len(network["dns"]),
+    }
 
 
 def _base_event(event: dict[str, str]) -> dict[str, Any]:
@@ -571,22 +640,17 @@ def _base_event(event: dict[str, str]) -> dict[str, Any]:
 
 
 def _path_event(event: dict[str, str]) -> dict[str, Any]:
-    return {"path": event.get("path", "")}
+    path = event.get("path", "")
 
-
-def _path_event_key(item: dict[str, Any]) -> tuple[Any, ...]:
-    operation = item.get("operation", "")
-    normalized_path = _normalize_path(item.get("path", ""))
-
-    return (
-        operation,
-        normalized_path,
-    )
+    return {
+        "path": path
+    }
 
 
 def _registry_event_key(item: dict[str, Any]) -> tuple[Any, ...]:
     operation = item.get("operation", "")
-    normalized_path = _normalize_path(item.get("path", ""))
+    path = item.get("path", "")
+    normalized_path = _normalize_path(path)
 
     return (
         operation,
@@ -644,19 +708,6 @@ def _has_created_registry_key(detail: str) -> bool:
         or "disposition: created" in detail 
         or "new key" in detail
     )
-
-
-def _filesystem_object_type(event: dict[str, str]) -> str:
-    detail = event.get("detail", "").lower()
-    path = event.get("path", "")
-
-    if "directory" in detail or path.endswith("\\"):
-        return "directory"
-    
-    if "." in Path(path).name:
-        return "file"
-    
-    return "unknown"
 
 
 def _process_create_detail(detail: str) -> dict[str, Any]:
@@ -808,17 +859,16 @@ def _add_tcp_connection(
     collection = behavior["network"]["tcp"][category]
     index = indexes[f"network.tcp.{category}"]
 
-    _add_aggregated(collection, index, (endpoint.lower(),), endpoint)
+    _add_aggregated(
+        collection, 
+        index, 
+        (endpoint.lower(),), 
+        endpoint,
+    )
 
 
 def _connection_endpoint(item: dict[str, Any]) -> str:
     remote_address = str(item.get("remote_address") or "")
-
-    if _is_local_address(remote_address):
-        return _format_endpoint(
-            item.get("local_address"),
-            item.get("local_port"),
-        )
 
     return _format_endpoint(
         remote_address,
@@ -828,13 +878,13 @@ def _connection_endpoint(item: dict[str, Any]) -> str:
 
 def _tcp_connection_category(item: dict[str, Any]) -> str:
     remote_address = str(item.get("remote_address") or "")
-    if _is_local_address(remote_address):
-        remote_address = str(item.get("local_address") or "")
 
     if _is_ip_address(remote_address):
         return "ips"
 
-    if "/" in remote_address or remote_address.lower().startswith(("http://", "https://")):
+    is_http = remote_address.lower().startswith(("http://", "https://"))
+                                                
+    if "/" in remote_address or is_http:
         return "urls"
 
     return "domains"
@@ -849,12 +899,6 @@ def _format_endpoint(address: Any, port: Any) -> str:
 
 def _is_ip_address(value: str) -> bool:
     return bool(re.match(r"^\d{1,3}(?:\.\d{1,3}){3}$", value))
-
-
-def _is_local_address(value: str) -> bool:
-    normalized = value.strip().lower()
-
-    return normalized in {"malwarepc", "localhost", "127.0.0.1", "::1"}
 
 
 def _is_dns_transport(item: dict[str, Any]) -> bool:
@@ -896,7 +940,9 @@ def _rename_destination(detail: str) -> str:
 
 
 def _detail_value(detail: str, key: str) -> str:
-    pattern = re.compile(r"(?:^|,\s*){0}:\s*([^,]+)".format(re.escape(key)), re.IGNORECASE)
+    pattern = re.compile(
+        r"(?:^|,\s*){0}:\s*([^,]+)".format(re.escape(key)), 
+        re.IGNORECASE)
     match = pattern.search(detail)
 
     if not match:
