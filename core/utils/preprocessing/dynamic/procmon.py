@@ -29,27 +29,51 @@ def prepare_procmon_chunks(
     chunks: list[dict[str, Any]] = []
 
     for category, section in PROCMON_SECTIONS:
-        values = procmon_data.get(category, {}).get(section, [])
-        if not isinstance(values, list) or not values:
-            continue
+        section_values = _section_values(procmon_data, category, section)
 
-        section_name = f"{category}.{section}"
-        selected_values = values[:max_items_per_section]
-        batched_values = batched(selected_values, batch_size)
+        for section_name, values in section_values:
+            if not values:
+                continue
 
-        for index, batch in enumerate(batched_values, start=1):
-            chunks.append(
-                {
-                    "type": "procmon_section_chunk",
-                    "tool": "procmon",
-                    "section": section_name,
-                    "index": index,
-                    "total_items": len(values),
-                    "selected_items": len(selected_values),
-                    "truncated": len(values) > len(selected_values),
-                    "selection_strategy": "first_items",
-                    "value": batch,
-                }
-            )
+            selected_values = values[:max_items_per_section]
+            batched_values = batched(selected_values, batch_size)
+
+            for index, batch in enumerate(batched_values, start=1):
+                chunks.append(
+                    {
+                        "type": "procmon_section_chunk",
+                        "tool": "procmon",
+                        "section": section_name,
+                        "index": index,
+                        "total_items": len(values),
+                        "selected_items": len(selected_values),
+                        "truncated": len(values) > len(selected_values),
+                        "selection_strategy": "first_items",
+                        "value": batch,
+                    }
+                )
 
     return chunks
+
+
+def _section_values(
+    procmon_data: dict[str, Any],
+    category: str,
+    section: str,
+) -> list[tuple[str, list[Any]]]:
+    values = procmon_data.get(category, {}).get(section, [])
+    section_name = f"{category}.{section}"
+
+    if isinstance(values, list):
+        return [(section_name, values)]
+
+    if isinstance(values, dict):
+        sections = []
+        
+        for key, nested_values in values.items():
+            if isinstance(nested_values, list):
+                sections.append((f"{section_name}.{key}", nested_values))
+
+        return sections
+
+    return []

@@ -41,13 +41,16 @@ def prepare_dynamic_inference_sources(
     if not findings:
         return []
 
-    return [
-        (
-            f"dynamic_inference.findings.{index}",
-            finding,
+    dynamic_findings = []
+    for index, finding in enumerate(findings, start=1):
+        dynamic_findings.append(
+            {
+                f"dynamic_inference.findings.{index}",
+                finding, 
+            }
         )
-        for index, finding in enumerate(findings, start=1)
-    ]
+    
+    return dynamic_findings
 
 
 def _tool_data(dynamic_results: dict[str, Any], tool_name: str) -> Any:

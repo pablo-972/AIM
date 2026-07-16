@@ -11,9 +11,13 @@ def prepare_registry_diff_chunks(
     registry_data: dict[str, Any],
     batch_size: int = 5,
 ) -> list[dict[str, Any]]:
-    before = _index_entries(registry_data.get(PHASE_BEFORE, []))
-    after = _index_entries(registry_data.get(PHASE_AFTER, []))
-    changes = _diff_entries(before, after)
+    diff = registry_data.get("diff")
+    if isinstance(diff, list):
+        changes = diff
+    else:
+        before = _index_entries(registry_data.get(PHASE_BEFORE, []))
+        after = _index_entries(registry_data.get(PHASE_AFTER, []))
+        changes = _diff_entries(before, after)
 
     return [
         {

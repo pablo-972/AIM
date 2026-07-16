@@ -45,13 +45,17 @@ def build_autoruns_job(
 
 
 def parse_autoruns_artifacts(path: Path) -> dict[str, Any]:
-    artifacts: dict[str, Any] = {}
+    before = parse_autoruns_csv(path / f"{PHASES[0]}.csv")
+    after = parse_autoruns_csv(path / f"{PHASES[1]}.csv")
 
-    for phase in PHASES:
-        csv_path = path / f"{phase}.csv"
-        artifacts[phase] = parse_autoruns_csv(csv_path)
+    index_entries_before = _index_entries(before)
+    index_entries_after = _index_entries(after)
 
-    return artifacts
+    diff = _diff_entries(index_entries_before, index_entries_after)
+
+    return {
+        "diff": diff
+    }
 
 
 def parse_autoruns_csv(path: Path) -> list[dict[str, str]]:
@@ -91,3 +95,144 @@ def _autoruns_row(row: dict[str, str]) -> dict[str, str]:
         return {}
 
     return parsed
+
+
+def _diff_entries(
+    before: dict[str, dict[str, str]],
+    after: dict[str, dict[str, str]],
+) -> list[dict[str, Any]]:
+    changes: list[dict[str, Any]] = []
+
+    for key in sorted(set(before) | set(after)):
+        before_entry = before.get(key)
+        after_entry = after.get(key)
+
+        if before_entry == after_entry:
+            continue
+
+        entry = after_entry or before_entry or {}
+
+        change_type = _change_type(before_entry, after_entry)
+        entry_location = entry.get("entry_location")
+        entry_name = entry.get("entry")
+
+        change = {
+            "change_type": change_type,
+            "entry_location": entry_location,
+            "entry": entry_name,
+        }
+
+        if before_entry is None:
+            after_values = _interesting_values(after_entry)
+            change["values"] = after_values
+        elif after_entry is None:
+            before_values = _interesting_values(before_entry)
+            change["values"] = before_values
+        else:
+            changed = _changed_values(before_entry, after_entry)
+            change["values"] = changed
+
+        changes.append(change)
+
+    return changes
+
+
+def _index_entries(values: list[dict[str, str]]) -> dict[str, dict[str, str]]:
+    indexed: dict[str, dict[str, str]] = {}
+
+    for entry in values:
+        identity = _entry_identity(entry)
+        if identity:
+            indexed[identity] = entry
+
+    return indexed
+
+
+def _entry_identity(entry: dict[str, str]) -> str:
+    identity_fields = ("entry_location", "entry")
+    fallback_fields = ("image_path", "launch_string")
+
+    values = []
+    for field in identity_fields:
+        value = entry.get(field, "")
+        if not value:
+            continue
+
+        values.append(value)
+
+    if not any(values):
+        for field in fallback_fields:
+            value = entry.get(field, "")
+            values.append(value)
+
+    normalized_values = []
+    for value in values:
+        stripped_value = value.strip()
+        if not stripped_value:
+            continue
+
+        normalized_values.append(stripped_value.lower())
+
+    return "|".join(normalized_values)
+
+
+def _change_type(
+    before: dict[str, str] | None,
+    after: dict[str, str] | None,
+) -> str:
+    if before is None:
+        return "added"
+
+    if after is None:
+        return "removed"
+
+    return "modified"
+
+
+def _interesting_values(entry: dict[str, str] | None) -> dict[str, str]:
+    if not entry:
+        return {}
+
+    fields = (
+        "enabled",
+        "category",
+        "image_path",
+        "launch_string",
+        "description",
+        "company",
+    )
+
+    interesting_values = {}
+    for field in fields:
+        value = entry.get(field)
+        if not value:
+            continue
+
+        interesting_values[field] = value
+
+    return interesting_values
+
+
+def _changed_values(
+    before: dict[str, str],
+    after: dict[str, str],
+) -> dict[str, dict[str, str | None]]:
+    changes: dict[str, dict[str, str | None]] = {}
+    entry_names = {"entry_location", "entry"}
+
+    for key in sorted(set(before) | set(after)):
+        if key in entry_names:
+            continue
+
+        before_value = before.get(key)
+        after_value = after.get(key)
+
+        if before_value == after_value:
+            continue
+
+        changes[key] = {
+            "before": before_value,
+            "after": after_value,
+        }
+
+    return changes

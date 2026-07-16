@@ -35,13 +35,15 @@ def build_registry_job(
 
 
 def parse_registry_artifacts(path: Path) -> dict[str, Any]:
-    artifacts: dict[str, Any] = {}
-    
-    for phase in PHASES:
-        reg_path = path / phase
-        artifacts[phase] = parse_registry_phase(reg_path)
-    
-    return artifacts
+    before = parse_registry_phase(path / PHASES[0])
+    after = parse_registry_phase(path / PHASES[1])
+
+    return {
+        "diff": _diff_entries(
+            _index_entries(before),
+            _index_entries(after),
+        )
+    }
 
 
 def parse_registry_phase(path: Path) -> list[dict[str, str]]:
@@ -116,3 +118,105 @@ def _read_registry_text(path: Path) -> str:
             continue
         
     return raw.decode("latin-1", errors="replace")
+
+
+def _diff_entries(
+    before: dict[str, dict[str, str]],
+    after: dict[str, dict[str, str]],
+) -> list[dict[str, Any]]:
+    changes: list[dict[str, Any]] = []
+
+    for entry in sorted(set(before) | set(after)):
+        before_entry = before.get(entry)
+        after_entry = after.get(entry)
+
+        if before_entry == after_entry:
+            continue
+
+        if before_entry is None:
+            changes.append(
+                {
+                    "change_type": "added",
+                    "Entry": entry,
+                    "values": _values(after_entry),
+                }
+            )
+        elif after_entry is None:
+            changes.append(
+                {
+                    "change_type": "removed",
+                    "Entry": entry,
+                    "values": _values(before_entry),
+                }
+            )
+        else:
+            changes.append(
+                {
+                    "change_type": "modified",
+                    "Entry": entry,
+                    "values": _changed_values(before_entry, after_entry),
+                }
+            )
+
+    return changes
+
+
+def _index_entries(values: list[dict[str, str]]) -> dict[str, dict[str, str]]:
+    indexed: dict[str, dict[str, str]] = {}
+
+    for entry in values:
+        entry_name = entry.get("Entry")
+        if not entry_name:
+            continue
+
+        if _contains_procmon(entry):
+            continue
+
+        indexed[entry_name] = entry
+
+    return indexed
+
+
+def _contains_procmon(entry: dict[str, str]) -> bool:
+    for key, value in entry.items():
+        if "procmon" in str(key).lower():
+            return True
+
+        if "procmon" in str(value).lower():
+            return True
+
+    return False
+
+
+def _values(entry: dict[str, str] | None) -> dict[str, str]:
+    if not entry:
+        return {}
+
+    return {
+        key: value
+        for key, value in entry.items()
+        if key != "Entry"
+    }
+
+
+def _changed_values(
+    before: dict[str, str],
+    after: dict[str, str],
+) -> dict[str, dict[str, str | None]]:
+    changes: dict[str, dict[str, str | None]] = {}
+    before_values = _values(before)
+    after_values = _values(after)
+
+    for key in sorted(set(before_values) | set(after_values)):
+        before_value = before_values.get(key)
+        after_value = after_values.get(key)
+
+        if before_value == after_value:
+            continue
+
+        changes[key] = {
+            "before": before_value,
+            "after": after_value,
+        }
+
+    return changes

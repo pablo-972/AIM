@@ -12,20 +12,33 @@ def prepare_autoruns_diff_chunks(
     autoruns_data: dict[str, Any],
     batch_size: int = 5,
 ) -> list[dict[str, Any]]:
-    before = _index_entries(autoruns_data.get(PHASE_BEFORE, []))
-    after = _index_entries(autoruns_data.get(PHASE_AFTER, []))
-    changes = _diff_entries(before, after)
+    diff = autoruns_data.get("diff")
 
-    return [
-        {
-            "type": "autoruns_diff_chunk",
-            "tool": "autoruns",
-            "section": "diff",
-            "index": index,
-            "value": batch,
-        }
-        for index, batch in enumerate(batched(changes, batch_size), start=1)
-    ]
+    if isinstance(diff, list):
+        changes = diff
+    else:
+        autoruns_before = autoruns_data.get(PHASE_BEFORE, [])
+        autoruns_after = autoruns_data.get(PHASE_AFTER, [])
+
+        before = _index_entries(autoruns_before)
+        after = _index_entries(autoruns_after)
+        changes = _diff_entries(before, after)
+
+    autoruns_batched = batched(changes, batch_size)
+    autoruns_chunks = []
+
+    for index, batch in enumerate(autoruns_batched, start=1):
+        autoruns_chunks.append(
+            {
+                "type": "autoruns_diff_chunk",
+                "tool": "autoruns",
+                "section": "diff",
+                "index": index,
+                "value": batch,
+            }
+        )
+        
+    return autoruns_chunks
 
 
 def _diff_entries(

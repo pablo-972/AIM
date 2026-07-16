@@ -202,10 +202,13 @@ def _empty_behavior() -> dict[str, Any]:
         },
         "network": {
             "dns": [],
-            "tcp": [],
+            "tcp": {
+                "urls": [],
+                "ips": [],
+                "domains": [],
+            },
             "udp": [],
         },
-        "statistics": {},
     }
 
 
@@ -222,7 +225,9 @@ def _empty_indexes() -> dict[str, dict[tuple[Any, ...], dict[str, Any]]]:
         "registry.modified": {},
         "registry.deleted": {},
         "network.dns": {},
-        "network.tcp": {},
+        "network.tcp.urls": {},
+        "network.tcp.ips": {},
+        "network.tcp.domains": {},
         "network.udp": {},
     }
 
@@ -234,10 +239,6 @@ def _record_procmon_event(
 ) -> None:
     operation = event.get("operation", "")
     result = event.get("result", "")
-
-    if operation:
-        statistics = behavior["statistics"]
-        statistics[operation] = statistics.get(operation, 0) + 1
 
     if not _is_success(result):
         return
@@ -257,16 +258,12 @@ def _classify_process_event(
 
     if operation in PROCESS_CREATED_OPERATIONS:
         detail = event.get("detail", "")
-        item = _base_event(event)
-
         process_detail = _process_create_detail(detail)
-        item.update(process_detail)
+        item = _process_created_path(event, process_detail)
+        if not item:
+            return
 
-        process_name = item.get("process_name")
-        pid = item.get("pid")
-        command_line = item.get("command_line")
-
-        key = (process_name, pid, command_line)
+        key = (_normalize_path(item),)
         processes_created = behavior["processes"]["created"]
         processes_created_indexes = indexes["processes.created"]
 
@@ -280,15 +277,15 @@ def _classify_process_event(
         return
 
     if operation in PROCESS_TERMINATED_OPERATIONS:
-        item = _base_event(event)
         detail = event.get("detail", "")
 
+        item = {}
         exit_status = _detail_value(detail, "Exit Status")
         if exit_status:
             item["exit_status"] = exit_status
         
-        process_name = item.get("process_name")
-        pid = item.get("pid")
+        process_name = event.get("process_name", "")
+        pid = event.get("pid", "")
         exit_status = item.get("exit_status")
 
         key = (process_name, pid, exit_status)
@@ -305,14 +302,11 @@ def _classify_process_event(
         return
 
     if operation in PROCESS_IMAGE_OPERATIONS:
-        item = _base_event(event)
-        item["image_path"] = event.get("path", "")
+        item = event.get("path", "")
+        if not item:
+            return
 
-        process_name = item.get("process_name")
-        pid = item.get("pid")
-        image_path = _normalize_path(item.get("image_path", ""))
-
-        key = (process_name, pid, image_path)
+        key = (_normalize_path(item),)
         processes_loaded_images = behavior["processes"]["loaded_images"]
         processes_loaded_images_indexes = indexes["processes.loaded_images"]
 
@@ -337,10 +331,11 @@ def _classify_filesystem_event(
     has_creation_disponition = _has_creation_disposition(detail)
 
     if operation in FILESYSTEM_CREATED_OPERATIONS and has_creation_disponition:
-        item = _path_event(event)
-        item["object_type"] = _filesystem_object_type(event)
+        item = event.get("path", "")
+        if not item:
+            return
 
-        key = _path_event_key(item)
+        key = (_normalize_path(item),)
         filesystem_created = behavior["filesystem"]["created"]
         filesystem_created_indexes = indexes["filesystem.created"]
 
@@ -355,38 +350,37 @@ def _classify_filesystem_event(
 
     if operation in FILESYSTEM_MODIFIED_OPERATIONS:
         item = _path_event(event)
+        if not item["path"]:
+            return
 
         if operation == "WriteFile":
             item["modification_type"] = "content"
-            item["write_count"] = 1
-
-            detail = event.get("detail", "")
-            length = _detail_number(detail, "Length")
-
-            if length is not None:
-                item["bytes_written"] = length
         else:
             item["modification_type"] = "metadata"
 
-        key = _path_event_key(item)
+        key = (
+            _normalize_path(item.get("path", "")),
+            item.get("modification_type", ""),
+        )
         filesystem_modified = behavior["filesystem"]["modified"]
         filesystem_modified_indexes = indexes["filesystem.modified"]
-        numeric_fields = ("write_count", "bytes_written")
 
         _add_aggregated(
             filesystem_modified,
             filesystem_modified_indexes,
             key,
             item,
-            numeric_fields=numeric_fields,
         )
 
         return
 
     has_delete_disposition = _has_delete_disposition(detail)
     if operation in FILESYSTEM_DELETED_OPERATIONS and has_delete_disposition:
-        item = _path_event(event)
-        key = _path_event_key(item)
+        item = event.get("path", "")
+        if not item:
+            return
+
+        key = (_normalize_path(item),)
         filesystem_deleted = behavior["filesystem"]["deleted"]
         filesystem_deleted_indexes = indexes["filesystem.deleted"]
 
@@ -400,19 +394,19 @@ def _classify_filesystem_event(
         return
 
     if operation in FILESYSTEM_RENAMED_OPERATIONS:
-        item = _base_event(event)
         path = event.get("path", "")
+        item = {
+            "from": path,
+            "to": _rename_destination(detail),
+        }
 
-        item["old_path"] = path
-        item["new_path"] = _rename_destination(detail)
-
-        if not item["new_path"]:
+        if not item["to"]:
             return
         
-        process_name = item.get("process_name")
-        pid = item.get("pid")
-        normalized_old_path =  _normalize_path(item.get("old_path", ""))
-        normalized_new_path = _normalize_path(item.get("new_path", ""))
+        process_name = event.get("process_name", "")
+        pid = event.get("pid", "")
+        normalized_old_path =  _normalize_path(item.get("from", ""))
+        normalized_new_path = _normalize_path(item.get("to", ""))
 
         key = (
             process_name,
@@ -436,7 +430,7 @@ def _classify_registry_event(
 
     created_registry_key = _has_created_registry_key(detail)
     if operation in REGISTRY_CREATED_OPERATIONS and created_registry_key:
-        item = _registry_event(event)
+        item = _path_event(event)
         key = _registry_event_key(item)
         registry_created = behavior["registry"]["created"]
         registry_created_indexes = indexes["registry.created"]
@@ -451,7 +445,7 @@ def _classify_registry_event(
         return
 
     if operation in REGISTRY_MODIFIED_OPERATIONS:
-        item = _registry_event(event)
+        item = _path_event(event)
         _add_registry_detail(item, detail)
 
         key = _registry_event_key(item)
@@ -468,8 +462,11 @@ def _classify_registry_event(
         return
 
     if operation in REGISTRY_DELETED_OPERATIONS:
-        item = _registry_event(event)
-        key = _registry_event_key(item)
+        item = event.get("path", "")
+        if not item:
+            return
+
+        key = (_normalize_path(item),)
         registry_deleted = behavior["registry"]["deleted"]
         registry_deleted_indexes = indexes["registry.deleted"]
 
@@ -496,19 +493,8 @@ def _classify_network_event(
             return
         
         key = _network_event_key(item)
-        _add_network_counters(item, event)
 
-        network_tcp = behavior["network"]["tcp"]
-        network_tcp_indexes = indexes["network.tcp"]
-        numeric_fields = ("send_count", "receive_count", "bytes_sent", "bytes_received")
-
-        _add_aggregated(
-            network_tcp,
-            network_tcp_indexes,
-            key,
-            item,
-            numeric_fields=numeric_fields,
-        )
+        _add_tcp_connection(behavior, indexes, item)
 
         if _is_dns_transport(item):
             dns_item = _dns_event(item, "tcp")
@@ -532,18 +518,15 @@ def _classify_network_event(
             return
         
         key = _network_event_key(item)
-        _add_network_counters(item, event)
 
         network_udp = behavior["network"]["udp"]
         network_udp_indexes = indexes["network.udp"]
-        numeric_fields = ("send_count", "receive_count", "bytes_sent", "bytes_received")
 
         _add_aggregated(
             network_udp,
             network_udp_indexes,
             key,
-            item,
-            numeric_fields=numeric_fields,
+            _network_connection(item),
         )
 
         if _is_dns_transport(item):
@@ -564,89 +547,48 @@ def _classify_network_event(
 
 
 def _add_aggregated(
-    collection: list[dict[str, Any]],
-    index: dict[tuple[Any, ...], dict[str, Any]],
+    collection: list[Any],
+    index: dict[tuple[Any, ...], Any],
     key: tuple[Any, ...],
-    item: dict[str, Any],
+    item: Any,
     numeric_fields: tuple[str, ...] = (),
 ) -> None:
-    timestamp = item.pop("time", "")
     existing = index.get(key)
 
     if existing is None:
-        item["count"] = item.get("count", 1)
-        item["first_seen"] = timestamp
-        item["last_seen"] = timestamp
-
         index[key] = item
         collection.append(item)
 
         return
 
-    existing["count"] = existing.get("count", 1) + item.get("count", 1)
-
-    if timestamp:
-        if not existing.get("first_seen"):
-            existing["first_seen"] = timestamp
-
-        existing["last_seen"] = timestamp
-
-    for field in numeric_fields:
-        if field in item:
-            existing[field] = existing.get(field, 0) + item[field]
-
 
 def _base_event(event: dict[str, str]) -> dict[str, Any]:
-    process_name = event.get("process_name", "")
-    pid = _int_or_string(event.get("pid", ""))
     operation = event.get("operation", "")
-    time = event.get("time_of_day", "")
 
     return {
-        "process_name": process_name,
-        "pid": pid,
         "operation": operation,
-        "time": time,
     }
 
 
 def _path_event(event: dict[str, str]) -> dict[str, Any]:
-    item = _base_event(event)
-    item["path"] = event.get("path", "")
-
-    return item
-
-
-def _registry_event(event: dict[str, str]) -> dict[str, Any]:
-    item = _base_event(event)
-    item["path"] = event.get("path", "")
-
-    return item
+    return {"path": event.get("path", "")}
 
 
 def _path_event_key(item: dict[str, Any]) -> tuple[Any, ...]:
-    process_name = item.get("process_name", "")
-    pid = item.get("pid", "")
     operation = item.get("operation", "")
     normalized_path = _normalize_path(item.get("path", ""))
 
     return (
-        process_name,
-        pid,
         operation,
         normalized_path,
     )
 
 
 def _registry_event_key(item: dict[str, Any]) -> tuple[Any, ...]:
-    process_name = item.get("process_name", "")
-    pid = item.get("pid", "")
     operation = item.get("operation", "")
     normalized_path = _normalize_path(item.get("path", ""))
 
     return (
-        process_name,
-        pid,
         operation,
         normalized_path,
     )
@@ -736,6 +678,38 @@ def _process_create_detail(detail: str) -> dict[str, Any]:
     return parsed
 
 
+def _process_created_path(
+    event: dict[str, str],
+    process_detail: dict[str, Any],
+) -> str:
+    image_path = process_detail.get("image_path")
+    if image_path:
+        return str(image_path)
+
+    event_path = event.get("path")
+    if event_path:
+        return event_path
+
+    command_line = process_detail.get("command_line")
+    if isinstance(command_line, str):
+        return _command_line_executable(command_line)
+
+    return ""
+
+
+def _command_line_executable(command_line: str) -> str:
+    command_line = command_line.strip()
+    if not command_line:
+        return ""
+
+    if command_line.startswith('"'):
+        end = command_line.find('"', 1)
+        if end > 1:
+            return command_line[1:end]
+
+    return command_line.split(" ", 1)[0]
+
+
 def _add_registry_detail(item: dict[str, Any], detail: str) -> None:
     value_type = _detail_value(detail, "Type")
     data = _detail_value(detail, "Data")
@@ -806,8 +780,6 @@ def _parse_endpoint(value: str) -> tuple[str, int | str] | None:
 
 
 def _network_event_key(item: dict[str, Any]) -> tuple[Any, ...]:
-    proccess_name = item.get("process_name")
-    pid = item.get("pid")
     protocol = item.get("protocol")
     local_address = item.get("local_address")
     local_port = item.get("local_port")
@@ -815,8 +787,6 @@ def _network_event_key(item: dict[str, Any]) -> tuple[Any, ...]:
     remote_port = item.get("remote_port")
 
     return (
-        proccess_name,
-        pid,
         protocol,
         local_address,
         local_port,
@@ -825,22 +795,66 @@ def _network_event_key(item: dict[str, Any]) -> tuple[Any, ...]:
     )
 
 
-def _add_network_counters(item: dict[str, Any], event: dict[str, str]) -> None:
-    operation = event.get("operation", "")
-    detail = event.get("detail", "")
-    length = _detail_number(detail, "Length")
+def _add_tcp_connection(
+    behavior: dict[str, Any],
+    indexes: dict[str, dict[tuple[Any, ...], Any]],
+    item: dict[str, Any],
+) -> None:
+    endpoint = _connection_endpoint(item)
+    if not endpoint:
+        return
 
-    if operation.endswith(" Send"):
-        item["send_count"] = 1
+    category = _tcp_connection_category(item)
+    collection = behavior["network"]["tcp"][category]
+    index = indexes[f"network.tcp.{category}"]
 
-        if length is not None:
-            item["bytes_sent"] = length
+    _add_aggregated(collection, index, (endpoint.lower(),), endpoint)
 
-    elif operation.endswith(" Receive"):
-        item["receive_count"] = 1
-        
-        if length is not None:
-            item["bytes_received"] = length
+
+def _connection_endpoint(item: dict[str, Any]) -> str:
+    remote_address = str(item.get("remote_address") or "")
+
+    if _is_local_address(remote_address):
+        return _format_endpoint(
+            item.get("local_address"),
+            item.get("local_port"),
+        )
+
+    return _format_endpoint(
+        remote_address,
+        item.get("remote_port"),
+    )
+
+
+def _tcp_connection_category(item: dict[str, Any]) -> str:
+    remote_address = str(item.get("remote_address") or "")
+    if _is_local_address(remote_address):
+        remote_address = str(item.get("local_address") or "")
+
+    if _is_ip_address(remote_address):
+        return "ips"
+
+    if "/" in remote_address or remote_address.lower().startswith(("http://", "https://")):
+        return "urls"
+
+    return "domains"
+
+
+def _format_endpoint(address: Any, port: Any) -> str:
+    if port in ("", None):
+        return str(address or "")
+
+    return f"{address}:{port}"
+
+
+def _is_ip_address(value: str) -> bool:
+    return bool(re.match(r"^\d{1,3}(?:\.\d{1,3}){3}$", value))
+
+
+def _is_local_address(value: str) -> bool:
+    normalized = value.strip().lower()
+
+    return normalized in {"malwarepc", "localhost", "127.0.0.1", "::1"}
 
 
 def _is_dns_transport(item: dict[str, Any]) -> bool:
@@ -858,20 +872,14 @@ def _dns_event(item: dict[str, Any], protocol: str) -> dict[str, Any]:
         server = item.get("local_address")
         port = item.get("local_port")
 
-    process_name = item.get("process_name", "")
-    pid = item.get("pid", "")
     operation = item.get("operation", "")
-    time = item.get("time", "")
 
     return {
-        "process_name": process_name,
-        "pid": pid,
         "server": server,
         "port": port,
         "protocol": protocol,
         "domain": None,
         "operation": operation,
-        "time": time,
     }
 
 
