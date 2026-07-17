@@ -77,7 +77,6 @@ SECTION_HINTS = {
     "network.dns": "Look for DNS transport activity. Do not infer queried domains when the evidence only contains DNS server transport.",
 }
 
-
 class DynamicInference:
     def __init__(self, llm: BaseLLMProvider) -> None:
         self.llm: BaseLLMProvider = llm
@@ -121,6 +120,9 @@ class DynamicInference:
         Focus: {hint}
         Selection:
         {json.dumps(coverage, ensure_ascii=False, default=str)}
+
+        Existing finding explanations:
+        {json.dumps(existing_explanations, ensure_ascii=False, default=str)}
 
         Evidence:
         {json.dumps(evidence, ensure_ascii=False, default=str)}
