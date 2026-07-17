@@ -204,48 +204,11 @@ def _collection_chunks(
             "index": index,
             "total_chunks": total_chunks,
             "total_items": total_items,
-            "highlights": _section_highlights(section, data),
             "data": data,
         }
         chunks.append(_fit_chunk(chunk, max_chunk_characters))
 
     return chunks
-
-
-def _section_highlights(section: str, collection: dict[str, Any]) -> dict[str, Any]:
-    groups = collection.get("groups")
-    if not isinstance(groups, list):
-        return {}
-
-    if section == "filesystem.created":
-        return {
-            "created_filenames": _groups_by_type(groups, "filename"),
-            "created_extensions": _groups_by_type(groups, "extension"),
-            "created_directory_roots": _groups_by_type(groups, "directory_root"),
-        }
-
-    if section == "filesystem.renamed":
-        return {
-            "destination_extensions": _groups_by_type(groups, "destination_extension"),
-            "extension_transitions": _groups_by_type(groups, "extension_transition"),
-            "same_directory": _groups_by_type(groups, "same_directory"),
-            "directory_roots": _groups_by_type(groups, "directory_root"),
-        }
-
-    return {}
-
-
-def _groups_by_type(
-    groups: list[dict[str, Any]],
-    group_type: str,
-    limit: int = 10,
-) -> list[dict[str, Any]]:
-    selected = [
-        copy.deepcopy(group)
-        for group in groups
-        if group.get("type") == group_type
-    ]
-    return selected[:limit]
 
 
 def _context(procmon: dict[str, Any], section: str) -> dict[str, Any]:
