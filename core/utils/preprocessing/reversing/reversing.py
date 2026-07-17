@@ -1,6 +1,6 @@
 from typing import Any
 
-from core.utils.preprocessing.chunks import json_size, make_report_chunk
+from core.utils.chunks import json_size, make_report_chunk
 
 MAX_REVERSING_EVIDENCE_SIZE = 4500
 

@@ -1,6 +1,7 @@
 from typing import Any
 
-from core.utils.preprocessing.chunks import chunk_large_value, json_size, make_report_chunk
+from core.utils.chunks import chunk_large_value, json_size, make_report_chunk
+
 
 PE_SUMMARY_KEYS = [
     "architecture",

@@ -1,6 +1,6 @@
 from typing import Any
 
-from core.utils.preprocessing.chunks import prepare_generic_report_chunks
+from core.utils.chunks import prepare_generic_report_chunks
 from core.utils.preprocessing.static.pe import prepare_pe_report_chunks
 from core.utils.preprocessing.static.virustotal import prepare_vt_report_chunks
 

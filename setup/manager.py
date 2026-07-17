@@ -20,6 +20,7 @@ from core.utils.virtualbox.parsers import (
 )
 from core.tools.results import CommandResult
 
+
 COMMAND_TIMEOUT_SECONDS = 30
 GRACEFUL_SHUTDOWN_TIMEOUT_SECONDS = 60
 GRACEFUL_SHUTDOWN_POLL_SECONDS = 2
@@ -209,9 +210,6 @@ class VirtualBoxManager:
                 "mount_point": mount_point,
             },
         }
-
-        if remove_result is not None:
-            details["remove_command"] = remove_result.to_dict()
 
         return operation_result(
             action="configure_shared_folder",

@@ -1,14 +1,12 @@
-from collections.abc import Iterator
 from typing import Any
 from config import STATIC_STRINGS_INFERENCE_RESULT_FILENAME
 from core.utils.logger import Logger
+from core.utils.preprocessing.static.strings import prepare_static_string_chunks
 from core.ai.inferences.static import StaticInference
 from core.ai.runtime.memory import TraceMemory
 from core.ai.runner.base import BaseAIRunner
 from core.ai.model_registry import ModelRegistry
 from core.orchestrator.context import AnalysisContext
-
-STRING_CHUNK_SIZE = 80
 
 
 class StaticInferenceRunner(BaseAIRunner):
@@ -31,8 +29,13 @@ class StaticInferenceRunner(BaseAIRunner):
             agent_name="static_strings_inference",
         )
 
+        string_chunks = prepare_static_string_chunks(self.strings)
+
         try:
-            for chunk_index, strings_chunk in enumerate(self._iter_string_chunks(), start=1):
+            for chunk_index, strings_chunk in enumerate(
+                string_chunks,
+                start=1,
+            ):
                 self._process_chunk(
                     inference,
                     memory,
@@ -68,19 +71,13 @@ class StaticInferenceRunner(BaseAIRunner):
             )
             return
 
+        finding = self._finding(decision, strings_chunk)
+
         memory.record(
             decision=decision,
             input_ref=input_ref,
-            finding=self._finding(decision, strings_chunk),
+            finding=finding,
         )
-
-
-    def _iter_string_chunks(
-            self, 
-            chunk_size: int = STRING_CHUNK_SIZE,
-        ) -> Iterator[list[str]]:
-        for index in range(0, len(self.strings), chunk_size):
-            yield self.strings[index:index + chunk_size]
 
     def _input_ref(self, chunk_index: int) -> dict[str, Any]:
         return {
@@ -102,6 +99,7 @@ class StaticInferenceRunner(BaseAIRunner):
         decision: dict[str, Any],
         strings_chunk: list[str],
     ) -> dict[str, Any] | None:
+        confidence = decision.get("confidence", "low")
         raw_finding = decision.get("finding")
         if not isinstance(raw_finding, dict):
             return None
@@ -109,12 +107,17 @@ class StaticInferenceRunner(BaseAIRunner):
         category = raw_finding.get("category")
         tone = raw_finding.get("tone")
 
+        if not (isinstance(category, str) and category):
+            category = "unknown"
+        if not (isinstance(tone, str) and tone):
+            tone = "unknown"
+
         return {
             "type": "threat_actor_message",
-            "confidence": decision.get("confidence", "low"),
+            "confidence": confidence,
             "text": strings_chunk,
-            "category": category if isinstance(category, str) and category else "unknown",
-            "tone": tone if isinstance(tone, str) and tone else "unknown",
+            "category": category,
+            "tone": tone,
         }
 
     def _create_inference_model(self) -> StaticInference:

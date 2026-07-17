@@ -1,30 +1,28 @@
 from typing import Any
 
-from core.utils.preprocessing.dynamic.autoruns import prepare_autoruns_diff_chunks
-from core.utils.preprocessing.dynamic.procmon import prepare_procmon_chunks
-from core.utils.preprocessing.dynamic.registry import prepare_registry_diff_chunks
+from core.utils.preprocessing.dynamic.autoruns import prepare_autoruns_diff_section
+from core.utils.preprocessing.dynamic.procmon import prepare_procmon_sections
+from core.utils.preprocessing.dynamic.registry import prepare_registry_diff_section
 from core.utils.artifacts.extractor import JsonExtractor
-
-DYNAMIC_BATCH_SIZE = 5
 
 
 def prepare_dynamic_inference_inputs(
     dynamic_results: dict[str, Any],
-    batch_size: int = DYNAMIC_BATCH_SIZE,
 ) -> list[dict[str, Any]]:
     inputs: list[dict[str, Any]] = []
 
     autoruns_data = _tool_data(dynamic_results, "autoruns")
     if isinstance(autoruns_data, dict):
-        inputs.extend(prepare_autoruns_diff_chunks(autoruns_data, batch_size))
+        inputs.extend(prepare_autoruns_diff_section(autoruns_data))
 
     registry_data = _tool_data(dynamic_results, "registry")
     if isinstance(registry_data, dict):
-        inputs.extend(prepare_registry_diff_chunks(registry_data, batch_size))
+        
+        inputs.extend(prepare_registry_diff_section(registry_data))
 
     procmon_data = _tool_data(dynamic_results, "procmon")
     if isinstance(procmon_data, dict):
-        inputs.extend(prepare_procmon_chunks(procmon_data, batch_size))
+        inputs.extend(prepare_procmon_sections(procmon_data))
 
     return inputs
 

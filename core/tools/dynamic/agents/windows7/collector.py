@@ -225,10 +225,9 @@ def wait_monitor_health(monitor):
 
 
 def wait_receiver_health(receiver):
-    deadline = monotonic_time() + receiver["timeout"]
     last_error = None
 
-    while monotonic_time() < deadline:
+    while True:
         try:
             result = http_json(receiver, "GET", "/health")
             if result.get("status") == "ok":
@@ -236,10 +235,11 @@ def wait_receiver_health(receiver):
         except Exception as exc:
             last_error = exc
 
-        log("waiting for receiver health: {0}".format(receiver["base_url"]))
+        log("waiting for receiver health: {0} last_error={1}".format(
+            receiver["base_url"],
+            last_error,
+        ))
         time.sleep(RECEIVER_HEALTH_POLL_SECONDS)
-
-    raise RuntimeError("receiver is not healthy: {0}".format(last_error))
 
 
 def wait_monitor_completed(monitor, timeout):

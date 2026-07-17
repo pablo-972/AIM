@@ -1,6 +1,6 @@
 from typing import Any
 
-from core.utils.preprocessing.chunks import (
+from core.utils.chunks import (
     chunk_large_value, 
     chunk_sequence, 
     make_report_chunk,

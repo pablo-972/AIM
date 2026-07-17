@@ -10,16 +10,22 @@ SYSTEM_PROMPT = """
 You are an expert malware dynamic-analysis classifier.
 
 # Objective
-Inspect one small dynamic-analysis evidence chunk and decide whether it shows
+Inspect one selected dynamic-analysis evidence section and decide whether it shows
 malware-relevant behavior.
 
 # Evidence Types
-- Procmon section chunks contain raw normalized events grouped by behavior.
-- Autoruns and registry chunks contain only before/after differences.
-- Procmon chunks may contain only a representative subset of a larger section.
-  Use total_items, selected_items, truncated, and selection_strategy to
-  understand coverage. Do not claim that no other behavior occurred outside the
-  provided chunk.
+- Procmon sections contain selected normalized events grouped by behavior.
+- Procmon collection groups summarize the whole selected artifact section. When
+  a collection has truncated=true or total_items is larger than selected_count,
+  inspect groups before items because groups may expose the dominant behavior.
+- Procmon highlights are deterministic summaries extracted from groups. Treat
+  repeated filenames, destination extensions, and extension transitions in
+  highlights as direct evidence for the current section.
+- Autoruns and registry sections contain only before/after differences.
+- Procmon sections may contain only selected items from a larger artifact.
+  Use index, total_chunks, total_items, and selected_count to understand what
+  part of the section was provided. Do not claim that no other behavior occurred
+  outside the provided evidence.
 
 # What To Report
 Report a finding only for concrete behavior supported by the evidence:
@@ -27,7 +33,10 @@ Report a finding only for concrete behavior supported by the evidence:
 - suspicious registry changes
 - file creation, modification, deletion, or rename behavior
 - process creation, termination, or notable image loading
-- DNS, TCP, or UDP network activity
+- DNS, TCP, or UDP network activity, including connection attempts,
+  reconnect attempts, accepts, sends, receives, disconnects, and repeated
+  remote endpoint activity. Do not require a confirmed established session
+  before reporting suspicious network behavior.
 - ransomware-style activity such as ransom note creation, many file writes,
   renames, deletes, or recovery/safety-control tampering
 
@@ -39,6 +48,7 @@ if the difference is behaviorally relevant. Do not report unchanged data.
 Return ONLY valid JSON matching the provided schema.
 If there is relevant behavior, return finding with:
 - category: concise label such as "file_creation", "network_connection",
+  "network_attempt", "network_reconnect", "network_transfer",
   "autorun_persistence", "registry_persistence", "registry_modification",
   "process_execution", "file_modification", "file_deletion", or "file_rename".
 - tone: concise behavior label such as "persistence", "network", "filesystem",
@@ -53,19 +63,18 @@ Do not include chain-of-thought or step-by-step reasoning.
 """
 
 SECTION_HINTS = {
-    "processes.created": "Look for child process execution and suspicious command lines.",
+    "processes.created": "Look for child process execution and suspicious command lines. Use both process and command_line when present.",
     "processes.terminated": "Look for attempts to stop tools, services, or security processes.",
-    "processes.loaded_images": "Look for notable DLL/image loads related to injection or abuse.",
-    "filesystem.created": "Look for created files or directories, especially ransom notes, dropped binaries, scripts, or startup paths.",
+    "processes.loaded_images": "Look for notable DLL/image loads that suggest capabilities such as cryptography, networking, injection, scripting, compression, or system manipulation.",
+    "filesystem.created": "Look for created files or directories, especially repeated filenames or groups such as ransom notes, dropped binaries, scripts, or startup paths.",
     "filesystem.modified": "Look for content writes or metadata changes that suggest encryption, tampering, or payload staging.",
     "filesystem.deleted": "Look for destructive deletes or cleanup behavior.",
-    "filesystem.renamed": "Look for ransomware-style renames or extension changes.",
+    "filesystem.renamed": "Look for suspicious rename behavior, especially destination_extension or extension_transition groups, hidden or staged paths, misleading names, repeated renames, or possible ransom/encryption activity.",
     "registry.created": "Look for registry key creation that suggests persistence or configuration changes.",
     "registry.modified": "Look for registry value changes that suggest persistence, execution, or security tampering.",
     "registry.deleted": "Look for deletion of registry keys or values.",
-    "network.dns": "Look for DNS transport or domain lookup behavior.",
-    "network.tcp": "Look for outbound TCP connections or reconnect attempts to remote infrastructure.",
-    "network.udp": "Look for UDP traffic to remote infrastructure.",
+    "network.connections": "Look for any network activity involving remote infrastructure: connection attempts, reconnect attempts, accepts, sends, receives, disconnects, repeated remote endpoints, ports, and transfer patterns. Reconnect-only activity is still relevant evidence of attempted communication.",
+    "network.dns": "Look for DNS transport activity. Do not infer queried domains when the evidence only contains DNS server transport.",
 }
 
 
@@ -73,8 +82,12 @@ class DynamicInference:
     def __init__(self, llm: BaseLLMProvider) -> None:
         self.llm: BaseLLMProvider = llm
 
-    def analyze_chunk(self, input_ref: dict[str, Any]) -> dict[str, Any]:
-        prompt = self._prompt(input_ref)
+    def analyze_section(
+        self,
+        input_ref: dict[str, Any],
+        existing_explanations: list[str] | None = None,
+    ) -> dict[str, Any]:
+        prompt = self._prompt(input_ref, existing_explanations or [])
 
         response = self.llm.chat_json(
             SYSTEM_PROMPT, 
@@ -86,7 +99,11 @@ class DynamicInference:
         return dynamic_findigs
 
 
-    def _prompt(self, input_ref: dict[str, Any]) -> str:
+    def _prompt(
+        self,
+        input_ref: dict[str, Any],
+        existing_explanations: list[str],
+    ) -> str:
         tool = input_ref.get("tool", "unknown")
         section = input_ref.get("section", "unknown")
         evidence = input_ref.get("value")
@@ -95,14 +112,14 @@ class DynamicInference:
 
         return f"""
         Task:
-        Inspect this dynamic-analysis evidence chunk. Decide if it contains one
+        Inspect this selected dynamic-analysis evidence section. Decide if it contains one
         malware-relevant finding. If it does not, return finding=null.
         If it does, explain the concrete behavior in finding.explanation.
 
         Tool: {tool}
         Section: {section}
         Focus: {hint}
-        Coverage:
+        Selection:
         {json.dumps(coverage, ensure_ascii=False, default=str)}
 
         Evidence:
@@ -123,10 +140,10 @@ class DynamicInference:
 
     def _coverage(self, input_ref: dict[str, Any]) -> dict[str, Any]:
         coverage_fields = (
+            "index",
+            "total_chunks",
             "total_items",
-            "selected_items",
-            "truncated",
-            "selection_strategy",
+            "selected_count",
         )
         coverage = {}
 
@@ -134,4 +151,4 @@ class DynamicInference:
             if field in input_ref:
                 coverage[field] = input_ref.get(field)
 
-        return coverage or {"type": "complete_or_not_provided"}
+        return coverage or {"type": "not_provided"}

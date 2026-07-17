@@ -7,6 +7,7 @@ from core.utils.virtualbox.contracts import (
     validate_running_vms_result,
 )
 
+
 __all__ = [
     "VMAction",
     "VMOperationResult",
