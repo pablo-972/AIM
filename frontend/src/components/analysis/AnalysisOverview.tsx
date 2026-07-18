@@ -3,7 +3,7 @@ import type { AnalysisStatusPayload, JsonArtifact } from "../../types";
 import JsonExpandable from "../common/JsonExpandable";
 
 type AnalysisOverviewProps = {
-  status: AnalysisStatusPayload;
+  status: AnalysisStatusPayload | null;
   artifact: JsonArtifact | null;
 };
 
@@ -30,7 +30,7 @@ function AnalysisOverview({ status, artifact }: AnalysisOverviewProps) {
             ))}
           </dl>
         ) : (
-          <Empty text={`Waiting for analysis.json for ${status.filename ?? "sample"}.`} />
+          <Empty text={`Waiting for analysis.json for ${status?.filename ?? "sample"}.`} />
         )}
       </Panel>
 
@@ -109,9 +109,9 @@ function Metadata({ data }: { data: Record<string, unknown> }) {
   return (
     <dl className="mb-3 grid gap-2 text-xs sm:grid-cols-2">
       {compact.slice(0, 6).map(([key, value]) => (
-        <div key={key} className="rounded bg-slate-950/60 p-2">
+        <div key={key} className="rounded bg-panel p-2">
           <dt className="uppercase text-muted">{key}</dt>
-          <dd className="mt-1 break-all text-slate-200">{String(value)}</dd>
+          <dd className="mt-1 break-all text-ink">{String(value)}</dd>
         </div>
       ))}
     </dl>

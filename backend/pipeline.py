@@ -8,6 +8,7 @@ from core.orchestrator.orchestrator import Orchestrator
 from core.tools.runner.dynamic import DynamicToolRunner
 from core.tools.runner.static import StaticToolRunner
 
+
 PhaseCallback = Callable[[str, str], None]
 MetadataCallback = Callable[[dict[str, Any]], None]
 
@@ -26,7 +27,7 @@ def create_full_pipeline_orchestrator(
 ) -> Orchestrator:
     args = Namespace(
         sample=str(sample_path),
-        output=str(output_base),
+        output=str(output_base.parent),
         format="json",
         phase="full",
         func="run_full",
@@ -196,15 +197,24 @@ def run_full_local_pipeline(
     on_phase: PhaseCallback,
     on_metadata: MetadataCallback,
 ) -> None:
-    """Run the fixed local full pipeline used by the web UI."""
     orchestrator = create_full_pipeline_orchestrator(sample_path, output_base)
     emit_pipeline_metadata(orchestrator, on_metadata)
 
     static_context, static_results = run_static_tools_phase(orchestrator, on_phase)
-    run_static_inference_phase(orchestrator, static_context, static_results, on_phase)
+    run_static_inference_phase(
+        orchestrator, 
+        static_context, 
+        static_results, 
+        on_phase,
+    )
 
     dynamic_context, dynamic_results = run_dynamic_tools_phase(orchestrator, on_phase)
-    run_dynamic_inference_phase(orchestrator, dynamic_context, dynamic_results, on_phase)
+    run_dynamic_inference_phase(
+        orchestrator, 
+        dynamic_context, 
+        dynamic_results, 
+        on_phase,
+    )
 
     run_enrichment_pipeline_phase(orchestrator, on_phase)
     run_reverse_info_phase(orchestrator, on_phase)

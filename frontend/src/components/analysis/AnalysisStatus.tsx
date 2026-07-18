@@ -57,7 +57,7 @@ function StatusBadge({ state }: { state: AnalysisStatusPayload["status"] }) {
       ? "border-emerald-500/40 bg-emerald-950/50 text-emerald-200"
       : state === "failed"
         ? "border-danger/50 bg-red-950/50 text-red-100"
-        : "border-accent/40 bg-teal-950/40 text-teal-100";
+        : "border-pink-500/40 bg-pink-500/10 text-pink-500";
 
   return (
     <span className={`w-fit rounded border px-3 py-1 text-sm font-medium ${classes}`}>
@@ -74,7 +74,7 @@ function PhaseIcon({ state }: { state: PhaseState }) {
     return <AlertTriangle className="h-5 w-5 text-danger" aria-hidden="true" />;
   }
   if (state === "running") {
-    return <Loader2 className="h-5 w-5 animate-spin text-accent" aria-hidden="true" />;
+    return <Loader2 className="h-5 w-5 animate-spin text-pink-500" aria-hidden="true" />;
   }
   return <Circle className="h-5 w-5 text-muted" aria-hidden="true" />;
 }

@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
-from uuid import uuid4
 
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.analysis import AnalysisStore
@@ -13,9 +13,10 @@ from backend.artifacts import (
     list_analyses,
     list_analysis_files,
     read_analysis_file,
+    resolve_analysis,
     text_artifact,
 )
-from backend.files import WEB_ANALYSES_PATH, save_upload_file
+from backend.files import WEB_ANALYSES_PATH, WEB_UPLOADS_PATH, save_upload_file
 from config import (
     DYNAMIC_INFERENCE_RESULT_FILENAME,
     ENRICHMENT_FILENAME,
@@ -24,6 +25,7 @@ from config import (
     REVERSING_AGENT_RESULT_FILENAME,
     STATIC_STRINGS_INFERENCE_RESULT_FILENAME,
 )
+from core.utils.crypto import sha256_file
 
 
 store = AnalysisStore()
@@ -39,11 +41,25 @@ app.add_middleware(
 
 
 @app.post("/api/analyses")
-async def create_analysis(file: UploadFile = File(...)) -> dict[str, Any]:
-    analysis_id = uuid4().hex
-    filename, sample_path = await save_upload_file(file, analysis_id)
+async def create_analysis(
+    file: UploadFile = File(...),
+    reanalyze: bool = Query(default=False),
+) -> dict[str, Any]:
+    filename, sample_path = await save_upload_file(file)
+    sample_sha256 = sha256_file(sample_path)
 
-    output_base = WEB_ANALYSES_PATH / analysis_id
+    if not reanalyze:
+        try:
+            status = resolve_analysis(store, sample_sha256)
+            _store_or_discard_duplicate_upload(sample_path, sample_sha256)
+            return status
+        except HTTPException as exc:
+            if exc.status_code != 404:
+                raise
+
+    sample_path = _move_upload_to_sample_path(sample_path, sample_sha256)
+    
+    output_base = WEB_ANALYSES_PATH / sample_sha256
     output_base.mkdir(parents=True, exist_ok=True)
 
     job = store.create(filename, sample_path, output_base)
@@ -53,6 +69,31 @@ async def create_analysis(file: UploadFile = File(...)) -> dict[str, Any]:
 @app.get("/api/analyses")
 def get_analyses() -> dict[str, Any]:
     return list_analyses(store)
+
+
+@app.get("/api/analyses/resolve/{identifier}")
+def resolve_existing_analysis(identifier: str) -> dict[str, Any]:
+    return resolve_analysis(store, identifier)
+
+
+@app.post("/api/analyses/{identifier}/reanalyze")
+def reanalyze_existing_analysis(identifier: str) -> dict[str, Any]:
+    status = resolve_analysis(store, identifier)
+    sample_path = _sample_path_for_status(status)
+    sample_sha256 = status.get("sample_sha256") or identifier
+    filename = status.get("filename") or sample_path.name
+
+    if not isinstance(sample_sha256, str) or not sample_sha256:
+        raise HTTPException(
+            status_code=400, 
+            detail="Analysis has no sample hash",
+        )
+
+    output_base = WEB_ANALYSES_PATH / sample_sha256
+    output_base.mkdir(parents=True, exist_ok=True)
+
+    job = store.create(str(filename), sample_path, output_base)
+    return job.to_status()
 
 
 @app.get("/api/analyses/{analysis_id}/status")
@@ -98,3 +139,83 @@ def get_reverse_agent(analysis_id: str) -> dict[str, Any]:
 @app.get("/api/analyses/{analysis_id}/report")
 def get_report(analysis_id: str) -> dict[str, Any]:
     return text_artifact(store, analysis_id, REPORT_FILENAME)
+
+
+def _sample_path_for_status(status: dict[str, Any]) -> Path:
+    sample_sha256 = status.get("sample_sha256")
+    if isinstance(sample_sha256, str):
+        canonical_path = WEB_UPLOADS_PATH / sample_sha256
+        if canonical_path.exists() and canonical_path.is_file():
+            return canonical_path
+
+    output_dir = status.get("output_dir")
+    if isinstance(output_dir, str):
+        analysis_id = status["analysis_id"]
+        artifact = json_artifact(store, analysis_id, RESULT_FILENAME)
+        analysis_data = artifact.get("data")
+
+        sample = None
+        if isinstance(analysis_data, dict):
+            sample = analysis_data.get("sample")
+
+        sample_path = None
+        if isinstance(sample, dict):
+            sample_path = sample.get("path")
+
+        if isinstance(sample_path, str):
+            path = Path(sample_path)
+            if path.exists() and path.is_file():
+                return path
+
+    raise HTTPException(
+        status_code=404, 
+        detail="Original sample file not available",
+    )
+
+
+def _move_upload_to_sample_path(path: Path, sample_sha256: str) -> Path:
+    WEB_UPLOADS_PATH.mkdir(parents=True, exist_ok=True)
+
+    target = WEB_UPLOADS_PATH / sample_sha256
+    if target.exists():
+        if target.is_dir():
+            raise HTTPException(
+                status_code=409,
+                detail="Sample upload path is a directory",
+            )
+
+        target.unlink()
+
+    path.replace(target)
+    _cleanup_empty_dir(path.parent)
+
+    return target
+
+
+def _store_or_discard_duplicate_upload(
+    path: Path,
+    sample_sha256: str,
+) -> None:
+    target = WEB_UPLOADS_PATH / sample_sha256
+
+    if target.exists():
+        _cleanup_upload_temp(path)
+        return
+
+    _move_upload_to_sample_path(path, sample_sha256)
+
+
+def _cleanup_upload_temp(path: Path) -> None:
+    try:
+        path.unlink(missing_ok=True)
+    except OSError:
+        return
+
+    _cleanup_empty_dir(path.parent)
+
+
+def _cleanup_empty_dir(path: Path) -> None:
+    try:
+        path.rmdir()
+    except OSError:
+        return

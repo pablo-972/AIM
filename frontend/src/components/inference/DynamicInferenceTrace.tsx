@@ -114,7 +114,7 @@ function StepCard({ step }: { step: TraceStep }) {
 
 function Badge({ text }: { text: string }) {
   return (
-    <span className="w-fit rounded border border-line bg-slate-950/60 px-2 py-1 text-xs uppercase text-muted">
+    <span className="w-fit rounded border border-line bg-panelSoft px-2 py-1 text-xs uppercase text-muted">
       {text}
     </span>
   );

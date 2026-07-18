@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 from config import ROOT_PATH
 
@@ -21,10 +22,10 @@ VIEWABLE_FILE_EXTENSIONS = {
 MAX_VIEWABLE_FILE_SIZE = 2 * 1024 * 1024
 
 
-async def save_upload_file(upload: Any, analysis_id: str) -> tuple[str, Path]:
+async def save_upload_file(upload: Any) -> tuple[str, Path]:
     filename = safe_filename(upload.filename)
 
-    upload_dir = WEB_UPLOADS_PATH / analysis_id
+    upload_dir = WEB_UPLOADS_PATH / ".tmp" / uuid4().hex
     upload_dir.mkdir(parents=True, exist_ok=True)
 
     sample_path = upload_dir / filename

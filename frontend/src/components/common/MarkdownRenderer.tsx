@@ -10,7 +10,7 @@ function MarkdownRenderer({ content }: MarkdownRendererProps) {
   }
 
   return (
-    <div className="markdown rounded border border-line bg-slate-950/50 p-4">
+    <div className="markdown rounded border border-line bg-panel p-4">
       <ReactMarkdown>{content}</ReactMarkdown>
     </div>
   );

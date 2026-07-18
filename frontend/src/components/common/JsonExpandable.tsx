@@ -21,7 +21,7 @@ function JsonExpandable({
     : serialized;
 
   return (
-    <div className="min-w-0 overflow-hidden rounded border border-line bg-slate-950/70">
+    <div className="min-w-0 overflow-hidden rounded border border-line bg-panel">
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
@@ -34,7 +34,7 @@ function JsonExpandable({
           <ChevronRight className="h-4 w-4 shrink-0 text-muted" aria-hidden="true" />
         )}
       </button>
-      <pre className="max-h-[34rem] overflow-y-auto overflow-x-hidden whitespace-pre-wrap break-all border-t border-line p-3 text-xs leading-relaxed text-slate-200">
+      <pre className="max-h-[34rem] overflow-y-auto overflow-x-hidden whitespace-pre-wrap break-all border-t border-line p-3 text-xs leading-relaxed text-ink">
         {open ? serialized : preview}
       </pre>
     </div>

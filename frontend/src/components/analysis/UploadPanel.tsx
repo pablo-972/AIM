@@ -54,11 +54,11 @@ function UploadPanel({ disabled, onAnalysisCreated }: UploadPanelProps) {
         onDrop={handleDrop}
         className={`flex min-h-64 flex-col items-center justify-center rounded-md border border-dashed p-8 text-center shadow-glow transition ${
           dragging
-            ? "border-accent bg-teal-950/30"
-            : "border-line bg-panel hover:border-accent/70"
+            ? "border-pink-500 bg-pink-500/10"
+            : "border-line bg-panel hover:border-pink-500/70"
         } ${disabled ? "opacity-70" : ""}`}
       >
-        <div className="mb-4 rounded-md border border-line bg-panelSoft p-4 text-accent">
+        <div className="mb-4 rounded-md border border-line bg-panelSoft p-4 text-pink-500">
           {uploading ? (
             <Loader2 className="h-9 w-9 animate-spin" aria-hidden="true" />
           ) : (
@@ -83,7 +83,7 @@ function UploadPanel({ disabled, onAnalysisCreated }: UploadPanelProps) {
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={disabled || uploading}
-          className="inline-flex items-center gap-2 rounded border border-line bg-panel px-4 py-2 text-sm font-medium text-ink transition hover:border-accent hover:bg-panelSoft disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex items-center gap-2 rounded border border-line bg-panel px-4 py-2 text-sm font-medium text-ink transition hover:border-pink-500 hover:bg-panelSoft disabled:cursor-not-allowed disabled:opacity-60"
         >
           <FileUp className="h-4 w-4" aria-hidden="true" />
           Select file

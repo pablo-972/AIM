@@ -17,11 +17,15 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export async function createAnalysis(file: File): Promise<AnalysisStatusPayload> {
+export async function createAnalysis(
+  file: File,
+  options: { reanalyze?: boolean } = {},
+): Promise<AnalysisStatusPayload> {
   const form = new FormData();
   form.append("file", file);
+  const query = options.reanalyze ? "?reanalyze=true" : "";
 
-  return request<AnalysisStatusPayload>("/api/analyses", {
+  return request<AnalysisStatusPayload>(`/api/analyses${query}`, {
     method: "POST",
     body: form,
   });
@@ -29,6 +33,19 @@ export async function createAnalysis(file: File): Promise<AnalysisStatusPayload>
 
 export function getAnalyses(): Promise<AnalysisListPayload> {
   return request<AnalysisListPayload>("/api/analyses");
+}
+
+export function resolveAnalysis(identifier: string): Promise<AnalysisStatusPayload> {
+  return request<AnalysisStatusPayload>(
+    `/api/analyses/resolve/${encodeURIComponent(identifier)}`,
+  );
+}
+
+export function reanalyzeAnalysis(identifier: string): Promise<AnalysisStatusPayload> {
+  return request<AnalysisStatusPayload>(
+    `/api/analyses/${encodeURIComponent(identifier)}/reanalyze`,
+    { method: "POST" },
+  );
 }
 
 export function getStatus(analysisId: string): Promise<AnalysisStatusPayload> {

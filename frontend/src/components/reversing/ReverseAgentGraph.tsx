@@ -117,8 +117,8 @@ function NodeButton({
         onClick={onClick}
         className={`flex w-full min-w-0 items-center justify-between gap-4 rounded border p-4 text-left transition ${
           active
-            ? "border-accent bg-teal-950/30"
-            : "border-line bg-panelSoft hover:border-accent/70"
+            ? "border-pink-500 bg-pink-500/10"
+            : "border-line bg-panelSoft hover:border-pink-500/70"
         }`}
       >
         <div className="min-w-0 overflow-hidden">

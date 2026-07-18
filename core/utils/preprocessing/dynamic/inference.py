@@ -20,6 +20,7 @@ PROCMON_GROUP_SECTIONS = (
     "network.connections",
     "network.dns",
 )
+MAX_PROCMON_GROUPS_PER_SOURCE = 30
 
 
 def prepare_dynamic_inference_inputs(
@@ -159,22 +160,33 @@ def _procmon_group_sources(
         if not isinstance(groups, list) or not groups:
             continue
 
-        total_groups = len(groups)
-        for index, group in enumerate(groups, start=1):
-            if not isinstance(group, dict):
-                continue
+        clean_groups = [
+            group
+            for group in groups
+            if isinstance(group, dict)
+        ]
+        total_groups = len(clean_groups)
+
+        for chunk_index, group_chunk in enumerate(
+            _chunk_items(clean_groups, MAX_PROCMON_GROUPS_PER_SOURCE),
+            start=1,
+        ):
+            source_name = f"dynamic.procmon.{section}.groups"
+            if total_groups > MAX_PROCMON_GROUPS_PER_SOURCE:
+                source_name = f"{source_name}.{chunk_index}"
 
             sources.append(
                 (
-                    f"dynamic.procmon.{section}.groups.{index}",
+                    source_name,
                     {
                         "tool": "procmon",
                         "section": section,
-                        "group_index": index,
+                        "chunk_index": chunk_index,
+                        "group_count": len(group_chunk),
                         "total_groups": total_groups,
                         "total_items": collection.get("total"),
                         "truncated": collection.get("truncated"),
-                        "group": group,
+                        "groups": group_chunk,
                     },
                 )
             )
@@ -192,3 +204,11 @@ def _section_data(data: dict[str, Any], section: str) -> Any:
         current = current.get(part)
 
     return current
+
+
+def _chunk_items(items: list[dict[str, Any]], chunk_size: int) -> list[list[dict[str, Any]]]:
+    size = max(1, chunk_size)
+    return [
+        items[index:index + size]
+        for index in range(0, len(items), size)
+    ]
