@@ -16,7 +16,7 @@ DEFAULT_PROCMON_SECTION_ORDER = (
     "network.connections",
     "network.dns",
 )
-DEFAULT_ITEMS_PER_CHUNK = 50
+DEFAULT_ITEMS_PER_CHUNK = 30
 
 PROCESS_OVERVIEW_KEYS = (
     "processes_created",

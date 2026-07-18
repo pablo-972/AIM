@@ -18,9 +18,6 @@ malware-relevant behavior.
 - Procmon collection groups summarize the whole selected artifact section. When
   a collection has truncated=true or total_items is larger than selected_count,
   inspect groups before items because groups may expose the dominant behavior.
-- Procmon highlights are deterministic summaries extracted from groups. Treat
-  repeated filenames, destination extensions, and extension transitions in
-  highlights as direct evidence for the current section.
 - Autoruns and registry sections contain only before/after differences.
 - Procmon sections may contain only selected items from a larger artifact.
   Use index, total_chunks, total_items, and selected_count to understand what
@@ -43,6 +40,12 @@ Report a finding only for concrete behavior supported by the evidence:
 # Diffing Rule
 For Autoruns and registry evidence, compare before and after values. Report only
 if the difference is behaviorally relevant. Do not report unchanged data.
+
+# Deduplication Rule
+Use the existing finding explanations as memory of behavior already reported.
+Do not emit another finding when the current evidence describes the same
+behavior, impact, and evidence pattern as an existing finding. Prefer returning
+finding=null over repeating a finding with different wording.
 
 # Output
 Return ONLY valid JSON matching the provided schema.
