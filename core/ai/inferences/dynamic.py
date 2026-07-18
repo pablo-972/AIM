@@ -41,6 +41,13 @@ Report a finding only for concrete behavior supported by the evidence:
 For Autoruns and registry evidence, compare before and after values. Report only
 if the difference is behaviorally relevant. Do not report unchanged data.
 
+# Network Rule
+For Procmon network.connections evidence, any non-empty network activity from
+the sample is relevant by default. Report a network finding for observed remote
+endpoints, connection attempts, reconnect attempts, accepts, sends, receives,
+disconnects, or repeated endpoint activity. Do not require the endpoint to be
+known malicious, and do not require confirmed connected=true.
+
 # Deduplication Rule
 Use the existing finding explanations as memory of behavior already reported.
 Do not emit another finding when the current evidence describes the same
@@ -76,7 +83,7 @@ SECTION_HINTS = {
     "registry.created": "Look for registry key creation that suggests persistence or configuration changes.",
     "registry.modified": "Look for registry value changes that suggest persistence, execution, or security tampering.",
     "registry.deleted": "Look for deletion of registry keys or values.",
-    "network.connections": "Look for any network activity involving remote infrastructure: connection attempts, reconnect attempts, accepts, sends, receives, disconnects, repeated remote endpoints, ports, and transfer patterns. Reconnect-only activity is still relevant evidence of attempted communication.",
+    "network.connections": "Treat any non-empty network activity as relevant. Report observed remote endpoints, connection attempts, reconnect attempts, accepts, sends, receives, disconnects, repeated endpoints, ports, and transfer patterns. Reconnect-only activity is still relevant evidence of attempted communication.",
     "network.dns": "Look for DNS transport activity. Do not infer queried domains when the evidence only contains DNS server transport.",
 }
 

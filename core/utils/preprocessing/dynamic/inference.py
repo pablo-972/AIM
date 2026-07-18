@@ -42,10 +42,10 @@ def prepare_dynamic_inference_sources(
     dynamic_findings = []
     for index, finding in enumerate(findings, start=1):
         dynamic_findings.append(
-            {
+            (
                 f"dynamic_inference.findings.{index}",
                 finding, 
-            }
+            )
         )
     
     return dynamic_findings
