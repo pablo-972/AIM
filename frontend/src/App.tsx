@@ -241,7 +241,7 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-page text-ink">
+    <div className="flex min-h-screen flex-col bg-page text-ink">
       <Navbar
         darkMode={darkMode}
         existingDisabled={isActive || uploading}
@@ -254,7 +254,7 @@ function App() {
         onToggleTheme={() => setDarkMode((current) => !current)}
       />
 
-      <main className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-5 py-8 sm:px-8 lg:px-10">
+      <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-5 py-6 sm:px-8 lg:px-10">
         {notice && (
           <div className="rounded border border-line bg-panel p-3 text-sm text-muted">
             {notice}
@@ -309,7 +309,7 @@ type HomeViewProps = {
 function HomeView({ disabled, onAnalysisCreated }: HomeViewProps) {
   return (
     <>
-      <section className="flex flex-col items-center justify-center gap-6 py-10 text-center sm:py-16">
+      <section className="flex flex-col items-center justify-center gap-6 py-8 text-center sm:py-12">
         <div className="flex items-center gap-5">
           <LogoMark size="lg" showName={false} />
           <h1 className="text-5xl font-semibold tracking-normal text-pink-500 sm:text-7xl">
