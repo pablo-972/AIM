@@ -10,6 +10,7 @@ from core.utils.logger import Logger
 from core.utils.io.files import load_json
 from core.utils.artifacts.documents import ENRICHMENT_TITLE, MarkdownDocument
 from core.utils.preprocessing import (
+    prepare_dynamic_artifact_sources,
     prepare_dynamic_inference_sources,
     prepare_static_enrichment_sources,
     prepare_static_inference_sources,
@@ -96,6 +97,7 @@ class EnrichmentAIRunner(BaseAIRunner):
         return [
             *prepare_static_enrichment_sources(result),
             *prepare_static_inference_sources(static_inference_data),
+            *prepare_dynamic_artifact_sources(result),
             *prepare_dynamic_inference_sources(dynamic_inference_data),
         ]
     

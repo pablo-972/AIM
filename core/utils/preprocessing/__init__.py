@@ -1,5 +1,6 @@
 from core.utils.preprocessing.enrichment.enrichment import prepare_static_enrichment_sources
 from core.utils.preprocessing.dynamic.inference import (
+    prepare_dynamic_artifact_sources,
     prepare_dynamic_inference_inputs,
     prepare_dynamic_inference_sources,
 )
@@ -17,6 +18,7 @@ __all__ = [
     "prepare_static_enrichment_sources",
     "prepare_static_inference_sources",
     "prepare_static_string_chunks",
+    "prepare_dynamic_artifact_sources",
     "prepare_dynamic_inference_inputs",
     "prepare_dynamic_inference_sources",
     "build_ai_analysis_chunks",

@@ -19,6 +19,7 @@ from core.utils.io.files import load_json
 from core.utils.io.text import read_text
 from core.utils.logger import Logger
 from core.utils.preprocessing import (
+    prepare_dynamic_artifact_sources,
     prepare_dynamic_inference_sources,
     prepare_report_chunks,
     prepare_static_inference_sources,
@@ -70,6 +71,7 @@ class ReportAIRunner(BaseAIRunner):
         return [
             *self._get_static_sources(),
             *self._get_static_inference_sources(),
+            *self._get_dynamic_artifact_sources(),
             *self._get_dynamic_inference_sources(),
             *self._get_enrichment_sources(),
             *self._get_reversing_agent_sources(),
@@ -137,6 +139,12 @@ class ReportAIRunner(BaseAIRunner):
         findings = prepare_dynamic_inference_sources(data or {})
 
         return findings
+
+    def _get_dynamic_artifact_sources(self) -> list[tuple[str, Any]]:
+        data = load_json(self.context.output, RESULT_FILENAME)
+        sources = prepare_dynamic_artifact_sources(data or {})
+
+        return sources
 
     def _get_enrichment_sources(self) -> list[tuple[str, Any]]:
         text = read_text(self.enrichment_document.path)
