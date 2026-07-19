@@ -25,7 +25,9 @@ class DynamicToolRunner(BaseToolRunner):
             Logger.error(f"Dynamic VM session setup failed: {exc}")
 
             result = ToolResult.failed(exc).to_dict()
-            return {"session": result}
+            return {
+                "session": result
+            }
 
         if self.context.dynamic_start:
             return self._start(session)

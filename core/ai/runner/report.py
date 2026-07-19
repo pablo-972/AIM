@@ -49,11 +49,18 @@ class ReportAIRunner(BaseAIRunner):
         Logger.info("Running AI report")
 
         current_body = self.document.load_body()
+        sources = self._get_sources()
+        if not sources:
+            Logger.success("Report finished")
+            return
 
-        for source_name, source_data in self._get_sources():
+        generator = self._create_generator()
+
+        for source_name, source_data in sources:
             Logger.info(f"Reporting from {source_name}")
 
             updated_body = self._generate_report_update(
+                generator,
                 current_body,
                 source_name,
                 source_data,
@@ -79,12 +86,11 @@ class ReportAIRunner(BaseAIRunner):
 
     def _generate_report_update(
         self,
+        generator: ReportGenerator,
         current_body: str,
         source_name: str,
         source_data: Any,
     ) -> str | None:
-        generator = self._create_generator()
-
         try:
             updated_body = generator.update_report(
                 current_report=current_body,

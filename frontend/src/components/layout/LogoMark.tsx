@@ -1,5 +1,3 @@
-import { useState } from "react";
-
 type LogoMarkProps = {
   size?: "sm" | "lg";
   showName?: boolean;

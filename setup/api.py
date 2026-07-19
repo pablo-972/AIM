@@ -27,40 +27,27 @@ vbox = VirtualBoxManager(
 
 @app.get("/health")
 def health() -> dict[str, object]:
-    result = vbox.health()
-
-    return result
+    return vbox.health()
 
 
 @app.get("/vms/running")
 def running_vms() -> RunningVMsResult:
-    result = vbox.running_vms()
-
-    return result
+    return vbox.running_vms()
 
 
 @app.post("/vms/{vm_name}/start")
 def start_vm(vm_name: str) -> VMOperationResult:
-    result = vbox.start_vm(vm_name)
-
-    return result
+    return vbox.start_vm(vm_name)
 
 
 @app.post("/vms/{vm_name}/poweroff")
 def poweroff_vm(vm_name: str) -> VMOperationResult:
-    result = vbox.poweroff_vm(vm_name)
-
-    return result
+    return vbox.poweroff_vm(vm_name)
 
 
 @app.post("/vms/{vm_name}/snapshots/{snapshot_name}/restore")
-def restore_snapshot(
-    vm_name: str,
-    snapshot_name: str,
-) -> VMOperationResult:
-    result = vbox.restore_snapshot(vm_name, snapshot_name)
-
-    return result
+def restore_snapshot(vm_name: str, snapshot_name: str) -> VMOperationResult:
+    return vbox.restore_snapshot(vm_name, snapshot_name)
 
 
 @app.post("/vms/{vm_name}/shared-folders/{shared_folder}")
@@ -70,14 +57,12 @@ def configure_shared_folder(
     readonly: bool = False,
     mount_point: str | None = None,
 ) -> VMOperationResult:
-    result = vbox.configure_shared_folder(
+    return vbox.configure_shared_folder(
         vm_name=vm_name,
         shared_folder=shared_folder,
         readonly=readonly,
         mount_point=mount_point,
     )
-
-    return result
 
 
 if __name__ == "__main__":

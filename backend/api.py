@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile
@@ -23,7 +22,13 @@ from backend.artifacts import (
     resolve_analysis,
     text_artifact,
 )
-from backend.storage import WEB_ANALYSES_PATH, WEB_UPLOADS_PATH, save_upload_file
+from backend.storage import (
+    WEB_ANALYSES_PATH,
+    move_upload_to_sample_path,
+    sample_path_for_status,
+    save_upload_file,
+    store_or_discard_duplicate_upload,
+)
 from backend.runner import DEFAULT_PIPELINE_NAME, PIPELINE_RUNNERS
 
 
@@ -52,13 +57,13 @@ async def create_analysis(
     if not reanalyze:
         try:
             status = resolve_analysis(service, sample_sha256)
-            _store_or_discard_duplicate_upload(sample_path, sample_sha256)
+            store_or_discard_duplicate_upload(sample_path, sample_sha256)
             return status
         except HTTPException as exc:
             if exc.status_code != 404:
                 raise
 
-    sample_path = _move_upload_to_sample_path(sample_path, sample_sha256)
+    sample_path = move_upload_to_sample_path(sample_path, sample_sha256)
     
     output_base = WEB_ANALYSES_PATH / sample_sha256
     output_base.mkdir(parents=True, exist_ok=True)
@@ -95,7 +100,14 @@ def reanalyze_existing_analysis(
 ) -> dict[str, Any]:
     pipeline_name = _validate_pipeline_name(pipeline)
     status = resolve_analysis(service, identifier)
-    sample_path = _sample_path_for_status(status)
+    analysis_data = None
+    if isinstance(status.get("analysis_id"), str):
+        artifact = json_artifact(service, status["analysis_id"], RESULT_FILENAME)
+        data = artifact.get("data")
+        if isinstance(data, dict):
+            analysis_data = data
+
+    sample_path = sample_path_for_status(status, analysis_data)
     sample_sha256 = status.get("sample_sha256") or identifier
     filename = status.get("filename") or sample_path.name
 
@@ -166,85 +178,6 @@ def get_reverse_agent(analysis_id: str) -> dict[str, Any]:
 @app.get("/api/analyses/{analysis_id}/report")
 def get_report(analysis_id: str) -> dict[str, Any]:
     return text_artifact(service, analysis_id, REPORT_FILENAME)
-
-
-def _sample_path_for_status(status: dict[str, Any]) -> Path:
-    sample_sha256 = status.get("sample_sha256")
-    if isinstance(sample_sha256, str):
-        canonical_path = WEB_UPLOADS_PATH / sample_sha256
-        if canonical_path.exists() and canonical_path.is_file():
-            return canonical_path
-
-    output_dir = status.get("output_dir")
-    if isinstance(output_dir, str):
-        analysis_id = status["analysis_id"]
-        artifact = json_artifact(service, analysis_id, RESULT_FILENAME)
-        analysis_data = artifact.get("data")
-
-        sample = None
-        if isinstance(analysis_data, dict):
-            sample = analysis_data.get("sample")
-
-        sample_path = None
-        if isinstance(sample, dict):
-            sample_path = sample.get("path")
-
-        if isinstance(sample_path, str):
-            path = Path(sample_path)
-            if path.exists() and path.is_file():
-                return path
-
-    raise HTTPException(
-        status_code=404, 
-        detail="Original sample file not available",
-    )
-
-
-def _move_upload_to_sample_path(path: Path, sample_sha256: str) -> Path:
-    WEB_UPLOADS_PATH.mkdir(parents=True, exist_ok=True)
-
-    target = WEB_UPLOADS_PATH / sample_sha256
-    if target.exists():
-        if target.is_dir():
-            raise HTTPException(
-                status_code=409,
-                detail="Sample upload path is a directory",
-            )
-
-        target.unlink()
-
-    path.replace(target)
-    _cleanup_empty_dir(path.parent)
-
-    return target
-
-
-def _store_or_discard_duplicate_upload(
-    path: Path,
-    sample_sha256: str,
-) -> None:
-    target = WEB_UPLOADS_PATH / sample_sha256
-    if target.exists():
-        _cleanup_upload_temp(path)
-        return
-
-    _move_upload_to_sample_path(path, sample_sha256)
-
-
-def _cleanup_upload_temp(path: Path) -> None:
-    try:
-        path.unlink(missing_ok=True)
-    except OSError:
-        return
-
-    _cleanup_empty_dir(path.parent)
-
-
-def _cleanup_empty_dir(path: Path) -> None:
-    try:
-        path.rmdir()
-    except OSError:
-        return
 
 
 def _validate_pipeline_name(pipeline_name: str) -> str:

@@ -3,6 +3,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+
 # Paths
 ROOT_PATH = Path(__file__).resolve().parent.parent
 
@@ -38,7 +39,6 @@ ENRICHMENT_FILENAME = "enrichment.md"
 
 # Folders
 SHARED_FOLDER = "shared"
-
 
 
 # Load .env file

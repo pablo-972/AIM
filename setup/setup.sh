@@ -26,8 +26,10 @@ system_update_and_dependencies(){
     apt update -y && apt upgrade -y
 
     echo "Installing dependencies"
-    apt install -y curl git cmake make g++ zstd python3 python3-venv python3-pip p7zip-full binutils file exiftool upx \
-        libboost-filesystem-dev libboost-program-options-dev libboost-regex-dev libboost-system-dev libssl-dev libyara-dev yara 
+    apt install -y curl git cmake make g++ zstd \
+        python3 python3-venv python3-pip \
+        p7zip-full binutils file exiftool upx yara libyara-dev \
+        libboost-filesystem-dev libboost-program-options-dev libboost-regex-dev libboost-system-dev libssl-dev   
 }
 
 

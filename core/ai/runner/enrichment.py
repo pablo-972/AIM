@@ -38,11 +38,18 @@ class EnrichmentAIRunner(BaseAIRunner):
         Logger.info("Running AI enrichment")
 
         current_body = self.document.load_body()
+        sources = self._get_sources()
+        if not sources:
+            Logger.success("Enrichment finished")
+            return
 
-        for source_name, source_data in self._get_sources():
+        generator = self._create_generator()
+
+        for source_name, source_data in sources:
             Logger.info(f"Enriching from {source_name}")
 
             updated_body = self._generate_enrichment(
+                generator,
                 current_body,
                 source_name,
                 source_data,
@@ -58,12 +65,11 @@ class EnrichmentAIRunner(BaseAIRunner):
 
     def _generate_enrichment(
         self,
+        generator: EnrichmentGenerator,
         current_body: str,
         source_name: str,
         source_data: Any,
     ) -> str | None:
-        generator = self._create_generator()
-
         try:
             updated_body = generator.enrich(
                 current_enrichment=current_body,

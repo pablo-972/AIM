@@ -9,6 +9,11 @@ from core.utils.io.files import load_yaml
 from core.utils.artifacts.builder import JsonBuilder
 from core.utils.artifacts.extractor import get_static_strings_from_tool_results
 from core.orchestrator.context import AnalysisContext
+from core.orchestrator.event import (
+    PipelineEventSink,
+    phase_completed,
+    phase_started,
+)
 from core.tools.runner.static import StaticToolRunner
 from core.tools.runner.dynamic import DynamicToolRunner
 from core.tools.runner.reversing import ReversingToolRunner
@@ -42,31 +47,43 @@ class Orchestrator:
 
     def run(self) -> None:
         Logger.info(f"Running analysis for: {self.context.sample}")
-
         handler = self.PHASE_HANDLERS.get(self.context.phase)
         if handler is None:
             raise ValueError(f"Unknown phase: {self.context.phase}")
         
         getattr(self, handler)()
-
         Logger.success("Analysis finished.")
 
     def run_static_phase(
         self,
         context: AnalysisContext | None = None,
         persist_json: bool = False,
+        event_sink: PipelineEventSink | None = None,
     ) -> None:
         Logger.info("Running static phase")
-
         context = context or self.context
 
+        self._emit_phase_started(event_sink, "static")
         results = self._run_tools(
             "static",
             StaticToolRunner(context),
             context,
             persist_json,
         )
+        self._emit_phase_completed(event_sink, "static")
+        self._notify_phase_if_enabled(
+            event_sink,
+            context.static_ai,
+            "static_inference",
+            "running",
+        )
         self._run_static_strings_inference(context, results)
+        self._notify_phase_if_enabled(
+            event_sink,
+            context.static_ai,
+            "static_inference",
+            "completed",
+        )
         
         Logger.success("Static phase finished")
 
@@ -74,24 +91,37 @@ class Orchestrator:
         self,
         context: AnalysisContext | None = None,
         persist_json: bool = False,
+        event_sink: PipelineEventSink | None = None,
     ) -> None:
         Logger.info("Running dynamic phase")
-
         context = context or self.context
 
+        self._emit_phase_started(event_sink, "dynamic")
         results = self._run_tools(
             "dynamic",
             DynamicToolRunner(context),
             context,
             persist_json,
         )
+        self._emit_phase_completed(event_sink, "dynamic")
+        self._notify_phase_if_enabled(
+            event_sink,
+            context.dynamic_ai,
+            "dynamic_inference",
+            "running",
+        )
         self._run_dynamic_inference(context, results)
+        self._notify_phase_if_enabled(
+            event_sink,
+            context.dynamic_ai,
+            "dynamic_inference",
+            "completed",
+        )
 
         Logger.success("Dynamic phase finished")
 
     def run_enrichment_phase(self, context: AnalysisContext | None = None) -> None:
         Logger.info("Running enrichment phase")
-        
         context = context or self.context
 
         enrichment_runner = EnrichmentAIRunner(context, self._get_model_registry())
@@ -103,7 +133,6 @@ class Orchestrator:
         persist_json: bool = False,
     ) -> None:
         Logger.info("Running reversing phase")
-
         context = context or self.context
 
         if context.reversing_agent:
@@ -123,7 +152,6 @@ class Orchestrator:
         context: AnalysisContext | None = None,
     ) -> None:
         Logger.info("Running report phase")
-
         context = context or self.context
         
         report_runner = ReportAIRunner(context, self._get_model_registry())
@@ -133,7 +161,19 @@ class Orchestrator:
 
     def run_full_phase(self) -> None:
         Logger.info("Running full pipeline")
+        self.run_full_static_phase()
+        self.run_full_dynamic_phase()
+        self.run_full_enrichment_phase()
+        self.run_full_reverse_info_phase()
+        self.run_full_reverse_agent_phase()
+        self.run_full_report_phase()
 
+        Logger.success("Full pipeline finished")
+
+    def run_full_static_phase(
+        self,
+        event_sink: PipelineEventSink | None = None,
+    ) -> None:
         static_context = replace(
             self.context,
             phase="static",
@@ -142,8 +182,12 @@ class Orchestrator:
             static_ai=True,
             profile=self.context.full_static_profile,
         )
-        self.run_static_phase(static_context, persist_json=True)
+        self.run_static_phase(static_context, persist_json=True, event_sink=event_sink)
 
+    def run_full_dynamic_phase(
+        self,
+        event_sink: PipelineEventSink | None = None,
+    ) -> None:
         dynamic_context = replace(
             self.context,
             phase="dynamic",
@@ -154,16 +198,26 @@ class Orchestrator:
             dynamic_stop=False,
             profile=self.context.full_dynamic_profile,
         )
-        self.run_dynamic_phase(dynamic_context, persist_json=True)
+        self.run_dynamic_phase(dynamic_context, persist_json=True, event_sink=event_sink)
 
+    def run_full_enrichment_phase(
+        self,
+        event_sink: PipelineEventSink | None = None,
+    ) -> None:
         enrichment_context = replace(
             self.context,
             phase="enrichment",
             func="run_enrichment",
             profile=self.context.full_enrichment_profile,
         )
+        self._emit_phase_started(event_sink, "enrichment")
         self.run_enrichment_phase(enrichment_context)
+        self._emit_phase_completed(event_sink, "enrichment")
 
+    def run_full_reverse_info_phase(
+        self,
+        event_sink: PipelineEventSink | None = None,
+    ) -> None:
         manual_reversing_context = replace(
             self.context,
             phase="reversing",
@@ -172,8 +226,14 @@ class Orchestrator:
             reversing_agent=False,
             profile=None,
         )
+        self._emit_phase_started(event_sink, "reverse_info")
         self.run_reversing_phase(manual_reversing_context, persist_json=True)
+        self._emit_phase_completed(event_sink, "reverse_info")
 
+    def run_full_reverse_agent_phase(
+        self,
+        event_sink: PipelineEventSink | None = None,
+    ) -> None:
         agent_reversing_context = replace(
             self.context,
             phase="reversing",
@@ -182,17 +242,23 @@ class Orchestrator:
             reversing_agent=True,
             profile=self.context.full_reversing_profile,
         )
+        self._emit_phase_started(event_sink, "reverse_agent")
         self.run_reversing_phase(agent_reversing_context)
+        self._emit_phase_completed(event_sink, "reverse_agent")
 
+    def run_full_report_phase(
+        self,
+        event_sink: PipelineEventSink | None = None,
+    ) -> None:
         report_context = replace(
             self.context,
             phase="report",
             func="run_report",
             profile=self.context.full_report_profile,
         )
+        self._emit_phase_started(event_sink, "report")
         self.run_report_phase(report_context)
-
-        Logger.success("Full pipeline finished")
+        self._emit_phase_completed(event_sink, "report")
     
 
     def _run_tools(
@@ -203,7 +269,6 @@ class Orchestrator:
         persist_json: bool = False,
     ) -> dict[str, Any]:
         Logger.info(f"Executing {phase_name} tools")
-
         results = runner.run()
         save_json = context.output_format == "json" or persist_json
         print_text = context.output_format == "text"
@@ -215,7 +280,6 @@ class Orchestrator:
             print(json.dumps(results, indent=4))
 
         Logger.success("Tools executed successfully")
-
         return results
 
     def _run_static_strings_inference(
@@ -232,7 +296,6 @@ class Orchestrator:
             return
 
         Logger.info("Running static strings AI inference")
-
         model = self._get_model_registry()
         static_inference_runner = StaticInferenceRunner(context, model, strings)
         static_inference_runner.run()
@@ -248,7 +311,6 @@ class Orchestrator:
             return
 
         Logger.info("Running dynamic AI inference")
-
         model = self._get_model_registry()
         dynamic_inference_runner = DynamicInferenceRunner(context, model, results)
         dynamic_inference_runner.run()
@@ -260,7 +322,6 @@ class Orchestrator:
             return
 
         Logger.info("Running AI reversing agent")
-
         model = self._get_model_registry()
         rev_agent_runner = ReversingAgentRunner(context, model)
         rev_agent_runner.run()
@@ -288,3 +349,39 @@ class Orchestrator:
             self._model_registry = ModelRegistry(profiles)
 
         return self._model_registry
+
+    def _emit_phase_started(
+        self,
+        event_sink: PipelineEventSink | None,
+        phase: str,
+    ) -> None:
+        if event_sink is None:
+            return
+
+        event_sink.emit(phase_started(phase))
+
+    def _emit_phase_completed(
+        self,
+        event_sink: PipelineEventSink | None,
+        phase: str,
+    ) -> None:
+        if event_sink is None:
+            return
+
+        event_sink.emit(phase_completed(phase))
+
+    def _notify_phase_if_enabled(
+        self,
+        event_sink: PipelineEventSink | None,
+        enabled: bool,
+        phase: str,
+        state: str,
+    ) -> None:
+        if not enabled:
+            return
+
+        if state == "running":
+            self._emit_phase_started(event_sink, phase)
+            return
+
+        self._emit_phase_completed(event_sink, phase)

@@ -47,9 +47,7 @@ function AnalysisOverview({ status, artifact }: AnalysisOverviewProps) {
       </Panel>
 
       <Panel title="Errors">
-        {status.error ? (
-          <p className="text-sm text-danger">{status.error}</p>
-        ) : (
+        {status.error ? (<p className="text-sm text-danger">{status.error}</p>) : (
           <Empty text="No pipeline errors reported." />
         )}
       </Panel>

@@ -2,6 +2,8 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+from fastapi import HTTPException
+
 from config import ROOT_PATH
 
 
@@ -32,6 +34,78 @@ async def save_upload_file(upload: Any) -> tuple[str, Path]:
             target.write(chunk)
 
     return filename, sample_path
+
+
+def sample_path_for_status(
+    status: dict[str, Any],
+    analysis_data: dict[str, Any] | None = None,
+) -> Path:
+    sample_sha256 = status.get("sample_sha256")
+    if isinstance(sample_sha256, str):
+        canonical_path = WEB_UPLOADS_PATH / sample_sha256
+        if canonical_path.exists() and canonical_path.is_file():
+            return canonical_path
+
+    if isinstance(analysis_data, dict):
+        sample = analysis_data.get("sample")
+        if isinstance(sample, dict):
+            sample_path = sample.get("path")
+            if isinstance(sample_path, str):
+                path = Path(sample_path)
+                if path.exists() and path.is_file():
+                    return path
+
+    raise HTTPException(
+        status_code=404,
+        detail="Original sample file not available",
+    )
+
+
+def move_upload_to_sample_path(path: Path, sample_sha256: str) -> Path:
+    WEB_UPLOADS_PATH.mkdir(parents=True, exist_ok=True)
+
+    target = WEB_UPLOADS_PATH / sample_sha256
+    if target.exists():
+        if target.is_dir():
+            raise HTTPException(
+                status_code=409,
+                detail="Sample upload path is a directory",
+            )
+
+        target.unlink()
+
+    path.replace(target)
+    cleanup_empty_dir(path.parent)
+
+    return target
+
+
+def store_or_discard_duplicate_upload(
+    path: Path,
+    sample_sha256: str,
+) -> None:
+    target = WEB_UPLOADS_PATH / sample_sha256
+    if target.exists():
+        cleanup_upload_temp(path)
+        return
+
+    move_upload_to_sample_path(path, sample_sha256)
+
+
+def cleanup_upload_temp(path: Path) -> None:
+    try:
+        path.unlink(missing_ok=True)
+    except OSError:
+        return
+
+    cleanup_empty_dir(path.parent)
+
+
+def cleanup_empty_dir(path: Path) -> None:
+    try:
+        path.rmdir()
+    except OSError:
+        return
 
 
 def safe_filename(filename: str | None) -> str:

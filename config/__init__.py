@@ -30,6 +30,7 @@ from config.settings import (
     get_env,
 )
 
+
 __all__ = [
     "ROOT_PATH",
     "CONFIG_PATH",
