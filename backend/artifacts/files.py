@@ -9,7 +9,7 @@ from fastapi import HTTPException
 from backend.storage import is_viewable_file
 
 
-def _resolve_artifact_file(
+def resolve_artifact_file(
     artifact_dir: Path | None,
     file_path: str,
 ) -> Path:
@@ -22,7 +22,7 @@ def _resolve_artifact_file(
     root = artifact_dir.resolve()
     target = (artifact_dir / file_path).resolve()
 
-    if not _is_path_inside(root, target):
+    if not is_path_inside(root, target):
         raise HTTPException(
             status_code=400,
             detail="Invalid file path",
@@ -37,7 +37,7 @@ def _resolve_artifact_file(
     return target
 
 
-def _is_path_inside(
+def is_path_inside(
     root: Path,
     candidate: Path,
 ) -> bool:
@@ -47,14 +47,14 @@ def _is_path_inside(
     return root in candidate.parents
 
 
-def _create_file_status(
+def create_file_status(
     path: Path,
     artifact_dir: Path,
     analysis_id: str,
 ) -> dict[str, Any]:
     relative_path = path.relative_to(artifact_dir).as_posix()
     stat = path.stat()
-    modified_at = _format_modified_at(stat.st_mtime)
+    modified_at = format_modified_at(stat.st_mtime)
     content_type = mimetypes.guess_type(path.name)[0]
     viewable = is_viewable_file(path)
     endpoint = f"/api/analyses/{analysis_id}/files/{relative_path}"
@@ -70,13 +70,13 @@ def _create_file_status(
     }
 
 
-def _create_file_response(
+def create_file_response(
     path: Path,
     file_path: str,
 ) -> dict[str, Any]:
     stat = path.stat()
     content_type = mimetypes.guess_type(path.name)[0]
-    modified_at = _format_modified_at(stat.st_mtime)
+    modified_at = format_modified_at(stat.st_mtime)
 
     return {
         "available": True,
@@ -92,7 +92,7 @@ def _create_file_response(
     }
 
 
-def _set_json_content(
+def set_json_content(
     response: dict[str, Any],
     content: str,
 ) -> None:
@@ -102,11 +102,11 @@ def _set_json_content(
         response["content"] = content
 
 
-def _format_modified_at(timestamp: float) -> str:
+def format_modified_at(timestamp: float) -> str:
     return datetime.fromtimestamp(timestamp, timezone.utc).isoformat()
 
 
-def _analysis_created_at(analysis: dict[str, Any]) -> str:
+def analysis_created_at(analysis: dict[str, Any]) -> str:
     created_at = analysis.get("created_at")
     if isinstance(created_at, str):
         return created_at

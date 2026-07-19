@@ -12,7 +12,7 @@ from config import (
     STATIC_STRINGS_INFERENCE_RESULT_FILENAME,
 )
 from core.utils.io.files import load_json
-from backend.artifacts.files import _format_modified_at, _is_path_inside
+from backend.artifacts.files import format_modified_at, is_path_inside
 from backend.analysis.models import PHASES
 from backend.analysis.status import PhaseStatus
 from backend.storage import WEB_ANALYSES_PATH
@@ -28,7 +28,7 @@ ARTIFACT_FILENAMES = (
 )
 
 
-def _disk_status_by_sha256(sample_sha256: str) -> dict[str, Any] | None:
+def disk_status_by_sha256(sample_sha256: str) -> dict[str, Any] | None:
     if not WEB_ANALYSES_PATH.exists():
         return None
 
@@ -36,14 +36,14 @@ def _disk_status_by_sha256(sample_sha256: str) -> dict[str, Any] | None:
         if not path.is_dir():
             continue
 
-        status = _disk_analysis_status(path.name)
+        status = disk_analysis_status(path.name)
         if status and status.get("sample_sha256") == sample_sha256:
             return status
 
     return None
 
 
-def _disk_analysis_status(analysis_id: str) -> dict[str, Any] | None:
+def disk_analysis_status(analysis_id: str) -> dict[str, Any] | None:
     analysis_dir = _disk_analysis_dir(analysis_id)
     if analysis_dir is None:
         return None
@@ -82,7 +82,6 @@ def _build_disk_phases(
 
 def _create_pending_phases() -> dict[str, str]:
     phases = {}
-
     for phase in PHASES:
         phases[phase] = PhaseStatus.PENDING.value
 
@@ -159,14 +158,14 @@ def _resolve_sample_sha256(
 
 
 def _directory_created_at(path: Path) -> str:
-    return _format_modified_at(path.stat().st_mtime)
+    return format_modified_at(path.stat().st_mtime)
 
 
 def _disk_analysis_dir(analysis_id: str) -> Path | None:
     root = WEB_ANALYSES_PATH.resolve()
     candidate = (WEB_ANALYSES_PATH / analysis_id).resolve()
 
-    if not _is_path_inside(root, candidate):
+    if not is_path_inside(root, candidate):
         raise HTTPException(
             status_code=400,
             detail="Invalid analysis id",
@@ -178,7 +177,7 @@ def _disk_analysis_dir(analysis_id: str) -> Path | None:
     return candidate
 
 
-def _disk_artifact_dir(analysis_id: str) -> Path | None:
+def disk_artifact_dir(analysis_id: str) -> Path | None:
     analysis_dir = _disk_analysis_dir(analysis_id)
     if analysis_dir is None:
         return None

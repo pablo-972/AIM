@@ -6,16 +6,16 @@ from fastapi import HTTPException
 from core.utils.io.files import load_json
 from core.utils.io.text import read_text
 from backend.artifacts.disk import (
-    _disk_analysis_status,
-    _disk_artifact_dir,
-    _disk_status_by_sha256,
+    disk_analysis_status,
+    disk_artifact_dir,
+    disk_status_by_sha256,
 )
 from backend.artifacts.files import (
-    _analysis_created_at,
-    _create_file_response,
-    _create_file_status,
-    _resolve_artifact_file,
-    _set_json_content,
+    analysis_created_at,
+    create_file_response,
+    create_file_status,
+    resolve_artifact_file,
+    set_json_content,
 )
 from backend.analysis.service import AnalysisService
 from backend.storage import (
@@ -35,7 +35,7 @@ def list_analyses(store: AnalysisService) -> dict[str, Any]:
             if not path.is_dir():
                 continue
 
-            status = _disk_analysis_status(path.name)
+            status = disk_analysis_status(path.name)
             if status is None:
                 continue
 
@@ -44,7 +44,7 @@ def list_analyses(store: AnalysisService) -> dict[str, Any]:
     analyses.update(store.list_statuses())
 
     analysis_list = list(analyses.values())
-    analysis_list.sort(key=_analysis_created_at, reverse=True)
+    analysis_list.sort(key=analysis_created_at, reverse=True)
 
     return {
         "available": True,
@@ -137,7 +137,7 @@ def list_analysis_files(store: AnalysisService, analysis_id: str) -> dict[str, A
         if not path.is_file():
             continue
 
-        file_status = _create_file_status(path, artifact_dir, analysis_id)
+        file_status = create_file_status(path, artifact_dir, analysis_id)
         files.append(file_status)
 
     return {
@@ -153,8 +153,8 @@ def read_analysis_file(
     file_path: str,
 ) -> dict[str, Any]:
     artifact_dir = _artifact_dir(store, analysis_id)
-    path = _resolve_artifact_file(artifact_dir, file_path)
-    response = _create_file_response(path, file_path)
+    path = resolve_artifact_file(artifact_dir, file_path)
+    response = create_file_response(path, file_path)
 
     if not has_viewable_extension(path):
         return response
@@ -166,7 +166,7 @@ def read_analysis_file(
 
     content = read_text(path)
     if path.suffix.lower() == ".json":
-        _set_json_content(response, content)
+        set_json_content(response, content)
         return response
 
     response["content"] = content
@@ -181,7 +181,7 @@ def _find_analysis_status(
     if status is not None:
         return status
 
-    status = _disk_analysis_status(identifier)
+    status = disk_analysis_status(identifier)
     if status is not None:
         return status
 
@@ -189,7 +189,7 @@ def _find_analysis_status(
     if status is not None:
         return status
 
-    return _disk_status_by_sha256(identifier)
+    return disk_status_by_sha256(identifier)
 
 
 def _memory_status_by_id(
@@ -226,9 +226,9 @@ def _artifact_dir(store: AnalysisService, analysis_id: str) -> Path | None:
         if job.output_dir is not None:
             return Path(job.output_dir)
 
-        return _disk_artifact_dir(analysis_id)
+        return disk_artifact_dir(analysis_id)
 
-    disk_dir = _disk_artifact_dir(analysis_id)
+    disk_dir = disk_artifact_dir(analysis_id)
     if disk_dir is not None:
         return disk_dir
 
@@ -243,7 +243,7 @@ def _artifact_dir_by_sha256(
     if status is not None and isinstance(status.get("output_dir"), str):
         return Path(status["output_dir"])
 
-    status = _disk_status_by_sha256(sample_sha256)
+    status = disk_status_by_sha256(sample_sha256)
     if status is not None and isinstance(status.get("output_dir"), str):
         return Path(status["output_dir"])
 
