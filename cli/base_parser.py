@@ -31,10 +31,17 @@ def create_common_parser() -> argparse.ArgumentParser:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="aim", description="AIM: AI Malware Analysis")
+    parser = argparse.ArgumentParser(
+        prog="aim", 
+        description="AIM: AI Malware Analysis",
+    )
 
     common = create_common_parser()
-    subparsers = parser.add_subparsers(dest="phase", required=True, metavar="phase")
+    subparsers = parser.add_subparsers(
+        dest="phase", 
+        required=True, 
+        metavar="phase",
+    )
 
     add_static_module(subparsers, common)
     add_dynamic_module(subparsers, common)

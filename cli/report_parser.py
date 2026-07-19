@@ -1,6 +1,13 @@
 import argparse
 
 
+REPORT_AI_PROFILES = [
+    "local-report", 
+    "openai-report", 
+    "gemini-report",
+]
+
+
 def add_report_module(
     subparsers: argparse._SubParsersAction,
     common: argparse.ArgumentParser,
@@ -13,7 +20,7 @@ def add_report_module(
 
     parser.add_argument(
         "--profile",
-        choices=["local-report", "openai-report", "gemini-report"],
+        choices=REPORT_AI_PROFILES,
         default="local-report",
         help="AI model profile",
     )

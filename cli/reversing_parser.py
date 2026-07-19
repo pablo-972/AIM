@@ -2,6 +2,7 @@ import argparse
 
 from core.exceptions import CLIValidationError
 
+
 REVERSING_TOOLS = [
     "info",
     "imports",
@@ -14,6 +15,11 @@ REVERSING_TOOLS = [
     "callers",
     "callees",
     "full"
+]
+REVERSING_AI_PROFILES = [
+    "local-reversing",
+    "openai-reversing",
+    "gemini-reversing",
 ]
 
 
@@ -85,11 +91,7 @@ def add_reversing_module(
     )
     parser.add_argument(
         "--profile",
-        choices=[
-            "local-reversing",
-            "openai-reversing",
-            "gemini-reversing",
-        ],
+        choices=REVERSING_AI_PROFILES,
         default=None,
         help="Model profile for assisted reversing",
     )

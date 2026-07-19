@@ -36,6 +36,7 @@ class AnalysisContext:
     full_dynamic_profile: str | None
     full_enrichment_profile: str | None
     full_reversing_profile: str | None
+    full_report_profile: str | None
 
     @classmethod
     def from_args(cls, args: argparse.Namespace) -> "AnalysisContext":
@@ -89,4 +90,5 @@ class AnalysisContext:
             full_dynamic_profile=getattr(args, "dynamic_profile", None),
             full_enrichment_profile=getattr(args, "enrichment_profile", None),
             full_reversing_profile=getattr(args, "reversing_profile", None),
+            full_report_profile=getattr(args, "report_profile", None),
         )

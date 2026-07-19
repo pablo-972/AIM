@@ -188,7 +188,7 @@ class Orchestrator:
             self.context,
             phase="report",
             func="run_report",
-            profile=None,
+            profile=self.context.full_report_profile,
         )
         self.run_report_phase(report_context)
 

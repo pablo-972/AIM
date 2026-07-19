@@ -7,6 +7,7 @@ export type AnalysisStatusPayload = {
   phases: Record<string, PhaseState>;
   error: string | null;
   filename?: string;
+  pipeline_name?: string;
   sample_sha256?: string | null;
   output_dir?: string | null;
   created_at?: string;

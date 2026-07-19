@@ -2,11 +2,17 @@ import argparse
 
 from core.exceptions import CLIValidationError
 
+
 DYNAMIC_TOOLS = [
     "autoruns",
     "registry",
     "procmon",
     "full",
+]
+DYNAMIC_AI_PROFILES = [
+    "local-dynamic", 
+    "openai-dynamic", 
+    "gemini-dynamic",
 ]
 
 
@@ -66,7 +72,7 @@ def add_dynamic_module(
     )
     parser.add_argument(
         "--profile",
-        choices=["local-dynamic", "openai-dynamic", "gemini-dynamic"],
+        choices=DYNAMIC_AI_PROFILES,
         default="local-dynamic",
         help="Model profile to use with --ai",
     )

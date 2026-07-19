@@ -1,24 +1,30 @@
 from argparse import Namespace
-from collections.abc import Callable
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
+from backend.analysis import AnalysisMetadata
+from backend.analysis import PipelineObserver, PipelineRunner
 from core.orchestrator.orchestrator import Orchestrator
 from core.tools.runner.dynamic import DynamicToolRunner
 from core.tools.runner.static import StaticToolRunner
 
 
-PhaseCallback = Callable[[str, str], None]
-MetadataCallback = Callable[[dict[str, Any]], None]
 
+class LocalPipelineRunner(PipelineRunner):
+    def run(
+        self,
+        sample_path: Path,
+        output_base: Path,
+        observer: PipelineObserver,
+    ) -> None:
+        run_full_local_pipeline(sample_path, output_base, observer)
+        
 
-def noop_phase_callback(_phase: str, _state: str) -> None:
-    return None
-
-
-def noop_metadata_callback(_metadata: dict[str, Any]) -> None:
-    return None
+DEFAULT_PIPELINE_NAME = "full"
+PIPELINE_RUNNERS = {
+    DEFAULT_PIPELINE_NAME: LocalPipelineRunner(),
+}
 
 
 def create_full_pipeline_orchestrator(
@@ -36,6 +42,7 @@ def create_full_pipeline_orchestrator(
         enrichment_profile="local-enrichment",
         reversing_profile="local-reversing",
         reversing_max_targets=12,
+        report_profile="gemini-report",
     )
 
     return Orchestrator(args)
@@ -43,19 +50,19 @@ def create_full_pipeline_orchestrator(
 
 def emit_pipeline_metadata(
     orchestrator: Orchestrator,
-    on_metadata: MetadataCallback = noop_metadata_callback,
+    observer: PipelineObserver,
 ) -> None:
-    on_metadata(
-        {
-            "sample_sha256": orchestrator.context.sample_sha256,
-            "output_dir": str(orchestrator.context.output),
-        }
+    observer.metadata_changed(
+        AnalysisMetadata(
+            sample_sha256=orchestrator.context.sample_sha256,
+            output_dir=str(orchestrator.context.output),
+        )
     )
 
 
 def run_static_tools_phase(
     orchestrator: Orchestrator,
-    on_phase: PhaseCallback = noop_phase_callback,
+    observer: PipelineObserver,
 ) -> tuple[Any, dict[str, Any]]:
     static_context = replace(
         orchestrator.context,
@@ -66,14 +73,14 @@ def run_static_tools_phase(
         profile=orchestrator.context.full_static_profile,
     )
 
-    on_phase("static", "running")
+    observer.phase_changed("static", "running")
     static_results = orchestrator._run_tools(
         "static",
         StaticToolRunner(static_context),
         static_context,
         persist_json=True,
     )
-    on_phase("static", "completed")
+    observer.phase_changed("static", "completed")
 
     return static_context, static_results
 
@@ -82,16 +89,16 @@ def run_static_inference_phase(
     orchestrator: Orchestrator,
     static_context: Any,
     static_results: dict[str, Any],
-    on_phase: PhaseCallback = noop_phase_callback,
+    observer: PipelineObserver,
 ) -> None:
-    on_phase("static_inference", "running")
+    observer.phase_changed("static_inference", "running")
     orchestrator._run_static_strings_inference(static_context, static_results)
-    on_phase("static_inference", "completed")
+    observer.phase_changed("static_inference", "completed")
 
 
 def run_dynamic_tools_phase(
     orchestrator: Orchestrator,
-    on_phase: PhaseCallback = noop_phase_callback,
+    observer: PipelineObserver,
 ) -> tuple[Any, dict[str, Any]]:
     dynamic_context = replace(
         orchestrator.context,
@@ -104,14 +111,14 @@ def run_dynamic_tools_phase(
         profile=orchestrator.context.full_dynamic_profile,
     )
 
-    on_phase("dynamic", "running")
+    observer.phase_changed("dynamic", "running")
     dynamic_results = orchestrator._run_tools(
         "dynamic",
         DynamicToolRunner(dynamic_context),
         dynamic_context,
         persist_json=True,
     )
-    on_phase("dynamic", "completed")
+    observer.phase_changed("dynamic", "completed")
 
     return dynamic_context, dynamic_results
 
@@ -120,16 +127,16 @@ def run_dynamic_inference_phase(
     orchestrator: Orchestrator,
     dynamic_context: Any,
     dynamic_results: dict[str, Any],
-    on_phase: PhaseCallback = noop_phase_callback,
+    observer: PipelineObserver,
 ) -> None:
-    on_phase("dynamic_inference", "running")
+    observer.phase_changed("dynamic_inference", "running")
     orchestrator._run_dynamic_inference(dynamic_context, dynamic_results)
-    on_phase("dynamic_inference", "completed")
+    observer.phase_changed("dynamic_inference", "completed")
 
 
 def run_enrichment_pipeline_phase(
     orchestrator: Orchestrator,
-    on_phase: PhaseCallback = noop_phase_callback,
+    observer: PipelineObserver,
 ) -> None:
     enrichment_context = replace(
         orchestrator.context,
@@ -137,14 +144,14 @@ def run_enrichment_pipeline_phase(
         func="run_enrichment",
         profile=orchestrator.context.full_enrichment_profile,
     )
-    on_phase("enrichment", "running")
+    observer.phase_changed("enrichment", "running")
     orchestrator.run_enrichment_phase(enrichment_context)
-    on_phase("enrichment", "completed")
+    observer.phase_changed("enrichment", "completed")
 
 
 def run_reverse_info_phase(
     orchestrator: Orchestrator,
-    on_phase: PhaseCallback = noop_phase_callback,
+    observer: PipelineObserver,
 ) -> None:
     reverse_info_context = replace(
         orchestrator.context,
@@ -154,14 +161,14 @@ def run_reverse_info_phase(
         reversing_agent=False,
         profile=None,
     )
-    on_phase("reverse_info", "running")
+    observer.phase_changed("reverse_info", "running")
     orchestrator.run_reversing_phase(reverse_info_context, persist_json=True)
-    on_phase("reverse_info", "completed")
+    observer.phase_changed("reverse_info", "completed")
 
 
 def run_reverse_agent_phase(
     orchestrator: Orchestrator,
-    on_phase: PhaseCallback = noop_phase_callback,
+    observer: PipelineObserver,
 ) -> None:
     reverse_agent_context = replace(
         orchestrator.context,
@@ -171,52 +178,57 @@ def run_reverse_agent_phase(
         reversing_agent=True,
         profile=orchestrator.context.full_reversing_profile,
     )
-    on_phase("reverse_agent", "running")
+    observer.phase_changed("reverse_agent", "running")
     orchestrator.run_reversing_phase(reverse_agent_context)
-    on_phase("reverse_agent", "completed")
+    observer.phase_changed("reverse_agent", "completed")
 
 
 def run_report_pipeline_phase(
     orchestrator: Orchestrator,
-    on_phase: PhaseCallback = noop_phase_callback,
+    observer: PipelineObserver,
 ) -> None:
     report_context = replace(
         orchestrator.context,
         phase="report",
         func="run_report",
-        profile=None,
+        profile=orchestrator.context.full_report_profile,
     )
-    on_phase("report", "running")
+    observer.phase_changed("report", "running")
     orchestrator.run_report_phase(report_context)
-    on_phase("report", "completed")
+    observer.phase_changed("report", "completed")
 
 
 def run_full_local_pipeline(
     sample_path: Path,
     output_base: Path,
-    on_phase: PhaseCallback,
-    on_metadata: MetadataCallback,
+    observer: PipelineObserver,
 ) -> None:
     orchestrator = create_full_pipeline_orchestrator(sample_path, output_base)
-    emit_pipeline_metadata(orchestrator, on_metadata)
+    emit_pipeline_metadata(orchestrator, observer)
 
-    static_context, static_results = run_static_tools_phase(orchestrator, on_phase)
+    static_context, static_results = run_static_tools_phase(orchestrator, observer)
     run_static_inference_phase(
         orchestrator, 
         static_context, 
         static_results, 
-        on_phase,
+        observer,
     )
 
-    dynamic_context, dynamic_results = run_dynamic_tools_phase(orchestrator, on_phase)
+    dynamic_context, dynamic_results = run_dynamic_tools_phase(orchestrator, observer)
     run_dynamic_inference_phase(
         orchestrator, 
         dynamic_context, 
         dynamic_results, 
-        on_phase,
+        observer,
     )
 
-    run_enrichment_pipeline_phase(orchestrator, on_phase)
-    run_reverse_info_phase(orchestrator, on_phase)
-    run_reverse_agent_phase(orchestrator, on_phase)
-    run_report_pipeline_phase(orchestrator, on_phase)
+    run_enrichment_pipeline_phase(orchestrator, observer)
+    run_reverse_info_phase(orchestrator, observer)
+    run_reverse_agent_phase(orchestrator, observer)
+    run_report_pipeline_phase(orchestrator, observer)
+
+
+
+
+
+

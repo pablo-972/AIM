@@ -1,6 +1,13 @@
 import argparse
 
 
+ENRICHMENT_AI_PROFILES = [
+    "local-enrichment", 
+    "openai-enrichment", 
+    "gemini-enrichment",
+]
+
+
 def add_enrichment_module(
     subparsers: argparse._SubParsersAction,
     common: argparse.ArgumentParser,
@@ -13,7 +20,7 @@ def add_enrichment_module(
 
     parser.add_argument(
         "--profile",
-        choices=["local-enrichment", "openai-enrichment", "gemini-enrichment"],
+        choices=ENRICHMENT_AI_PROFILES,
         default="local-enrichment",
         help="AI model profile",
     )

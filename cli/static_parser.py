@@ -2,6 +2,7 @@ import argparse
 
 from core.exceptions import CLIValidationError
 
+
 STATIC_TOOLS = [
     "file",
     "hash",
@@ -11,6 +12,11 @@ STATIC_TOOLS = [
     "vt",
     "pe",
     "full",
+]
+STATIC_AI_PROFILES = [
+    "local-static", 
+    "openai-static", 
+    "gemini-static",
 ]
 
 
@@ -56,7 +62,7 @@ def add_static_module(
     )
     parser.add_argument(
         "--profile",
-        choices=["local-static", "openai-static", "gemini-static"],
+        choices=STATIC_AI_PROFILES,
         default="local-static",
         help="Model profile to use with --ai",
     )
