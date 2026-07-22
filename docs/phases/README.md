@@ -13,8 +13,7 @@ flowchart LR
     StaticAI --> Dynamic[Dynamic analysis]
     Dynamic --> DynamicAI[Dynamic behavior inference]
     DynamicAI --> Enrichment[Enrichment]
-    Enrichment --> ReverseInfo[Reverse engineering evidence]
-    ReverseInfo --> ReverseAgent[Agentic reversing]
+    Enrichment --> ReverseAgent[Agentic reverse engineering]
     ReverseAgent --> Report[Report]
 ```
 
