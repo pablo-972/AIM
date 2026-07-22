@@ -99,9 +99,10 @@ The web UI is exposed at `http://localhost:5173`.
 ## Documentation
 
 - [Getting Started](docs/getting-started/README.md)
-- [User Guide](docs/user-guide/README.md)
+- [Phases](docs/phases/README.md)
+- [Tools](docs/tools/README.md)
+- [AI](docs/ai/README.md)
 - [Architecture](docs/architecture/README.md)
-- [Development](docs/development/README.md)
 - [Troubleshooting](docs/troubleshooting/README.md)
 
 ## License

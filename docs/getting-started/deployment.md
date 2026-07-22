@@ -177,4 +177,3 @@ Use direct Docker commands when:
 - you want to run CLI-only analysis from the `aim` container;
 - you do not need the host-side VirtualBox API started by the setup scripts.
 
-For local development details, see [Development](../development/README.md).
