@@ -102,7 +102,7 @@ The `full` pipeline also runs the dynamic phase before enrichment.
 Install the receiver manually inside REMnux:
 
 ```text
-tools/dynamic/agents/remnux/receiver.py
+core/tools/dynamic/agents/remnux/receiver.py
 ```
 
 The current receiver stores artifacts under:
@@ -170,9 +170,9 @@ The receiver listens on:
 Install the Windows agents manually inside the victim VM:
 
 ```text
-tools/dynamic/agents/windows7/monitor.py
-tools/dynamic/agents/windows7/collector.py
-tools/dynamic/agents/windows7/start.bat
+core/tools/dynamic/agents/windows7/monitor.py
+core/tools/dynamic/agents/windows7/collector.py
+core/tools/dynamic/agents/windows7/start.bat
 ```
 
 Recommended destination:

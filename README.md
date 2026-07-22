@@ -1,162 +1,108 @@
 # AIM - AI Malware Analysis
 
-AIM is a modular malware-analysis CLI that combines deterministic static and
-radare2-based tools with AI-assisted analysis.
+AIM is a modular malware analysis platform that combines traditional static, dynamic, and reverse engineering workflows with AI-assisted inference, enrichment, and report generation. It also incorporates an agentic reverse engineering component that autonomously assists analysts by exploring binaries, reasoning about program behavior, and orchestrating reverse engineering tasks.
 
-Each sample is identified by SHA-256 and receives an isolated output directory:
+It is designed to help analysts process Windows malware samples in a repeatable way. Deterministic analysis tools collect evidence, AI components reason over selected outputs, and the reverse engineering agent autonomously explores and analyzes the binary. All analysis results are stored under a SHA-256-based analysis directory.
 
-```text
-output/<sample-sha256>/
+## What AIM Solves
+
+Malware analysis often requires switching between static tools, dynamic lab
+execution, reverse engineering, manual notes, and report writing. AIM provides a
+single pipeline that keeps those steps connected while preserving raw and parsed
+artifacts for later review.
+
+## Main Features
+
+| Area | Capabilities |
+| --- | --- |
+| Static analysis | File type, hashes, metadata, packer indicators, strings, PE data, and VirusTotal |
+| Dynamic analysis | Windows victim execution, REMnux receiver, Autoruns, Registry exports, and Procmon artifacts |
+| AI inference | Static string inference and dynamic behavior inference |
+| Reverse engineering | Manual radare2 tools and an AI reversing agent |
+| Reporting | Incremental enrichment and technical report generation |
+| Web interface | Upload, search, reanalyze, and inspect analysis artifacts |
+
+## Architecture Overview
+
+```mermaid
+flowchart LR
+    CLI[CLI] --> Core[Core analysis engine]
+    Web[Web frontend] --> Backend[FastAPI backend]
+    Backend --> Core
+    Core --> Output[workspace / output artifacts]
+    Core --> VBox[VirtualBox Manager API]
+    VBox --> REMnux[REMnux analysis VM]
+    REMnux --> Windows[Windows victim VM]
+    Windows --> REMnux
+    REMnux --> Core
 ```
 
-> Analyze untrusted samples only inside an isolated environment.
+The project is split into clear layers:
 
-## Features
+- `core/`: analysis logic, tool runners, AI runners, preprocessing, and postprocessing.
+- `cli/`: command-line argument parsing.
+- `backend/`: FastAPI adapter for web execution and artifact access.
+- `frontend/`: React + TypeScript interface.
+- `setup/`: start/stop scripts and VirtualBox host API and VM management helpers.
+- `docs/`: project documentation.
 
-- Static analysis: file type, hashes, metadata, packer detection, strings, PE
-  data, and VirusTotal.
-- Manual reverse engineering through radare2 and `r2pipe`.
-- Dynamic analysis with a Windows victim VM and REMnux receiver.
-- Static strings AI inference for detecting victim-facing threat actor messages.
-- Dynamic AI inference over Autoruns, Registry, and Procmon artifacts.
-- Queue-driven reversing agent focused on executable code and assembly.
-- Incremental enrichment and malware report generation.
-- Ollama, OpenAI, and Gemini model profiles.
+## Quick Installation
+
+Clone github repository:
+
+```bash
+git clone https://github.com/pablo-972/AIM
+```
+
+Go to the project root directory:
+
+```bash
+cd AIM/
+```
+
+Copy the environment template:
+
+```bash
+cp .env.example .env
+```
+
+Start the platform:
+
+**Linux/macOS**
+
+```bash
+./setup/start.sh
+```
+
+**Windows (PowerShell)**
+
+```powershell
+.\setup\start.ps1
+```
+
+To also start the backend and frontend Docker profiles:
+
+**Linux/macOS**
+
+```bash
+./setup/start.sh --backend
+```
+
+**Windows (PowerShell)**
+
+```powershell
+.\setup\start.ps1 -Backend
+```
+
+The web UI is exposed at `http://localhost:5173`.
 
 ## Documentation
 
-- [Orchestrator and runners](docs/orchestrator-and-runners.md)
-- [Manual analysis tools](docs/manual-tools.md)
-- [Dynamic analysis setup](docs/dynamic-analysis.md)
-- [Static strings inference](docs/static-strings-inference.md)
-- [Reversing agent](docs/reversing-agent.md)
-
-## Installation
-
-Install Python dependencies:
-
-```bash
-pip install -r requirements.txt
-```
-
-Static tools may require `file`, `strings`, `exiftool`, and `upx`.
-Reverse-engineering tools require radare2 and `r2pipe`.
-
-For Docker:
-
-```bash
-docker compose up -d --build
-docker exec -it aim sh
-```
-
-Docker Compose starts two separate containers:
-
-- `aim`: Python runtime with AIM, radare2, `r2pipe`, and static/reversing tools.
-- `ollama`: CUDA/NVIDIA-based Ollama runtime exposed on `localhost:11434`.
-
-To also start the web backend, enable the backend Compose profile:
-
-```bash
-docker compose --profile backend up -d --build
-```
-
-The backend API is exposed on `http://localhost:8000`. The normal CLI
-container is still available with:
-
-```bash
-docker exec -it aim sh
-```
-
-Copy `.env.example` to `.env`, then configure the providers you use. Model
-profiles are defined in `ai/model_profiles.yaml`.
-
-## Quick Start
-
-Run all static tools:
-
-```bash
-python main.py static samples/sample.exe --tool full
-```
-
-Run selected static tools:
-
-```bash
-python main.py static samples/sample.exe --tool file --tool hash --tool strings
-```
-
-Run static strings AI inference:
-
-```bash
-python main.py static samples/sample.exe --tool strings --ai
-```
-
-Run dynamic tools:
-
-```bash
-python main.py dynamic samples/sample.exe --tool full --ai
-```
-
-Run manual reversing:
-
-```bash
-python main.py reversing samples/sample.exe --tool disasm --function main
-python main.py reversing samples/sample.exe --tool import-xrefs --value kernel32.dll
-```
-
-Run the reversing agent:
-
-```bash
-python main.py reversing samples/sample.exe --agent --max-targets 12
-```
-
-Run the complete implemented pipeline:
-
-```bash
-python main.py full samples/sample.exe
-```
-
-The `full` phase runs all static tools, static strings inference, dynamic tools,
-dynamic inference, enrichment, the manual reversing `full` set, and finally the
-reversing agent.
-
-Generate enrichment and a report:
-
-```bash
-python main.py enrichment samples/sample.exe
-python main.py report samples/sample.exe
-```
-
-Use `python main.py <phase> -h` to inspect all options.
-
-## Main Artifacts
-
-Depending on the selected workflows, AIM creates:
-
-```text
-output/<sample-sha256>/
-|-- analysis.json
-|-- static_strings_inference.json
-|-- dynamic_inference.json
-|-- reversing_agent.json
-|-- enrichment.md
-`-- report.md
-```
-
-`analysis.json` is updated additively by phase and tool. Agent traces keep
-steps compact; static strings inference findings are stored in
-`static_strings_inference.json`, and dynamic behavior findings are stored in
-`dynamic_inference.json`.
-
-## Configuration
-
-`ai/model_profiles.yaml` maps:
-
-```text
-agent or task -> profile -> provider
-```
-
-Supported provider types are Ollama, OpenAI, and Gemini. Provider URLs, API
-keys, and cloud model names are read from environment variables.
+- [Getting Started](docs/getting-started/README.md)
+- [User Guide](docs/user-guide/README.md)
+- [Architecture](docs/architecture/README.md)
+- [Development](docs/development/README.md)
+- [Troubleshooting](docs/troubleshooting/README.md)
 
 ## License
 

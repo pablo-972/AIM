@@ -1,0 +1,24 @@
+FROM node:20-bookworm-slim
+
+# Create working directory
+WORKDIR /app
+
+# Install frontend dependencies
+COPY package*.json ./
+RUN npm install
+
+# Copy project files
+COPY . .
+
+# Create unprivileged user
+RUN groupadd --system frontend 
+RUN useradd --system --gid frontend --create-home frontend
+RUN chown -R frontend:frontend /app /home/frontend
+
+EXPOSE 5173
+
+# Run as non-root
+USER frontend
+
+# Run frontend development server with hot reload
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]

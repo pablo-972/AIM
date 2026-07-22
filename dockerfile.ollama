@@ -10,14 +10,27 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     zstd \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Ollama
+# Install Ollama    
 ENV OLLAMA_HOST=0.0.0.0:11434
 RUN curl -fsSL https://ollama.com/install.sh | sh
 
+# Create unprivileged user to run Ollama
+RUN groupadd -r ollama \
+    && useradd -r -g ollama -m -d /home/ollama -s /usr/sbin/nologin ollama \
+    && mkdir -p /home/ollama/.ollama \
+    && chown -R ollama:ollama /home/ollama
+
+ENV HOME=/home/ollama
+ENV OLLAMA_MODELS=/home/ollama/.ollama/models
+
 # Install Ollama models
 COPY ollama-entrypoint.sh /usr/local/bin/ollama-entrypoint.sh
-RUN chmod +x /usr/local/bin/ollama-entrypoint.sh
+RUN chmod +x /usr/local/bin/ollama-entrypoint.sh 
+RUN chown -R ollama:ollama /usr/local/bin/ollama-entrypoint.sh /home/ollama
 
 EXPOSE 11434
+
+# Run as non-root
+USER ollama
 
 ENTRYPOINT ["/usr/local/bin/ollama-entrypoint.sh"]

@@ -119,8 +119,8 @@ python main.py dynamic sample.exe --tool registry --tool procmon
 python main.py dynamic sample.exe --tool full --ai
 ```
 
-Dynamic analyzers are implemented in `tools/dynamic/analyzers/` and registered
-in `tools/dynamic/manual.py`.
+Dynamic analyzers are implemented in `core/tools/dynamic/analyzers/` and
+registered in `core/tools/dynamic/manual.py`.
 
 See [Dynamic analysis setup](dynamic-analysis.md) for VM and agent setup.
 

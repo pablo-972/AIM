@@ -130,6 +130,8 @@ celerybeat.pid
 # Environments
 .env
 .venv
+setup/.venv-linux/
+setup/.venv-windows/
 env/
 venv/
 ENV/
@@ -194,11 +196,21 @@ shared/execution/
 # Logs
 logs/
 
+# Local runtime state for setup scripts
+.aim-runtime/
+
 # Node modules
 frontend/node_modules/
 
 # Workspace dir for web
 workspace/
+
+# Python venv
+.venv-linux/
+.venv-windows/
+
+# AIM runtime
+.aim-runtime/
 
 
 

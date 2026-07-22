@@ -150,7 +150,7 @@ AI runners own workflow state and call agents, tools, and persistence helpers:
 - `ReportAIRunner` updates `report.md`.
 
 `ModelRegistry` resolves the selected agent or task profile into a provider
-client using `ai/model_profiles.yaml`.
+client using `core/ai/model_profiles.yaml`.
 
 ## Artifact Persistence
 
