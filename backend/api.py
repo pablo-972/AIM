@@ -29,6 +29,8 @@ from backend.storage import (
     save_upload_file,
     store_or_discard_duplicate_upload,
 )
+from backend.docs import get_document
+from core.exceptions import DocumentationNotFoundError
 from backend.runner import DEFAULT_PIPELINE_NAME, PIPELINE_RUNNERS
 
 
@@ -178,6 +180,14 @@ def get_reverse_agent(analysis_id: str) -> dict[str, Any]:
 @app.get("/api/analyses/{analysis_id}/report")
 def get_report(analysis_id: str) -> dict[str, Any]:
     return text_artifact(service, analysis_id, REPORT_FILENAME)
+
+
+@app.get("/api/docs/{slug:path}")
+def get_docs(slug: str) -> dict[str, Any]:
+    try:
+        return get_document(slug)
+    except DocumentationNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 def _validate_pipeline_name(pipeline_name: str) -> str:

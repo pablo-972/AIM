@@ -6,6 +6,7 @@ import {
   resolveAnalysis,
 } from "./api";
 import AnalysisView from "./components/analysis/AnalysisView";
+import DocsView from "./components/documents/DocsView";
 import HomeView from "./components/home/HomeView";
 import Footer from "./components/layout/Footer";
 import Navbar from "./components/layout/Navbar";
@@ -18,7 +19,7 @@ import type { AnalysisStatusPayload, AnalysisTab } from "./types";
 import { formatElapsed } from "./utils/formatElapsed";
 
 function App() {
-  const { analysisId, navigateToAnalysis } = useAnalysisRoute();
+  const { analysisId, docsSlug, navigateToAnalysis } = useAnalysisRoute();
   const { status, setStatus, isActive } = useAnalysisStatus(analysisId);
   const { artifacts, clearArtifacts } = useAnalysisArtifacts(analysisId, isActive);
   const { darkMode, toggleDarkMode } = useTheme();
@@ -29,6 +30,9 @@ function App() {
   const [uploading, setUploading] = useState(false);
   const [reanalyzing, setReanalyzing] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const mainClassName = docsSlug !== null
+    ? "flex w-full flex-1 flex-col gap-8 px-5 py-8 sm:px-8 sm:py-10 lg:px-10"
+    : "mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-5 py-8 sm:px-8 sm:py-10 lg:px-10";
 
   useEffect(() => {
     setActiveTab("Overview");
@@ -107,7 +111,7 @@ function App() {
         onToggleTheme={toggleDarkMode}
       />
 
-      <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-5 py-6 sm:px-8 lg:px-10">
+      <main className={mainClassName}>
         {notice && (
           <div className="rounded border border-line bg-panel p-3 text-sm text-muted">
             {notice}
@@ -125,14 +129,18 @@ function App() {
           </div>
         )}
 
-        {analysisId === null && (
+        {docsSlug !== null && (
+          <DocsView slug={docsSlug} />
+        )}
+
+        {analysisId === null && docsSlug === null && (
           <HomeView
             disabled={isActive || uploading}
             onAnalysisCreated={loadAnalysis}
           />
         )}
 
-        {analysisId !== null && (
+        {analysisId !== null && docsSlug === null && (
           <AnalysisView
             activeTab={activeTab}
             artifacts={artifacts}

@@ -9,6 +9,9 @@ SETUP_VENV_DIR="$SETUP_DIR/.venv-linux"
 SETUP_REQUIREMENTS="$SETUP_DIR/requirements.txt"
 
 API_PID_FILE="$STATE_DIR/vbox-api.pid"
+API_HEALTH_URL="http://127.0.0.1:8090/health"
+API_STARTUP_TIMEOUT_SECONDS=20
+API_STARTUP_POLL_SECONDS=1
 
 WITH_BACKEND=false
 WITH_FRONTEND=false
@@ -75,9 +78,56 @@ setup_python_command() {
     echo "$SETUP_VENV_DIR/bin/python"
 }
 
+api_health_ok() {
+    if ! command -v curl >/dev/null 2>&1; then
+        echo "curl is required to check the VirtualBox Manager API health." >&2
+        return 1
+    fi
+
+    curl -fsS "$API_HEALTH_URL" | grep -q '"status":"ok"'
+}
+
+show_virtualbox_api_logs() {
+    if [ -f "$LOG_DIR/vbox-api.log" ]; then
+        echo "VirtualBox Manager API log:"
+        tail -n 80 "$LOG_DIR/vbox-api.log"
+    fi
+}
+
+wait_for_virtualbox_api() {
+    local pid="$1"
+    local deadline=$((SECONDS + API_STARTUP_TIMEOUT_SECONDS))
+
+    while [ "$SECONDS" -lt "$deadline" ]; do
+        if api_health_ok; then
+            return 0
+        fi
+
+        if ! kill -0 "$pid" >/dev/null 2>&1; then
+            return 1
+        fi
+
+        sleep "$API_STARTUP_POLL_SECONDS"
+    done
+
+    return 1
+}
+
 start_virtualbox_api() {
     if is_running "$API_PID_FILE"; then
-        echo "VirtualBox Manager API already running (pid $(cat "$API_PID_FILE"))."
+        local tracked_pid
+        tracked_pid="$(cat "$API_PID_FILE")"
+        if api_health_ok; then
+            echo "VirtualBox Manager API already running (pid $tracked_pid)."
+            return
+        fi
+
+        echo "VirtualBox Manager API pid $tracked_pid is running, but $API_HEALTH_URL did not respond with status ok." >&2
+        exit 1
+    fi
+
+    if api_health_ok; then
+        echo "VirtualBox Manager API already reachable at $API_HEALTH_URL."
         return
     fi
 
@@ -91,7 +141,17 @@ start_virtualbox_api() {
     ) &
 
     echo "$!" > "$API_PID_FILE"
-    echo "VirtualBox Manager API started (pid $(cat "$API_PID_FILE"))."
+    local api_pid
+    api_pid="$(cat "$API_PID_FILE")"
+
+    if wait_for_virtualbox_api "$api_pid"; then
+        echo "VirtualBox Manager API started (pid $api_pid)."
+        return
+    fi
+
+    show_virtualbox_api_logs
+    echo "VirtualBox Manager API did not become healthy at $API_HEALTH_URL." >&2
+    exit 1
 }
 
 start_docker() {

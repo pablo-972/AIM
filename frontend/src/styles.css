@@ -7,9 +7,9 @@
   --color-page: 248 250 252;
   --color-panel: 255 255 255;
   --color-panel-soft: 241 245 249;
-  --color-line: 203 213 225;
+  --color-line: 148 163 184;
   --color-ink: 15 23 42;
-  --color-muted: 100 116 139;
+  --color-muted: 30 41 59;
   --color-glow-line: 236 72 153;
   --color-glow-shadow: 15 23 42;
   font-family:
@@ -20,11 +20,11 @@
 .dark {
   color-scheme: dark;
   --color-page: 2 6 23;
-  --color-panel: 15 23 42;
-  --color-panel-soft: 30 41 59;
-  --color-line: 51 65 85;
+  --color-panel: 11 18 32;
+  --color-panel-soft: 24 32 48;
+  --color-line: 71 85 105;
   --color-ink: 226 232 240;
-  --color-muted: 148 163 184;
+  --color-muted: 203 213 225;
   --color-glow-line: 236 72 153;
   --color-glow-shadow: 0 0 0;
 }
@@ -48,9 +48,11 @@ input {
 .markdown h1,
 .markdown h2,
 .markdown h3 {
+  border-bottom: 1px solid rgb(var(--color-line));
   color: rgb(var(--color-ink));
   font-weight: 700;
   margin: 1.25rem 0 0.5rem;
+  padding-bottom: 0.35rem;
 }
 
 .markdown h1 {
@@ -73,6 +75,39 @@ input {
   margin: 0.75rem 0;
 }
 
+.markdown a {
+  color: #db2777;
+  text-decoration: none;
+}
+
+.dark .markdown a {
+  color: #f472b6;
+}
+
+.markdown a:hover {
+  text-decoration: underline;
+}
+
+.markdown table {
+  width: 100%;
+  border-collapse: collapse;
+  overflow: hidden;
+  font-size: 0.9rem;
+}
+
+.markdown th,
+.markdown td {
+  border: 1px solid rgb(var(--color-line));
+  padding: 0.5rem 0.6rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.markdown th {
+  background: rgb(var(--color-panel-soft));
+  font-weight: 700;
+}
+
 .markdown ul,
 .markdown ol {
   padding-left: 1.25rem;
@@ -89,6 +124,10 @@ input {
   color: #db2777;
 }
 
+.dark .markdown code {
+  color: #f472b6;
+}
+
 .markdown pre {
   overflow-x: auto;
   border-radius: 0.375rem;
@@ -101,4 +140,22 @@ input {
   background: transparent;
   padding: 0;
   color: inherit;
+}
+
+.mermaid-diagram {
+  margin: 1rem 0;
+  overflow-x: auto;
+  border-radius: 0.375rem;
+  border: 1px solid rgb(var(--color-line));
+  background: rgb(var(--color-panel-soft));
+  padding: 1rem;
+}
+
+.mermaid-diagram svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.mermaid-fallback {
+  white-space: pre-wrap;
 }

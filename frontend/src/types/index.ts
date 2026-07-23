@@ -18,5 +18,17 @@ export type {
   TraceToolExecution,
 } from "./traces";
 
-export { analysisTabs } from "./navigation";
-export type { AnalysisTab } from "./navigation";
+export type { 
+  AnalysisTab 
+} from "./navigation";
+
+export type { 
+  DocumentationPayload 
+} from "./docs";
+
+export { 
+  analysisTabs 
+} from "./navigation";
+
+
+

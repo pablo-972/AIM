@@ -35,6 +35,11 @@ class FileReadError(Exception):
     pass
 
 
+class DocumentationNotFoundError(Exception):
+    """Documentation page was not found."""
+    pass
+
+
 class VirtualBoxError(Exception):
     """VirtualBox error."""
     

@@ -14,3 +14,7 @@ export {
   getReverseAgent,
   getStaticInference,
 } from "./artifacts";
+
+export { 
+  getDocumentation 
+} from "./docs";
