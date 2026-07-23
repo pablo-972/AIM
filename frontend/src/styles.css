@@ -136,7 +136,8 @@ input {
   padding: 1rem;
 }
 
-.markdown pre code {
+.markdown pre code,
+.dark .markdown pre code {
   background: transparent;
   padding: 0;
   color: inherit;
