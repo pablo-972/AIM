@@ -46,7 +46,7 @@ function Stop-DockerCompose {
     Write-Host "Stopping Docker Compose services..."
     Push-Location $RootDir
     try {
-        & docker compose --profile backend --profile frontend down
+        & docker compose --profile cli --profile backend --profile frontend down
     } finally {
         Pop-Location
     }

@@ -18,6 +18,18 @@ when you want to start services step by step for debugging.
 The frontend runs inside Docker in local Vite development mode, so Node.js and
 npm are not required on the host for normal usage.
 
+## Runtime Modes
+
+AIM uses the same analysis runtime for CLI and backend execution. The difference
+is the container entrypoint and whether an HTTP API is exposed:
+
+- the `cli` profile starts the `aim` runtime container without exposing an API;
+- the `backend` profile starts `uvicorn backend.api:app` and exposes port `8000`;
+- the `frontend` profile starts the React/Vite UI and talks to the backend.
+
+Use `cli` when you want an isolated runtime container for manual CLI analysis.
+Use `backend` when you want the web/API workflow.
+
 ## Recommended Startup
 
 Run commands from the AIM repository root.
@@ -34,10 +46,10 @@ On Windows PowerShell:
 .\setup\start.ps1
 ```
 
-This starts the host-side VirtualBox Manager API and the default Docker Compose
-services.
+This starts the host-side VirtualBox Manager API and the `cli` Docker Compose
+profile. The CLI/runtime container is named `aim`.
 
-To start the web interface too:
+To start the web interface instead:
 
 ```bash
 ./setup/start.sh --backend
@@ -47,7 +59,8 @@ To start the web interface too:
 .\setup\start.ps1 -Backend
 ```
 
-This starts the backend and frontend Docker profiles. The web UI is exposed at:
+This starts the backend and frontend Docker profiles. It does not start the
+`aim` CLI container. The web UI is exposed at:
 
 ```text
 http://localhost:5173
@@ -85,8 +98,8 @@ VirtualBox Manager API process.
 | Service | Where it runs | Started by | Purpose | Endpoint |
 | --- | --- | --- | --- | --- |
 | `setup.api` | Host | `setup/start.sh`, `setup/start.ps1` | Controls VirtualBox VMs for dynamic analysis | `http://localhost:8090` |
-| `aim` | Docker | Default Compose services | CLI/runtime container with AIM tools | None |
-| `ollama` | Docker | Default Compose services | Local model runtime | `http://localhost:11434` |
+| `aim` | Docker | Default script mode or `cli` profile | CLI/runtime container with AIM tools | None |
+| `ollama` | Docker | Required by `cli` and `backend` profiles | Local model runtime | `http://localhost:11434` |
 | `backend` | Docker | `--backend` / `-Backend` | FastAPI web backend | `http://localhost:8000` |
 | `frontend` | Docker | `--backend` / `-Backend`, unless frontend is disabled | React/Vite web UI | `http://localhost:5173` |
 
@@ -126,7 +139,7 @@ py -3 -B -m setup.api
 Start the core CLI/runtime services:
 
 ```bash
-docker compose up -d --build
+docker compose --profile cli up -d --build
 ```
 
 Enter the AIM runtime container:
@@ -147,6 +160,8 @@ Start backend and frontend manually:
 docker compose --profile backend --profile frontend up -d --build
 ```
 
+This does not start the `aim` CLI container.
+
 Start only the backend profile:
 
 ```bash
@@ -156,7 +171,7 @@ docker compose --profile backend up -d --build
 Stop all Compose services, including optional profiles:
 
 ```bash
-docker compose --profile backend --profile frontend down
+docker compose --profile cli --profile backend --profile frontend down
 ```
 
 Inspect logs:
@@ -176,4 +191,3 @@ Use direct Docker commands when:
 - you are debugging Compose profiles;
 - you want to run CLI-only analysis from the `aim` container;
 - you do not need the host-side VirtualBox API started by the setup scripts.
-

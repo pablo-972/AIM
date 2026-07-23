@@ -1,5 +1,6 @@
 services:
   aim:
+    profiles: ["cli"]
     build:
       context: .
       dockerfile: dockerfile

@@ -66,7 +66,7 @@ stop_docker() {
     echo "Stopping Docker Compose services..."
     (
         cd "$ROOT_DIR"
-        docker compose --profile backend --profile frontend down
+        docker compose --profile cli --profile backend --profile frontend down
     )
 }
 

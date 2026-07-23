@@ -80,7 +80,9 @@ Start the platform:
 .\setup\start.ps1
 ```
 
-To also start the backend and frontend Docker profiles:
+This starts the CLI/runtime Docker profile. The backend uses the same analysis
+runtime, but starts the FastAPI entrypoint and exposes an API. To start the
+backend and frontend profiles instead:
 
 **Linux/macOS**
 

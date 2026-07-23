@@ -194,7 +194,7 @@ function Start-DockerCompose {
         } elseif ($Backend) {
             & docker compose --profile backend up -d --build
         } else {
-            & docker compose up -d --build
+            & docker compose --profile cli up -d --build
         }
     } finally {
         Pop-Location

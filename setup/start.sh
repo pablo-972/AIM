@@ -174,7 +174,7 @@ start_docker() {
     else
         (
             cd "$ROOT_DIR"
-            docker compose up -d --build
+            docker compose --profile cli up -d --build
         )
     fi
 }
