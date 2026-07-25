@@ -103,22 +103,34 @@ class ReversingAgent:
             enrichment,
             MAX_EVIDENCE_ENRICHMENT_LENGTH,
         )
-        compact_target = {
-            "tool": target["tool"],
-            "parameters": target["parameters"],
-            "priority": target.get("priority"),
-            "reason": self._bounded_text(
-                str(target.get("reason") or ""),
+
+        tool = target["tool"]
+        parameters = target["parameters"]
+        priority = target.get("priority")
+        reason = str(target.get("reason") or "")
+        bounded_reason = self._bounded_text(
+                reason,
                 MAX_TARGET_REASON_LENGTH,
-            ),
+        )
+
+        compact_target = {
+            "tool": tool,
+            "parameters": parameters,
+            "priority": priority,
+            "reason": bounded_reason,
         }
-        compact_tools = {
-            name: {
-                "parameters": list(spec.get("parameters", {})),
+
+        compact_tools = {}
+        for tool_name, tool_spec in available_tools.items():
+            if not isinstance(tool_spec, dict):
+                continue
+
+            parameters = list(tool_spec.get("parameters", {}))
+
+            compact_tools[tool_name] = {
+                "parameters": parameters,
             }
-            for name, spec in available_tools.items()
-            if isinstance(spec, dict)
-        }
+
         prompt = f"""
         Analyze the observation and choose at most one next action.
 
@@ -151,10 +163,20 @@ class ReversingAgent:
         provide concrete evidence that deeper assembly analysis is valuable.
         """
 
-        response = self.llm.chat_json(SYSTEM_PROMPT, prompt, REVERSING_ANALYSIS_SCHEMA)
+        response = self.llm.chat_json(
+            SYSTEM_PROMPT, 
+            prompt, 
+            REVERSING_ANALYSIS_SCHEMA,
+        )
 
         result = parse_json_object(response.content, fallback={})
-        required = {"thought", "confidence", "action", "parameters", "finding"}
+        required = {
+            "thought", 
+            "confidence", 
+            "action", 
+            "parameters", 
+            "finding",
+        }
         
         if not required.issubset(result):
             raise ValueError("Invalid reversing evidence response.")
