@@ -1,5 +1,6 @@
 from typing import Any
 
+from core.tools.reversing.analyzers.functions import resolve_function
 from core.tools.reversing.analyzers.session import R2Session
 
 
@@ -61,7 +62,7 @@ def function_details(sample: str, function: str) -> dict[str, Any]:
         raise ValueError("function is required")
 
     with R2Session(sample) as r2:
-        resolved_function = _resolve_function(r2, function)
+        resolved_function = resolve_function(r2, function)
         info = r2.cmdj(f"afij @ {resolved_function}") or []
 
     function_info = info[0] if info else {}
@@ -157,36 +158,6 @@ def callees(sample: str, function: str) -> dict[str, Any]:
     }
 
 
-def _resolve_function(r2: Any, function: str) -> str:
-    address = _parse_address(function)
-    if address is None:
-        return function
-
-    raw_functions = r2.cmdj("aflj") or []
-    functions = raw_functions if isinstance(raw_functions, list) else []
-    containing = _find_containing_function(functions, address)
-
-    if containing is not None:
-        name = containing.get("name")
-        offset = containing.get("offset") or containing.get("addr")
-
-        if isinstance(name, str) and name:
-            return name
-
-        if isinstance(offset, int):
-            return hex(offset)
-
-    r2.cmd(f"af @ {hex(address)}")
-    return hex(address)
-
-
-def _parse_address(value: str) -> int | None:
-    try:
-        return int(value, 0)
-    except (TypeError, ValueError):
-        return None
-
-
 def _instruction_count(function_info: dict[str, Any]) -> int | None:
     for key in ("ninstrs", "instructions_count", "nins"):
         value = function_info.get(key)
@@ -195,22 +166,3 @@ def _instruction_count(function_info: dict[str, Any]) -> int | None:
             return value
 
     return None
-
-
-def _find_containing_function(
-    functions: list[dict[str, Any]],
-    address: int,
-) -> dict[str, Any] | None:
-    for function in functions:
-        offset = function.get("offset") or function.get("addr")
-        size = function.get("size") or 0
-
-        if not isinstance(offset, int) or not isinstance(size, int):
-            continue
-
-        if offset <= address < offset + max(size, 1):
-            return function
-
-    return None
-
-

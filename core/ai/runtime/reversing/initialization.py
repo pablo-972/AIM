@@ -24,20 +24,20 @@ class ReversingInitialization:
     seed_error: str | None
     input_source: str
 
-def seed_decision(self) -> dict[str, Any]:
-    first_target = None
-    if self.targets and isinstance(self.targets[0], dict):
-        first_target = self.targets[0]
+    def seed_decision(self) -> dict[str, Any]:
+        first_target = None
+        if self.targets and isinstance(self.targets[0], dict):
+            first_target = self.targets[0]
 
-    confidence = "medium" if first_target else "low"
-    thought = str(self.seed.get("reasoning") or "")
+        confidence = "medium" if first_target else "low"
+        thought = str(self.seed.get("reasoning") or "")
 
-    return {
-        "thought": thought,
-        "confidence": confidence,
-        "action": "seed_queue",
-        "parameters": {},
-    }
+        return {
+            "thought": thought,
+            "confidence": confidence,
+            "action": "seed_queue",
+            "parameters": {},
+        }
 
 
 

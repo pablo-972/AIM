@@ -2,6 +2,7 @@ from typing import Any
 
 from core.tools.reversing.analyzers.metadata import functions, imports, strings
 
+
 SUSPICIOUS_IMPORT_KEYWORDS = {
     "virtualalloc",
     "virtualprotect",
@@ -46,14 +47,19 @@ def collect_reconnaissance(sample: str) -> dict[str, Any]:
     function_items = functions(sample)
     string_items = strings(sample)
 
-    suspicious_imports = [
-        item
-        for item in import_items
-        if any(
-            keyword in str(item.get("name", "")).lower()
+    suspicious_imports = []
+    for item in import_items:
+        import_name = str(item.get("name", "")).lower()
+
+        is_suspicious = any(
+            keyword in import_name
             for keyword in SUSPICIOUS_IMPORT_KEYWORDS
         )
-    ][:40]
+
+        if is_suspicious:
+            suspicious_imports.append(item)
+
+    suspicious_imports = suspicious_imports[:40]
 
     large_functions = sorted(
         function_items,
@@ -64,16 +70,25 @@ def collect_reconnaissance(sample: str) -> dict[str, Any]:
         reverse=True,
     )[:30]
 
-    interesting_strings = [
-        {
-            "value": item.get("string"),
-            "address": item.get("vaddr") or item.get("paddr"),
-            "section": item.get("section"),
-        }
-        for item in string_items
-        if isinstance(item.get("string"), str)
-        and _is_clean_interesting_string(item["string"])
-    ][:40]
+    interesting_strings = []
+    for item in string_items:
+        string_value = item.get("string")
+
+        if not isinstance(string_value, str):
+            continue
+
+        if not _is_clean_interesting_string(string_value):
+            continue
+
+        interesting_strings.append(
+            {
+                "value": string_value,
+                "address": item.get("vaddr") or item.get("paddr"),
+                "section": item.get("section"),
+            }
+        )
+
+    interesting_strings = interesting_strings[:40]
 
     return {
         "suspicious_imports": suspicious_imports,
@@ -88,16 +103,25 @@ def collect_reconnaissance(sample: str) -> dict[str, Any]:
 
 
 def _is_clean_interesting_string(value: str) -> bool:
-    if not 5 <= len(value) <= 256:
+    has_valid_length = 5 <= len(value) <= 256
+
+    if not has_valid_length:
         return False
 
-    if any(ord(character) < 32 and not character.isspace() for character in value):
+    has_invalid_characters = any(
+        ord(character) < 32 and not character.isspace()
+        for character in value
+    )
+
+    if has_invalid_characters:
         return False
 
-    return any(
+    contains_interesting_keyword = any(
         keyword in value.lower()
         for keyword in INTERESTING_STRING_KEYWORDS
     )
+
+    return contains_interesting_keyword
 
 
 

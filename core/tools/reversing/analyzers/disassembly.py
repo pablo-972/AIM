@@ -1,5 +1,6 @@
 from typing import Any
 
+from core.tools.reversing.analyzers.functions import resolve_function
 from core.tools.reversing.analyzers.session import R2Session
 
 
@@ -17,53 +18,12 @@ def disassembly(sample: str, function: str) -> dict[str, Any]:
     }
 
 
-def text_disassembly(
-    sample: str,
-    function: str,
-) -> dict[str, Any]:
-    details = _function_analysis(sample, function)
-    ops = details["instructions"]
-
-    text_lines = []
-    addresses = []  
-
-    for op in ops:
-        address = op.get("address")
-        disasm = op.get("disasm")
-
-        if address is not None and disasm:
-            text_lines.append(f"{address:#x}: {disasm}")
-
-        if isinstance(address, int):
-            addresses.append(address)
-
-    text = "\n".join(text_lines)
-
-    if addresses:
-        start_address = hex(min(addresses))
-        end_address = hex(max(addresses))
-    else:
-        start_address = details["start_address"]
-        end_address = details["end_address"]
-
-    return {
-        "function": function,
-        "resolved_function": details["resolved_function"],
-        "function_info": details["info"],
-        "instructions_count": len(ops),
-        "returned_instructions": len(ops),
-        "start_address": start_address,
-        "end_address": end_address,
-        "disassembly": text,
-    }
-
-
 def _function_analysis(sample: str, function: str) -> dict[str, Any]:
     if not function:
         raise ValueError("function is required")
 
     with R2Session(sample) as r2:
-        resolved_function = _resolve_function(r2, function)
+        resolved_function = resolve_function(r2, function)
         info = r2.cmdj(f"afij @ {resolved_function}") or []
         disasm = r2.cmdj(f"pdfj @ {resolved_function}") or {}
 
@@ -108,53 +68,42 @@ def _function_analysis(sample: str, function: str) -> dict[str, Any]:
     }
 
 
-def _resolve_function(r2: Any, function: str) -> str:
-    address = _parse_address(function)
-    if address is None:
-        return function
+# def text_disassembly(
+#     sample: str,
+#     function: str,
+# ) -> dict[str, Any]:
+#     details = _function_analysis(sample, function)
+#     ops = details["instructions"]
 
-    raw_functions = r2.cmdj("aflj") or []
-    functions = raw_functions if isinstance(raw_functions, list) else []
-    containing = _find_containing_function(functions, address)
+#     text_lines = []
+#     addresses = []  
 
-    if containing is not None:
-        name = containing.get("name")
-        offset = containing.get("offset") or containing.get("addr")
+#     for op in ops:
+#         address = op.get("address")
+#         disasm = op.get("disasm")
 
-        if isinstance(name, str) and name:
-            return name
-        
-        if isinstance(offset, int):
-            return hex(offset)
+#         if address is not None and disasm:
+#             text_lines.append(f"{address:#x}: {disasm}")
 
-    r2.cmd(f"af @ {hex(address)}")
-    return hex(address)
+#         if isinstance(address, int):
+#             addresses.append(address)
 
+#     text = "\n".join(text_lines)
 
-def _parse_address(value: str) -> int | None:
-    try:
-        return int(value, 0)
-    except (TypeError, ValueError):
-        return None
+#     if addresses:
+#         start_address = hex(min(addresses))
+#         end_address = hex(max(addresses))
+#     else:
+#         start_address = details["start_address"]
+#         end_address = details["end_address"]
 
-
-def _find_containing_function(
-    functions: list[dict[str, Any]],
-    address: int,
-) -> dict[str, Any] | None:
-    for function in functions:
-        offset = function.get("offset") or function.get("addr")
-        size = function.get("size") or 0
-
-        if not isinstance(offset, int) or not isinstance(size, int):
-            continue
-
-        if offset <= address < offset + max(size, 1):
-            return function
-
-    return None
-
-
-
-
-
+#     return {
+#         "function": function,
+#         "resolved_function": details["resolved_function"],
+#         "function_info": details["info"],
+#         "instructions_count": len(ops),
+#         "returned_instructions": len(ops),
+#         "start_address": start_address,
+#         "end_address": end_address,
+#         "disassembly": text,
+#     }
