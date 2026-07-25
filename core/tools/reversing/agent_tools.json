@@ -1,27 +1,11 @@
 {
-    "function": {
-        "description": "Return metadata and instructions for one function.",
-        "parameters": {
-            "function": {
-                "description": "Function name or address.",
-                "type": "string",
-                "required": true
-            }
-        }
-    },
     "disassembly": {
-        "description": "Return bounded text disassembly for one function.",
+        "description": "Return function details and complete structured disassembly instructions for one function.",
         "parameters": {
             "function": {
                 "description": "Function name or address.",
                 "type": "string",
                 "required": true
-            },
-            "max_instructions": {
-                "description": "Maximum number of instructions to return.",
-                "type": "integer",
-                "minimum": 25,
-                "maximum": 500
             }
         }
     },

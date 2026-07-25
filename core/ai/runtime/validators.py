@@ -1,30 +1,40 @@
 from typing import Any
 
 NO_TOOL_ACTIONS = {"none", "finish"}
-DEFAULT_DISASSEMBLY_INSTRUCTIONS = 300
-MIN_DISASSEMBLY_INSTRUCTIONS = 25
-MAX_DISASSEMBLY_INSTRUCTIONS = 500
 
 
-def normalize_tool_parameters(tool_name: str, parameters: dict[str, Any]) -> dict[str, Any]:
-    normalized = dict(parameters)
-    if tool_name != "disassembly":
-        return normalized
+def normalize_tool_parameters(
+    tool_name: str, 
+    parameters: dict[str, Any],
+) -> dict[str, Any]:
+    if tool_name in {"function", "details", "disassembly", "callers", "callees"}:
+        return _keep_parameters(parameters, {"function"})
 
-    requested = normalized.get("max_instructions", DEFAULT_DISASSEMBLY_INSTRUCTIONS)
-    if not isinstance(requested, int):
-        requested = DEFAULT_DISASSEMBLY_INSTRUCTIONS
+    if tool_name == "string_xrefs":
+        return _keep_parameters(parameters, {"value"})
 
-    capped_min_instructions = min(requested, MAX_DISASSEMBLY_INSTRUCTIONS)
-    normalized["max_instructions"] = max(
-        MIN_DISASSEMBLY_INSTRUCTIONS, 
-        capped_min_instructions,
-    )
+    if tool_name == "import_xrefs":
+        return _keep_parameters(parameters, {"import_name"})
 
-    return normalized
+    return dict(parameters)
 
 
-def validate_agent_step(step: dict[str, Any], available_tools: dict[str, Any]) -> bool:
+def _keep_parameters(
+    parameters: dict[str, Any],
+    allowed: set[str],
+) -> dict[str, Any]:
+    filtered_parameters = {}
+    for key, value in parameters.items():
+        if key in allowed:
+            filtered_parameters[key] = value
+
+    return filtered_parameters
+
+
+def validate_agent_step(
+    step: dict[str, Any], 
+    available_tools: dict[str, Any],
+) -> bool:
     if not isinstance(step, dict):
         return False
 
@@ -43,7 +53,10 @@ def validate_agent_step(step: dict[str, Any], available_tools: dict[str, Any]) -
     return validate_tool_parameters(parameters, available_tools[action])
 
 
-def validate_tool_parameters(parameters: dict[str, Any], tool_spec: dict[str, Any]) -> bool:
+def validate_tool_parameters(
+    parameters: dict[str, Any], 
+    tool_spec: dict[str, Any],
+) -> bool:
     parameter_spec = tool_spec.get("parameters", {})
     if not isinstance(parameter_spec, dict):
         return True

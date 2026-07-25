@@ -46,13 +46,7 @@ class ReversingActionPolicy:
             return "none", {}
 
         if current_tool in XREF_TOOLS and has_code_target:
-            return "function", {"function": code_targets[0]}
-        
-        if current_tool == "function" and action == "disassembly":
-            if not self._valid_disassembly_request(analysis, observation):
-                return "none", {}
-
-            parameters = normalize_tool_parameters(action, parameters)
+            return "disassembly", {"function": code_targets[0]}
 
         if action in CODE_FOLLOW_UP_TOOLS and has_code_target:
             requested_function = parameters.get("function")
@@ -60,12 +54,10 @@ class ReversingActionPolicy:
             if requested_function not in code_targets:
                 parameters = self._parameters_for_code_target(
                     action,
-                    parameters,
                     code_targets[0],
                 )
 
                 return action, parameters
-
 
         parameters = normalize_tool_parameters(action, parameters)
         
@@ -80,35 +72,23 @@ class ReversingActionPolicy:
 
         if not isinstance(values, list):
             return []
-        
-        return [value for value in values if isinstance(value, str)]
 
-    def _valid_disassembly_request(
-        self,
-        analysis: dict[str, Any],
-        observation: dict[str, Any],
-    ) -> bool:
-        confidence = analysis.get("confidence")
-        instructions_count = observation.get("instructions_count")
+        targets = []
+        for value in values:
+            if isinstance(value, str):
+                targets.append(value)
 
-        return (
-            confidence in {"medium", "high"}
-            and isinstance(instructions_count, int)
-            and instructions_count >= 3
-        )
+        return targets
 
     def _parameters_for_code_target(
         self,
         action: str,
-        parameters: dict[str, Any],
         code_target: str,
     ) -> dict[str, Any]:
-        normalized = {"function": code_target}
-        max_instructions = parameters.get("max_instructions")
-
-        if action == "disassembly" and isinstance(max_instructions, int):
-            normalized["max_instructions"] = max_instructions
-
+        normalized = {
+            "function": code_target,
+        }
+        
         return normalize_tool_parameters(action, normalized)
 
     def _valid_tool_call(

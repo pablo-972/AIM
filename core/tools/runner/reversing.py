@@ -49,11 +49,7 @@ class ReversingToolRunner(BaseToolRunner):
         return tools
 
     def _build_tool_kwargs(self, mode: str) -> dict[str, Any]:
-        if mode == "disasm":
-            return {"function": self.context.function}
-        elif mode == "xrefs":
-            return {"function": self.context.function}
-        elif mode in {"callers", "callees"}:
+        if mode in {"details", "disasm", "xrefs", "callers", "callees"}:
             return {"function": self.context.function}
         elif mode == "string-xrefs":
             return {"string_value": self.context.value}

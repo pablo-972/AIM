@@ -2,12 +2,63 @@ from typing import Any
 
 from core.tools.reversing.analyzers.session import R2Session
 
-DEFAULT_MAX_INSTRUCTIONS = 300
-MIN_MAX_INSTRUCTIONS = 25
-MAX_MAX_INSTRUCTIONS = 500
+
+def disassembly(sample: str, function: str) -> dict[str, Any]:
+    details = _function_analysis(sample, function)
+
+    return {
+        "function": function,
+        "resolved_function": details["resolved_function"],
+        "function_info": details["info"],
+        "instructions_count": len(details["instructions"]),
+        "start_address": details["start_address"],
+        "end_address": details["end_address"],
+        "instructions": details["instructions"],
+    }
 
 
-def function_details(sample: str, function: str) -> dict[str, Any]:
+def text_disassembly(
+    sample: str,
+    function: str,
+) -> dict[str, Any]:
+    details = _function_analysis(sample, function)
+    ops = details["instructions"]
+
+    text_lines = []
+    addresses = []  
+
+    for op in ops:
+        address = op.get("address")
+        disasm = op.get("disasm")
+
+        if address is not None and disasm:
+            text_lines.append(f"{address:#x}: {disasm}")
+
+        if isinstance(address, int):
+            addresses.append(address)
+
+    text = "\n".join(text_lines)
+
+    if addresses:
+        start_address = hex(min(addresses))
+        end_address = hex(max(addresses))
+    else:
+        start_address = details["start_address"]
+        end_address = details["end_address"]
+
+    return {
+        "function": function,
+        "resolved_function": details["resolved_function"],
+        "function_info": details["info"],
+        "instructions_count": len(ops),
+        "returned_instructions": len(ops),
+        "start_address": start_address,
+        "end_address": end_address,
+        "disassembly": text,
+    }
+
+
+def _function_analysis(sample: str, function: str) -> dict[str, Any]:
     if not function:
         raise ValueError("function is required")
 
@@ -16,78 +67,44 @@ def function_details(sample: str, function: str) -> dict[str, Any]:
         info = r2.cmdj(f"afij @ {resolved_function}") or []
         disasm = r2.cmdj(f"pdfj @ {resolved_function}") or {}
 
+    instructions = []
+    for op in disasm.get("ops", []):
+        instruction = {
+            "address": op.get("addr") or op.get("offset"),
+            "type": op.get("type"),
+            "opcode": op.get("opcode"),
+            "disasm": op.get("disasm"),
+            "size": op.get("size"),
+            "bytes": op.get("bytes"),
+            "jump": op.get("jump"),
+            "fail": op.get("fail"),
+            "ptr": op.get("ptr"),
+            "refptr": op.get("refptr"),
+            "refs": op.get("refs", []),
+        }
+
+        instructions.append(instruction)
+
+    addresses = []
+    for instruction in instructions:
+        address = instruction.get("address")
+
+        if isinstance(address, int):
+            addresses.append(address)
+
+    start_address = None
+    end_address = None
+    if addresses:
+        start_address = hex(min(addresses))
+        end_address = hex(max(addresses))
+
+
     return {
-        "function": function,
         "resolved_function": resolved_function,
         "info": info[0] if info else {},
-        "instructions": [
-            {
-                "address": op.get("addr") or op.get("offset"),
-                "type": op.get("type"),
-                "opcode": op.get("opcode"),
-                "disasm": op.get("disasm"),
-                "size": op.get("size"),
-                "bytes": op.get("bytes"),
-                "jump": op.get("jump"),
-                "fail": op.get("fail"),
-                "ptr": op.get("ptr"),
-                "refptr": op.get("refptr"),
-                "refs": op.get("refs", []),
-            }
-            for op in disasm.get("ops", [])
-        ],
-    }
-
-
-def disassembly(sample: str, function: str) -> dict[str, Any]:
-    details = function_details(sample, function)
-
-    return {
-        "function": details["function"],
-        "resolved_function": details["resolved_function"],
-        "function_info": details["info"],
-        "instructions": details["instructions"],
-    }
-
-
-def text_disassembly(
-    sample: str,
-    function: str,
-    max_instructions: int = DEFAULT_MAX_INSTRUCTIONS,
-) -> dict[str, Any]:
-    if not isinstance(max_instructions, int):
-        raise ValueError("max_instructions must be an integer")
-    
-    max_instructions = max(
-        MIN_MAX_INSTRUCTIONS,
-        min(max_instructions, MAX_MAX_INSTRUCTIONS),
-    )
-
-    details = function_details(sample, function)
-    ops = details["instructions"]
-    selected_ops = ops[:max_instructions]
-
-    text = "\n".join(
-        f"{op['address']:#x}: {op['disasm']}"
-        for op in selected_ops
-        if op.get("address") is not None and op.get("disasm")
-    )
-    addresses = [
-        op["address"]
-        for op in selected_ops
-        if isinstance(op.get("address"), int)
-    ]
-
-    return {
-        "function": function,
-        "resolved_function": details["resolved_function"],
-        "function_info": details["info"],
-        "instructions_count": len(ops),
-        "returned_instructions": len(selected_ops),
-        "truncated": len(ops) > max_instructions,
-        "start_address": hex(min(addresses)) if addresses else None,
-        "end_address": hex(max(addresses)) if addresses else None,
-        "disassembly": text,
+        "instructions": instructions,
+        "start_address": start_address,
+        "end_address": end_address,
     }
 
 
@@ -117,7 +134,7 @@ def _resolve_function(r2: Any, function: str) -> str:
 def _parse_address(value: str) -> int | None:
     try:
         return int(value, 0)
-    except ValueError:
+    except (TypeError, ValueError):
         return None
 
 
@@ -136,7 +153,6 @@ def _find_containing_function(
             return function
 
     return None
-
 
 
 

@@ -12,7 +12,6 @@ class ReversingObservationBuilder:
         "end_address",
         "instructions_count",
         "returned_instructions",
-        "truncated",
         "count",
     )
 
@@ -73,7 +72,7 @@ class ReversingObservationBuilder:
         code_targets.extend(self._summarize_callers(data, summary))
         code_targets.extend(self._summarize_callees(data, summary))
 
-        if tool_name in {"function", "disassembly"}:
+        if tool_name == "disassembly":
             function = data.get("resolved_function") or data.get("function")
             candidate = self._format_address(function)
 

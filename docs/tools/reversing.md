@@ -31,6 +31,7 @@ core/tools/reversing/agent_tools.json
 | `info` | Returns binary summary information | Establishes basic reversing context |
 | `imports` | Lists imported libraries and APIs | Reveals API capabilities and likely behavior |
 | `functions` | Lists discovered functions | Provides the navigation surface for deeper analysis |
+| `details` | Returns details for one selected function | Gives quick function context before full disassembly |
 | `strings` | Lists strings visible to the reversing backend | Provides pivots for xrefs and behavior clues |
 | `disasm` | Returns disassembly for a selected function | Lets the analyst inspect code behavior directly |
 | `xrefs` | Returns references around a selected function | Helps understand code relationships |
@@ -43,8 +44,7 @@ core/tools/reversing/agent_tools.json
 
 | Tool | Purpose |
 | --- | --- |
-| `function` | Inspect one function with compact metadata and instructions |
-| `disassembly` | Return bounded text disassembly for one function |
+| `disassembly` | Return structured disassembly instructions for one function |
 | `callers` | Return incoming calls for one function |
 | `callees` | Return outgoing calls for one function |
 | `string_xrefs` | Find strings and their code references |

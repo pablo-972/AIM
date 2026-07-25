@@ -19,6 +19,9 @@ If enrichment is unavailable, the agent performs bounded reconnaissance and uses
 deterministic fallback targets such as suspicious imports, large functions, and
 interesting strings.
 
+When xrefs or reconnaissance identify an interesting function, the agent uses
+`disassembly` directly to retrieve the function body.
+
 The agent is queue-driven:
 
 ```mermaid
@@ -41,6 +44,11 @@ chunks for the current target. If a chunk contains something interesting, the
 agent can enqueue a follow-up target, but the current target's chunks continue
 until finished. After that, the exploration loop pops the next highest-priority
 unvisited target from the queue.
+
+Large disassembly output uses the same bounded evidence chunking as the rest of
+the reversing tools. The default chunk limit is 4500 JSON characters, so very
+large functions are analyzed progressively while still counting as one queued
+target.
 
 `--max-targets` limits unique queued targets executed by the agent. It does not
 count evidence chunks as separate targets.

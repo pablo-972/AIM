@@ -24,18 +24,21 @@ class ReversingInitialization:
     seed_error: str | None
     input_source: str
 
-    def seed_decision(self) -> dict[str, Any]:
-        first_target = (
-            self.targets[0]
-            if self.targets and isinstance(self.targets[0], dict)
-            else None
-        )
-        return {
-            "thought": str(self.seed.get("reasoning") or ""),
-            "confidence": "medium" if first_target else "low",
-            "action": "seed_queue",
-            "parameters": {},
-        }
+def seed_decision(self) -> dict[str, Any]:
+    first_target = None
+    if self.targets and isinstance(self.targets[0], dict):
+        first_target = self.targets[0]
+
+    confidence = "medium" if first_target else "low"
+    thought = str(self.seed.get("reasoning") or "")
+
+    return {
+        "thought": thought,
+        "confidence": confidence,
+        "action": "seed_queue",
+        "parameters": {},
+    }
+
 
 
 class ReversingInvestigationInitializer:
@@ -60,6 +63,19 @@ class ReversingInvestigationInitializer:
             enrichment,
             reconnaissance,
         )
+
+        if not targets:
+            if not reconnaissance:
+                reconnaissance = collect_reconnaissance(str(self.context.sample))
+                
+            targets = self.targets.fallback_targets(reconnaissance)
+            if targets:
+                seed = {
+                    "reasoning": self._fallback_reason(seed_error),
+                    "targets": targets,
+                }
+                source = "fallback"
+
         return ReversingInitialization(
             enrichment=enrichment,
             seed=seed,
@@ -101,18 +117,30 @@ class ReversingInvestigationInitializer:
             }
 
         raw_targets = seed.get("targets")
-        targets = (
-            raw_targets[:6]
-            if isinstance(raw_targets, list) and raw_targets
-            else []
-        )
+        targets = self.targets.valid_targets(raw_targets)[:6]
+        if isinstance(raw_targets, list) and raw_targets and not targets:
+            seed_error = self._append_error(
+                seed_error,
+                "Seed returned no valid reversing targets.",
+            )
+
         source = "seed"
-        if not targets and not enrichment:
-            targets = self.targets.fallback_targets(reconnaissance)
-            seed = {
-                "reasoning": "Using deterministic reconnaissance fallback.",
-                "targets": targets,
-            }
-            source = "fallback"
 
         return seed, targets, source, seed_error
+
+    def _fallback_reason(self, seed_error: str | None) -> str:
+        reason = "Using deterministic reconnaissance fallback."
+        if seed_error:
+            return f"{reason} Seed error: {seed_error}"
+
+        return reason
+
+    def _append_error(
+        self,
+        current_error: str | None,
+        message: str,
+    ) -> str:
+        if current_error:
+            return f"{current_error}; {message}"
+
+        return message

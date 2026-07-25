@@ -1,7 +1,6 @@
 REVERSING_TOOL_NAMES = [
     "string_xrefs",
     "import_xrefs",
-    "function",
     "disassembly",
     "callers",
     "callees",

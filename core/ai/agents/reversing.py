@@ -30,14 +30,16 @@ Rules:
 - If returned_instructions is zero, do not claim code was analyzed.
 - Plain wallet, payment, contact, Session, or onion strings are artifacts. They
   are not configuration loading or C2 without code evidence.
-- Create critical_code_region findings only when xref, function, caller/callee,
+- Create critical_code_region findings only when xref, caller/callee,
   or disassembly evidence ties the behavior to code.
 - After string_xrefs or import_xrefs returns code references, inspect an actual
-  returned function/address instead of continuing with broad artifact searches.
-- Use function as a lightweight first inspection after xrefs.
-- Request disassembly when the inspected function contains concrete suspicious
-  instructions, calls, control flow, loops, API use, or data manipulation that
-  warrants deeper assembly analysis.
+  returned function/address with disassembly instead of continuing with broad
+  artifact searches.
+- Request disassembly when target context, xrefs, imports, strings, callers,
+  callees, or size make deeper assembly inspection useful.
+- Disassembly returns the complete selected function. Large disassembly output
+  may be split into multiple chunks by the runtime; analyze each supplied chunk
+  without requesting the same disassembly again just to continue reading it.
 - Do not request disassembly for every function or for a simple import thunk,
   one-jump wrapper, or function with no meaningful instructions.
 - Avoid repeated related-string searches unless code evidence requires one.
@@ -74,14 +76,18 @@ class ReversingAgent:
         Prioritize targets that can lead to critical code regions:
         - suspicious imports with import_xrefs
         - behaviorally meaningful strings with string_xrefs
-        - concrete functions with function or disassembly
+        - concrete functions with disassembly
 
         Do not prioritize wallet, payment, contact, Session, or onion strings unless
         they are needed to locate ransom-note generation code. Do not invent addresses.
         Return no more than six targets.
         """
         
-        response = self.llm.chat_json(SYSTEM_PROMPT, prompt, REVERSING_SEED_SCHEMA)
+        response = self.llm.chat_json(
+            SYSTEM_PROMPT, 
+            prompt, 
+            REVERSING_SEED_SCHEMA,
+        )
 
         result = parse_json_object(response.content, fallback={})
         if not isinstance(result.get("targets"), list):
@@ -158,9 +164,10 @@ class ReversingAgent:
         - a tool action only when more investigation is justified.
 
         For xref observations with code_targets, use one of those exact values for a
-        function-oriented follow-up. Inspect it with function first. If the current
-        target is already a function, choose disassembly only when its instructions
-        provide concrete evidence that deeper assembly analysis is valuable.
+        disassembly follow-up when the reference is relevant.
+        If the current target is disassembly, treat chunks as parts of the same
+        complete function output and avoid requesting the same function again unless
+        a different tool or a different code target is justified.
         """
 
         response = self.llm.chat_json(

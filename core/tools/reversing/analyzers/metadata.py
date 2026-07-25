@@ -56,6 +56,37 @@ def functions(sample: str) -> list[dict[str, Any]]:
     ]
 
 
+def function_details(sample: str, function: str) -> dict[str, Any]:
+    if not function:
+        raise ValueError("function is required")
+
+    with R2Session(sample) as r2:
+        resolved_function = _resolve_function(r2, function)
+        info = r2.cmdj(f"afij @ {resolved_function}") or []
+
+    function_info = info[0] if info else {}
+    offset = function_info.get("offset") or function_info.get("addr")
+    size = function_info.get("size")
+
+    start_address = None
+    end_address = None
+
+    if isinstance(offset, int):
+        start_address = hex(offset)
+
+        if isinstance(size, int):
+            end_address = hex(offset + max(size, 0))
+
+    return {
+        "function": function,
+        "resolved_function": resolved_function,
+        "function_info": function_info,
+        "instructions_count": _instruction_count(function_info),
+        "start_address": start_address,
+        "end_address": end_address,
+    }
+
+
 def strings(sample: str) -> list[dict[str, Any]]:
     with R2Session(sample) as r2:
         items = r2.cmdj("izj") or []
@@ -125,5 +156,61 @@ def callees(sample: str, function: str) -> dict[str, Any]:
         "count": len(calls),
     }
 
+
+def _resolve_function(r2: Any, function: str) -> str:
+    address = _parse_address(function)
+    if address is None:
+        return function
+
+    raw_functions = r2.cmdj("aflj") or []
+    functions = raw_functions if isinstance(raw_functions, list) else []
+    containing = _find_containing_function(functions, address)
+
+    if containing is not None:
+        name = containing.get("name")
+        offset = containing.get("offset") or containing.get("addr")
+
+        if isinstance(name, str) and name:
+            return name
+
+        if isinstance(offset, int):
+            return hex(offset)
+
+    r2.cmd(f"af @ {hex(address)}")
+    return hex(address)
+
+
+def _parse_address(value: str) -> int | None:
+    try:
+        return int(value, 0)
+    except (TypeError, ValueError):
+        return None
+
+
+def _instruction_count(function_info: dict[str, Any]) -> int | None:
+    for key in ("ninstrs", "instructions_count", "nins"):
+        value = function_info.get(key)
+
+        if isinstance(value, int):
+            return value
+
+    return None
+
+
+def _find_containing_function(
+    functions: list[dict[str, Any]],
+    address: int,
+) -> dict[str, Any] | None:
+    for function in functions:
+        offset = function.get("offset") or function.get("addr")
+        size = function.get("size") or 0
+
+        if not isinstance(offset, int) or not isinstance(size, int):
+            continue
+
+        if offset <= address < offset + max(size, 1):
+            return function
+
+    return None
 
 

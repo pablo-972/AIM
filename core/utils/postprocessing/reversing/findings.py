@@ -23,7 +23,7 @@ class ReversingFindingValidator:
         if is_empty_code_observation(observation):
             return None
 
-        if self._is_too_small_function(tool, observation):
+        if self._is_too_small_disassembly(tool, observation):
             return None
 
         normalized = dict(finding)
@@ -44,7 +44,7 @@ class ReversingFindingValidator:
         return normalized
     
 
-    def _is_too_small_function(
+    def _is_too_small_disassembly(
         self,
         tool: Any,
         observation: dict[str, Any],
@@ -52,7 +52,7 @@ class ReversingFindingValidator:
         instructions_count = observation.get("instructions_count")
 
         return (
-            tool == "function"
+            tool == "disassembly"
             and isinstance(instructions_count, int)
             and instructions_count < 3
         )

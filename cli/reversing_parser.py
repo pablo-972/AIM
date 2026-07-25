@@ -7,6 +7,7 @@ REVERSING_TOOLS = [
     "info",
     "imports",
     "functions",
+    "details",
     "strings",
     "disasm",
     "xrefs",
@@ -38,23 +39,23 @@ def validate_reversing_args(args: argparse.Namespace) -> None:
     if args.reversing_max_targets < 1:
         raise CLIValidationError("--max-targets must be greater than zero")
 
-    if "disasm" in selected_tools and not args.function:
-        raise CLIValidationError("reversing disasm requires --function")
+    function_tools = {
+        "details",
+        "disasm",
+        "xrefs",
+        "callers",
+        "callees",
+    }
 
-    if "xrefs" in selected_tools and not args.function:
-        raise CLIValidationError("reversing xrefs requires --function")
+    for tool in function_tools:
+        if tool in selected_tools and not args.function:
+            raise CLIValidationError(f"reversing {tool} requires --function")
     
     if "string-xrefs" in selected_tools and not args.value:
         raise CLIValidationError("reversing string-xrefs requires --value")
 
     if "import-xrefs" in selected_tools and not args.value:
         raise CLIValidationError("reversing import-xrefs requires --value")
-
-    if "callers" in selected_tools and not args.function:
-        raise CLIValidationError("reversing callers requires --function")
-
-    if "callees" in selected_tools and not args.function:
-        raise CLIValidationError("reversing callees requires --function")
 
 
 def add_reversing_module(
