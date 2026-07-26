@@ -25,12 +25,10 @@ flowchart TD
     Factory --> Provider[LLM provider]
 
     Runner --> Inference[Inference / generator / agent]
-    Provider --> Inference
+    Provider -- injected into --> Inference
 
-    Inference --> Prompt[Prompt + selected evidence]
-    Inference --> Schemas[JSON schemas when needed]
-    Prompt --> Provider
-    Schemas --> Provider
+    Inference --> Request[Prompt + selected evidence + optional schema]
+    Request --> Provider
 
     Provider --> Response[Model response]
     Response --> Parsing[schemas/parsing.py or document sanitizer]
