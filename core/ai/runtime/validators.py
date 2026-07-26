@@ -7,7 +7,7 @@ def normalize_tool_parameters(
     tool_name: str, 
     parameters: dict[str, Any],
 ) -> dict[str, Any]:
-    if tool_name in {"function", "details", "disassembly", "callers", "callees"}:
+    if tool_name in {"disassembly", "callers", "callees"}:
         return _keep_parameters(parameters, {"function"})
 
     if tool_name == "string_xrefs":

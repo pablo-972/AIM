@@ -163,7 +163,6 @@ class ReversingTargetQueue:
         if not isinstance(tool_name, str) or not isinstance(parameters, dict):
             return None
 
-        tool_name = self._normalize_tool_name(tool_name)
         parameters = normalize_tool_parameters(tool_name, parameters)
         tool_spec = self.available_tools.get(tool_name)
 
@@ -186,9 +185,3 @@ class ReversingTargetQueue:
             "priority": normalized_priority,
             "reason": reason,
         }
-
-    def _normalize_tool_name(self, tool_name: str) -> str:
-        if tool_name in {"function", "details"}:
-            return "disassembly"
-
-        return tool_name
