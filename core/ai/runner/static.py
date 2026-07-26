@@ -32,10 +32,7 @@ class StaticInferenceRunner(BaseAIRunner):
         string_chunks = prepare_static_string_chunks(self.strings)
 
         try:
-            for chunk_index, strings_chunk in enumerate(
-                string_chunks,
-                start=1,
-            ):
+            for chunk_index, strings_chunk in enumerate(string_chunks, start=1):
                 self._process_chunk(
                     inference,
                     memory,

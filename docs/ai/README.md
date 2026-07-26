@@ -16,17 +16,25 @@ The AI layer is intentionally separated from tools:
 
 ```mermaid
 flowchart TD
-    Artifacts[analysis.json and trace artifacts] --> Preprocessing[core/utils/preprocessing/]
-    Preprocessing --> Runner[core/ai/runner/]
+    Artifacts[analysis.json / trace artifacts] --> Preprocessing[core/utils/preprocessing/]
+    Preprocessing --> Runner[AI runner]
+
     Runner --> Registry[ModelRegistry]
     Registry --> Profiles[model_profiles.yaml]
     Registry --> Factory[ProviderFactory]
     Factory --> Provider[LLM provider]
+
     Runner --> Inference[Inference / generator / agent]
-    Inference --> Schemas[schemas]
-    Provider --> Response[model response]
-    Response --> Parsing[schemas/parsing.py]
-    Parsing --> Memory[TraceMemory or markdown document]
+    Provider --> Inference
+
+    Inference --> Prompt[Prompt + selected evidence]
+    Inference --> Schemas[JSON schemas when needed]
+    Prompt --> Provider
+    Schemas --> Provider
+
+    Provider --> Response[Model response]
+    Response --> Parsing[schemas/parsing.py or document sanitizer]
+    Parsing --> Output[TraceMemory / markdown document / JSON artifact]
 ```
 
 ## Directory Layout
@@ -207,6 +215,19 @@ trace. It stores:
 - final status.
 
 The reversing runtime adds the bounded agent loop:
+
+```mermaid
+flowchart TD
+    Context[enrichment.md / reconnaissance] --> Seed[Initial targets]
+    Seed --> Queue[Priority queue]
+    Queue --> Tool[Execute reversing tool]
+    Tool --> Chunking[Chunk large evidence]
+    Chunking --> Agent[Reversing agent]
+    Agent --> Finding[Finding]
+    Agent --> FollowUp[Follow-up target]
+    FollowUp --> Queue
+    Finding --> Memory[reversing_agent.json]
+```
 
 1. initialize targets from enrichment or reconnaissance;
 2. push targets into a priority queue;
