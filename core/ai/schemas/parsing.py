@@ -138,10 +138,6 @@ def _fallback_agent_decision(reason: str) -> dict[str, Any]:
     }
 
 
-def _fallback_static_inference_finding(reason: str) -> dict[str, Any]:
-    return _fallback_inference_finding(reason)
-
-
 def _fallback_inference_finding(reason: str) -> dict[str, Any]:
     return {
         "thought": reason,
