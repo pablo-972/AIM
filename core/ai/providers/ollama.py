@@ -10,6 +10,7 @@ from core.ai.providers.base import (
 )
 from core.exceptions import ProviderError
 
+
 REQUEST_TIMEOUT = 120
 MAX_ERROR_BODY_LENGTH = 2000
 
