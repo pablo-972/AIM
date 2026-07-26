@@ -42,4 +42,8 @@ class BaseLLMProvider(ABC):
             user_prompt: str, 
             schema: JsonSchema
         ) -> LLMResponse:
-        return self.chat_with_assistant(system_prompt, assistant_prompt, user_prompt)
+        return self.chat_with_assistant(
+            system_prompt, 
+            assistant_prompt, 
+            user_prompt,
+        )
