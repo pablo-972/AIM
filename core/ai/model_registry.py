@@ -22,7 +22,10 @@ class ModelRegistry:
 
         provider = self._get_provider(provider_name)
 
-        factory = ProviderFactory(provider_config=provider, profile_config=profile)
+        factory = ProviderFactory(
+            provider_config=provider,
+            profile_config=profile,
+        )
         return factory.create()
 
     def create_agent_client(
@@ -31,10 +34,13 @@ class ModelRegistry:
         profile_override: str | None = None,
     ) -> BaseLLMProvider:
         agent = self._get_agent(agent_name)
+        default_profile = agent.get("default_profile")
+        owner = f"agent '{agent_name}'"
+
         profile_name = self._resolve_profile_name(
             override=profile_override,
-            default=agent.get("default_profile"),
-            owner=f"agent '{agent_name}'",
+            default=default_profile,
+            owner=owner,
         )
 
         return self.create_client_from_profile(profile_name)
@@ -45,10 +51,13 @@ class ModelRegistry:
         profile_override: str | None = None,
     ) -> BaseLLMProvider:
         task = self._get_task(task_name)
+        default_profile = task.get("default_profile")
+        owner = f"task '{task_name}'"
+
         profile_name = self._resolve_profile_name(
             override=profile_override,
-            default=task.get("default_profile"),
-            owner=f"task '{task_name}'",
+            default=default_profile,
+            owner=owner,
         )
 
         return self.create_client_from_profile(profile_name)
