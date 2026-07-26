@@ -95,7 +95,9 @@ class ProviderFactory:
         base_url = resolve_value(self.provider_config.get("base_url"))
 
         if not isinstance(base_url, str) or not base_url:
-            raise ConfigurationError(f"Missing base_url for provider: {self.provider_type}")
+            raise ConfigurationError(
+                f"Missing base_url for provider: {self.provider_type}"
+            )
 
         return base_url
 
@@ -103,7 +105,9 @@ class ProviderFactory:
         api_key = resolve_value(self.provider_config.get("api_key"))
 
         if not isinstance(api_key, str) or not api_key:
-            raise ConfigurationError(f"Missing API key for provider: {self.provider_type}")
+            raise ConfigurationError(
+                f"Missing API key for provider: {self.provider_type}"
+            )
 
         return api_key
 
