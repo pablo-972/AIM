@@ -12,6 +12,7 @@ from core.ai.providers.base import (
 )
 from core.exceptions import ProviderError
 
+
 REQUEST_TIMEOUT = 120
 DEFAULT_MAX_RETRIES = 4
 DEFAULT_MIN_REQUEST_INTERVAL = 5.0

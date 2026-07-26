@@ -2,7 +2,12 @@ from typing import Any
 
 import requests
 
-from core.ai.providers.base import BaseLLMProvider, JsonSchema, LLMResponse, Message
+from core.ai.providers.base import (
+    BaseLLMProvider, 
+    JsonSchema, 
+    LLMResponse, 
+    Message,
+)
 from core.exceptions import ProviderError
 
 REQUEST_TIMEOUT = 120
