@@ -197,7 +197,11 @@ class OpenAICompatibleProvider(BaseLLMProvider):
 
         self._last_request_at = time.monotonic()
 
-    def _sleep_before_retry(self, response: requests.Response | None, attempt: int) -> None:
+    def _sleep_before_retry(
+        self, 
+        response: requests.Response | None, 
+        attempt: int,
+    ) -> None:
         retry_after = None
 
         if response is not None:

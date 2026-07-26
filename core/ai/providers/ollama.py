@@ -170,10 +170,16 @@ class OllamaProvider(BaseLLMProvider):
         data: dict[str, Any],
         message: Any,
     ) -> dict[str, Any]:
+        done = data.get("done")
+        done_reason = data.get("done_reason")
+        prompt_eval_count = data.get("prompt_eval_count")
+        eval_count = data.get("eval_count")
+        message_keys = sorted(message) if isinstance(message, dict) else []
+
         return {
-            "done": data.get("done"),
-            "done_reason": data.get("done_reason"),
-            "prompt_eval_count": data.get("prompt_eval_count"),
-            "eval_count": data.get("eval_count"),
-            "message_keys": sorted(message) if isinstance(message, dict) else [],
+            "done": done,
+            "done_reason": done_reason,
+            "prompt_eval_count": prompt_eval_count,
+            "eval_count": eval_count,
+            "message_keys": message_keys,
         }
