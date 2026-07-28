@@ -87,6 +87,15 @@ Output Markdown.
 Return only the document body. Do not include the "# Reverse Engineering Enrichment" title.
 Do not wrap the document in triple backticks or any code fence.
 Do not output a standalone code fence.
+Wrap concrete observables in backticks (`), including strings, APIs, imports,
+file names, registry keys, mutexes, services, command lines, URLs, domains,
+wallets, network indicators, function names, and addresses.
+Ignore source labels or metadata names that start with `static.` or `dynamic.`.
+They only identify where the evidence came from and must not be treated as
+observables, capabilities, function names, artifacts, or findings.
+Only extract values inside the provided source data. Do not treat source names,
+section names, grouping labels, or internal routing identifiers as malware
+evidence.
 
 Use markdown headings and subsections only when they make the enrichment easier
 to navigate. You may add, remove, merge, or rename subsections when the evidence
@@ -99,6 +108,11 @@ Avoid report-style prose.
 Avoid executive summaries.
 
 Write actionable reverse-engineering guidance.
+
+Keep the whole document compact. Prefer short bullets over paragraphs.
+Limit each section to the strongest evidence only.
+Do not create empty sections.
+Do not repeat the same point in multiple sections.
 """
 
 
@@ -129,18 +143,23 @@ class EnrichmentGenerator:
         - Strengthen or weaken previous hypotheses when justified.
         - Remove obsolete or contradicted conclusions.
         - Avoid duplicating information already present.
-        - Keep the document concise and actionable.
+        - Keep the document compact and actionable.
         - Prioritize information useful for reverse engineering.
-        - Highlight interesting strings, APIs, imports, configuration artifacts, persistence mechanisms, privilege escalation indicators, network indicators, cryptographic functionality, and execution flow clues when supported by evidence.
+        - Highlight only the strongest strings, APIs, imports, configuration artifacts, persistence mechanisms, privilege escalation indicators, network indicators, cryptographic functionality, and execution flow clues when supported by evidence.
         - Add or update reversing priorities when appropriate.
         - Add or update function-hunting guidance when appropriate.
-        - Add open questions when evidence suggests areas requiring further investigation.
+        - Add open questions only when they materially guide the next reversing step.
         - Do not invent capabilities or behavior.
         - Preserve useful existing information.
         - Return only the document body. Do not include the "# Reverse Engineering Enrichment" title.
         - Keep the existing structure when it still works, but you may add, remove, merge, or rename subsections when useful.
         - Do not wrap the response in triple backticks or any code fence.
+        - Wrap concrete observables in backticks (`).
         - If the new evidence adds no useful reverse-engineering information, return the existing document unchanged.
+        - Prefer at most 4 top-level sections.
+        - Prefer at most 5 bullets per section.
+        - Keep each bullet to one short sentence.
+        - Avoid explanatory paragraphs unless they replace several bullets.
 
         Return the FULL updated markdown body.
         """

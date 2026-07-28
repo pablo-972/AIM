@@ -21,12 +21,14 @@ class OllamaProvider(BaseLLMProvider):
         base_url: str, 
         model: str, 
         temperature: float = 0.2, 
-        response_format: str = "text"
+        response_format: str = "text",
+        num_ctx: int | None = None,
         ) -> None:
         self.base_url: str = base_url.rstrip("/")
         self.model: str = model
         self.temperature: float = temperature
         self.response_format: str = response_format
+        self.num_ctx: int | None = num_ctx
 
     def chat(self, system_prompt: str, user_prompt: str) -> LLMResponse:
         return self._chat(
@@ -117,13 +119,18 @@ class OllamaProvider(BaseLLMProvider):
         messages: list[Message],
         schema: JsonSchema | None,
     ) -> dict[str, Any]:
+        options: dict[str, Any] = {
+            "temperature": self.temperature,
+        }
+
+        if self.num_ctx is not None:
+            options["num_ctx"] = self.num_ctx
+
         payload: dict[str, Any] = {
             "model": self.model,
             "messages": messages,
             "stream": False,
-            "options": {
-                "temperature": self.temperature,
-            },
+            "options": options,
         }
     
         if schema is not None:

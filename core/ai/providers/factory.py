@@ -43,12 +43,14 @@ class ProviderFactory:
         model = self._model()
         temperature = self._temperature()
         response_format = self._response_format()
+        num_ctx = self._num_ctx()
 
         if provider_type == "ollama":
             return self._create_ollama(
                 model,
                 temperature,
                 response_format,
+                num_ctx,
             )
 
         if provider_type == "gemini":
@@ -99,6 +101,23 @@ class ProviderFactory:
 
         return response_format
 
+    def _num_ctx(self) -> int | None:
+        num_ctx = resolve_value(self.profile_config.get("num_ctx"))
+
+        if num_ctx is None:
+            return None
+
+        if isinstance(num_ctx, str):
+            try:
+                num_ctx = int(num_ctx)
+            except ValueError as exc:
+                raise ConfigurationError("Profile num_ctx must be an integer") from exc
+
+        if not isinstance(num_ctx, int) or num_ctx <= 0:
+            raise ConfigurationError("Profile num_ctx must be a positive integer")
+
+        return num_ctx
+
     def _base_url(self) -> str:
         base_url = resolve_value(self.provider_config.get("base_url"))
 
@@ -124,12 +143,14 @@ class ProviderFactory:
         model: str,
         temperature: float,
         response_format: str,
+        num_ctx: int | None,
     ) -> OllamaProvider:
         return OllamaProvider(
             base_url=self._base_url(),
             model=model,
             temperature=temperature,
             response_format=response_format,
+            num_ctx=num_ctx,
         )
 
     def _create_openai_compatible(

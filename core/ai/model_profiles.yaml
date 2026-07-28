@@ -41,18 +41,21 @@ profiles:
     model: llama3.1:8b
     temperature: 0.2
     response_format: text
+    num_ctx: 20000
 
   local-reversing:
     provider: ollama
     model: gemma4:e2b
     temperature: 0.1
     response_format: json
+    num_ctx: 8000
 
   local-report:
     provider: ollama
     model: llama3.1:8b
     temperature: 0
     response_format: text
+    num_ctx: 20000
 
   openai-static:
     provider: openai
