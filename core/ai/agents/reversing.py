@@ -37,6 +37,11 @@ Rules:
   artifact searches.
 - Request disassembly when target context, xrefs, imports, strings, callers,
   callees, or size make deeper assembly inspection useful.
+- When disassembly shows a direct jump or call to another concrete function or
+  internal code address, prefer a disassembly follow-up for that jump/call target
+  to understand the next code path.
+- Do not use callers merely because the current function jumps or calls another
+  function. Callers answers the inverse question: who invokes this function.
 - Disassembly returns the complete selected function. Large disassembly output
   may be split into multiple chunks by the runtime; analyze each supplied chunk
   without requesting the same disassembly again just to continue reading it.
@@ -165,6 +170,11 @@ class ReversingAgent:
 
         For xref observations with code_targets, use one of those exact values for a
         disassembly follow-up when the reference is relevant.
+        For disassembly observations, if an instruction shows a direct jump or
+        call to a different concrete internal function/address and that target
+        appears behaviorally relevant, choose disassembly for that target.
+        Do not choose callers just to follow a jump or call; use callers only
+        when you need to know which functions invoke the current target.
         If the current target is disassembly, treat chunks as parts of the same
         complete function output and avoid requesting the same function again unless
         a different tool or a different code target is justified.
