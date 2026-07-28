@@ -29,10 +29,40 @@ API keys out of version control.
 | `AIM_DYNAMIC_ANALYSIS_TIMEOUT` | Dynamic analysis is used | Timeout used for receiver communication |
 | `OLLAMA_BASE_URL` | Local AI profiles are used | Ollama endpoint |
 | `OLLAMA_PRELOAD_MODELS` | Docker Ollama is used | Models preloaded by the Ollama container |
+| `LOCAL_STATIC_MODEL` | Local static AI profile is used | Ollama model for static inference |
+| `LOCAL_STATIC_NUM_CTX` | Local static AI profile is used | Ollama context window for static inference |
+| `LOCAL_DYNAMIC_MODEL` | Local dynamic AI profile is used | Ollama model for dynamic inference |
+| `LOCAL_DYNAMIC_NUM_CTX` | Local dynamic AI profile is used | Ollama context window for dynamic inference |
+| `LOCAL_ENRICHMENT_MODEL` | Local enrichment profile is used | Ollama model for enrichment |
+| `LOCAL_ENRICHMENT_NUM_CTX` | Local enrichment profile is used | Ollama context window for enrichment |
+| `LOCAL_REVERSING_MODEL` | Local reversing agent profile is used | Ollama model for the reversing agent |
+| `LOCAL_REVERSING_NUM_CTX` | Local reversing agent profile is used | Ollama context window for the reversing agent |
+| `LOCAL_REPORT_MODEL` | Local report profile is used | Ollama model for report generation |
+| `LOCAL_REPORT_NUM_CTX` | Local report profile is used | Ollama context window for report generation |
 | `OPENAI_API_KEY` | OpenAI profiles are used | OpenAI API key |
 | `OPENAI_BASE_URL` | OpenAI profiles are used | OpenAI-compatible base URL |
 | `GEMINI_API_KEY` | Gemini profiles are used | Gemini API key |
 | `GEMINI_BASE_URL` | Gemini profiles are used | Gemini native API base URL |
+
+Local model variables are task-specific:
+
+```text
+LOCAL_STATIC_MODEL
+LOCAL_DYNAMIC_MODEL
+LOCAL_ENRICHMENT_MODEL
+LOCAL_REVERSING_MODEL
+LOCAL_REPORT_MODEL
+```
+
+Local context variables use Ollama's `num_ctx` option:
+
+```text
+LOCAL_STATIC_NUM_CTX
+LOCAL_DYNAMIC_NUM_CTX
+LOCAL_ENRICHMENT_NUM_CTX
+LOCAL_REVERSING_NUM_CTX
+LOCAL_REPORT_NUM_CTX
+```
 
 Cloud model variables are task-specific:
 

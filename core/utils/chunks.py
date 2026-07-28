@@ -96,7 +96,7 @@ def chunk_large_value(section: str, value: Any) -> list[dict[str, Any]]:
 
 def prepare_generic_report_chunks(tool_name: str, tool_data: Any) -> list[Any]:
     if json_size(tool_data) <= MAX_REPORT_JSON_SIZE:
-        return [make_report_chunk(tool_name, tool_data)]
+        return [tool_data]
 
     if isinstance(tool_data, dict):
         chunks: list[dict[str, Any]] = []

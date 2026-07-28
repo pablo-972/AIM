@@ -26,36 +26,58 @@ providers:
 profiles:
   local-static:
     provider: ollama
-    model: gemma4:e2b
+    model:
+      env: LOCAL_STATIC_MODEL
+      default: gemma4:e2b
     temperature: 0.2
     response_format: json
+    num_ctx:
+      env: LOCAL_STATIC_NUM_CTX
+      default: 8000
 
   local-dynamic:
     provider: ollama
-    model: gemma4:e2b
+    model:
+      env: LOCAL_DYNAMIC_MODEL
+      default: gemma4:e2b
     temperature: 0.2
     response_format: json
+    num_ctx:
+      env: LOCAL_DYNAMIC_NUM_CTX
+      default: 8000
 
   local-enrichment:
     provider: ollama
-    model: llama3.1:8b
+    model:
+      env: LOCAL_ENRICHMENT_MODEL
+      default: llama3.1:8b
     temperature: 0.2
     response_format: text
-    num_ctx: 20000
+    num_ctx:
+      env: LOCAL_ENRICHMENT_NUM_CTX
+      default: 20000
 
   local-reversing:
     provider: ollama
-    model: gemma4:e2b
+    model:
+      env: LOCAL_REVERSING_MODEL
+      default: gemma4:e2b
     temperature: 0.1
     response_format: json
-    num_ctx: 8000
+    num_ctx:
+      env: LOCAL_REVERSING_NUM_CTX
+      default: 8000
 
   local-report:
     provider: ollama
-    model: llama3.1:8b
+    model:
+      env: LOCAL_REPORT_MODEL
+      default: llama3.1:8b
     temperature: 0
     response_format: text
-    num_ctx: 20000
+    num_ctx:
+      env: LOCAL_REPORT_NUM_CTX
+      default: 20000
 
   openai-static:
     provider: openai
