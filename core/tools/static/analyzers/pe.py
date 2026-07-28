@@ -105,11 +105,21 @@ def get_pe_version_info(pe: Any) -> dict[str, str]:
     
     version_info: dict[str, str] = {}
 
-    for fileinfo in pe.FileInfo:
-        if fileinfo.Key == b"StringFileInfo":
-            for st in fileinfo.StringTable:
-                for k, v in st.entries.items():
-                    version_info[_decode_bytes(k)] = _decode_bytes(v)
+    for fileinfo in _flatten_file_info(pe.FileInfo):
+        if not hasattr(fileinfo, "Key"):
+            continue
+
+        if fileinfo.Key != b"StringFileInfo":
+            continue
+
+        string_tables = getattr(fileinfo, "StringTable", [])
+        for string_table in string_tables:
+            entries = getattr(string_table, "entries", {})
+            if not isinstance(entries, dict):
+                continue
+
+            for key, value in entries.items():
+                version_info[_decode_bytes(key)] = _decode_bytes(value)
 
     return version_info
 
@@ -154,3 +164,14 @@ def is_pe(sample: str) -> bool:
 
 def _decode_bytes(value: bytes) -> str:
     return value.decode(errors="ignore")
+
+
+def _flatten_file_info(file_info: Any) -> list[Any]:
+    if not isinstance(file_info, list):
+        return [file_info]
+
+    items: list[Any] = []
+    for item in file_info:
+        items.extend(_flatten_file_info(item))
+
+    return items
