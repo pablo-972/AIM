@@ -1,6 +1,7 @@
 from typing import Any
 
 from config import (
+    ASSESSMENT_FILENAME,
     DYNAMIC_INFERENCE_RESULT_FILENAME,
     ENRICHMENT_FILENAME,
     REPORT_FILENAME,
@@ -15,13 +16,15 @@ from core.utils.artifacts.documents import (
     MarkdownDocument,
     REPORT_TITLE,
 )
-from core.utils.io.files import load_json
+from core.utils.io.files import load_json, save_json
 from core.utils.io.text import read_text
 from core.utils.logger import Logger
+from core.utils.postprocessing.assessment import normalize_final_assessment
 from core.utils.preprocessing import (
+    group_sources_by_phase,
     prepare_dynamic_artifact_sources,
     prepare_dynamic_inference_sources,
-    prepare_report_chunks,
+    prepare_report_sources,
     prepare_static_inference_sources,
 )
 from core.ai.inferences.report import ReportGenerator
@@ -30,12 +33,22 @@ from core.ai.runner.base import BaseAIRunner
 from core.orchestrator.context import AnalysisContext
 
 
+CLOUD_PROVIDER_TYPES = {"gemini", "openai"}
+
+
 class ReportAIRunner(BaseAIRunner):
-    def __init__(self, context: AnalysisContext, model_registry: ModelRegistry) -> None:
+    def __init__(
+        self, 
+        context: AnalysisContext, 
+        model_registry: ModelRegistry,
+    ) -> None:
         super().__init__(context)
 
         report_path = self.context.output / REPORT_FILENAME
-        self.document: MarkdownDocument = MarkdownDocument(report_path, REPORT_TITLE)
+        self.document: MarkdownDocument = MarkdownDocument(
+            report_path, 
+            REPORT_TITLE,
+        )
 
         enrichment_path = self.context.output / ENRICHMENT_FILENAME
         self.enrichment_document: MarkdownDocument = MarkdownDocument(
@@ -71,11 +84,12 @@ class ReportAIRunner(BaseAIRunner):
             current_body = updated_body
             self.document.save_body(current_body)
 
-        Logger.success("Report finished")
+        if self._finalize_report(generator, current_body):
+            Logger.success("Report finished")
 
 
     def _get_sources(self) -> list[tuple[str, Any]]:
-        return [
+        sources = [
             *self._get_static_sources(),
             *self._get_static_inference_sources(),
             *self._get_dynamic_artifact_sources(),
@@ -83,6 +97,11 @@ class ReportAIRunner(BaseAIRunner):
             *self._get_enrichment_sources(),
             *self._get_reversing_agent_sources(),
         ]
+
+        if self._uses_cloud_profile():
+            return group_sources_by_phase(sources)
+
+        return sources
 
     def _generate_report_update(
         self,
@@ -110,6 +129,36 @@ class ReportAIRunner(BaseAIRunner):
 
         return self.document.extract_body(updated_body)
 
+    def _finalize_report(
+        self,
+        generator: ReportGenerator,
+        current_body: str,
+    ) -> bool:
+        try:
+            generated_report = generator.finalize_report(current_body)
+        except Exception as exc:
+            Logger.error(f"Structured report generation failed: {exc}")
+            return False
+
+        report_markdown = normalize_final_assessment(
+            generated_report.report_markdown,
+            generated_report.assessment,
+        )
+        report_markdown = self.document.sanitize(report_markdown)
+        if not report_markdown:
+            Logger.error("Structured report generation returned empty Markdown.")
+            return False
+
+        final_body = self.document.extract_body(report_markdown)
+        save_json(
+            self.context.output,
+            ASSESSMENT_FILENAME,
+            generated_report.assessment,
+        )
+        self.document.save_body(final_body)
+        
+        return True
+
 
     def _get_static_sources(self) -> list[tuple[str, Any]]:
         extractor = self._get_analysis_extractor()
@@ -122,15 +171,7 @@ class ReportAIRunner(BaseAIRunner):
             if tool_data is None:
                 continue
 
-            chunks = prepare_report_chunks(tool_name, tool_data)
-            for chunk_index, chunk_data in enumerate(chunks, start=1):
-                source_name = self._build_source_name(
-                    tool_name,
-                    chunk_data,
-                    chunk_index,
-                    len(chunks),
-                )
-                sources.append((source_name, chunk_data))
+            sources.extend(prepare_report_sources(tool_name, tool_data))
 
         return sources
         
@@ -181,26 +222,6 @@ class ReportAIRunner(BaseAIRunner):
             for index, batch in enumerate(batches, start=1)
         ]
 
-    def _build_source_name(
-            self, 
-            tool_name: str, 
-            chunk_data: Any,
-            chunk_index: int, 
-            total_chunks: int
-        ) -> str:
-        section = None
-        if isinstance(chunk_data, dict):
-            section = chunk_data.get("section")
-
-        if section:
-            return f"static.{tool_name}.{section}"
-
-        if total_chunks > 1:
-            return f"static.{tool_name}.{chunk_index}"
-
-        return f"static.{tool_name}"
-
-
     def _create_generator(self) -> ReportGenerator:
         llm = self.model_registry.create_task_client(
             "report", 
@@ -208,6 +229,14 @@ class ReportAIRunner(BaseAIRunner):
         )
 
         return ReportGenerator(llm)
+
+    def _uses_cloud_profile(self) -> bool:
+        provider_type = self.model_registry.get_task_provider_type(
+            "report",
+            profile_override=self.context.profile,
+        )
+
+        return provider_type in CLOUD_PROVIDER_TYPES
 
     def _get_analysis_extractor(self) -> JsonExtractor | None:
         result = load_json(self.context.output, RESULT_FILENAME)

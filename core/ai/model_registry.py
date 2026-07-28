@@ -62,6 +62,42 @@ class ModelRegistry:
 
         return self.create_client_from_profile(profile_name)
 
+    def get_task_provider_type(
+        self,
+        task_name: str,
+        profile_override: str | None = None,
+    ) -> str:
+        task = self._get_task(task_name)
+        default_profile = task.get("default_profile")
+        owner = f"task '{task_name}'"
+
+        profile_name = self._resolve_profile_name(
+            override=profile_override,
+            default=default_profile,
+            owner=owner,
+        )
+
+        return self.get_profile_provider_type(profile_name)
+
+    def get_profile_provider_type(self, profile_name: str) -> str:
+        profile = self._get_profile(profile_name)
+        provider_name = profile.get("provider")
+
+        if not provider_name:
+            raise ConfigurationError(
+                f"Model profile '{profile_name}' does not define a provider"
+            )
+        if not isinstance(provider_name, str):
+            raise ConfigurationError("Invalid provider name format.")
+
+        provider = self._get_provider(provider_name)
+        provider_type = provider.get("type", provider_name)
+        
+        if not isinstance(provider_type, str):
+            raise ConfigurationError("Invalid provider type format.")
+
+        return provider_type
+
     def _get_config_entry(
         self,
         section_name: str,

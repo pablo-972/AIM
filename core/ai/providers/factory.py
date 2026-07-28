@@ -2,9 +2,11 @@ import os
 from typing import Any
 
 from core.ai.providers.base import BaseLLMProvider
-from core.ai.providers.cloud import OpenAICompatibleProvider
+from core.ai.providers.gemini import GeminiProvider
 from core.ai.providers.ollama import OllamaProvider
+from core.ai.providers.openai import OpenAICompatibleProvider
 from core.exceptions import ConfigurationError
+
 
 SUPPORTED_PROVIDER_TYPES = {
     "ollama",
@@ -49,8 +51,14 @@ class ProviderFactory:
                 response_format,
             )
 
+        if provider_type == "gemini":
+            return self._create_gemini(
+                model,
+                temperature,
+                response_format,
+            )
+
         return self._create_openai_compatible(
-            provider_type,
             model,
             temperature,
             response_format,
@@ -96,7 +104,7 @@ class ProviderFactory:
 
         if not isinstance(base_url, str) or not base_url:
             raise ConfigurationError(
-                f"Missing base_url for provider: {self.provider_type}"
+                f"Missing base_url for provider: {self._provider_type()}"
             )
 
         return base_url
@@ -106,7 +114,7 @@ class ProviderFactory:
 
         if not isinstance(api_key, str) or not api_key:
             raise ConfigurationError(
-                f"Missing API key for provider: {self.provider_type}"
+                f"Missing API key for provider: {self._provider_type()}"
             )
 
         return api_key
@@ -126,7 +134,6 @@ class ProviderFactory:
 
     def _create_openai_compatible(
         self,
-        provider_type: str,
         model: str,
         temperature: float,
         response_format: str,
@@ -137,5 +144,18 @@ class ProviderFactory:
             model=model,
             temperature=temperature,
             response_format=response_format,
-            provider_type=provider_type,
+        )
+
+    def _create_gemini(
+        self,
+        model: str,
+        temperature: float,
+        response_format: str,
+    ) -> GeminiProvider:
+        return GeminiProvider(
+            base_url=self._base_url(),
+            api_key=self._api_key(),
+            model=model,
+            temperature=temperature,
+            response_format=response_format,
         )

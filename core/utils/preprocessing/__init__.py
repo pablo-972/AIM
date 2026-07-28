@@ -8,13 +8,19 @@ from core.utils.preprocessing.dynamic.procmon import (
     build_ai_analysis_chunks,
     build_ai_procmon_input,
 )
-from core.utils.preprocessing.report.report import prepare_report_chunks
+from core.utils.preprocessing.report.report import (
+    prepare_report_chunks,
+    prepare_report_sources,
+)
+from core.utils.preprocessing.sources import group_sources_by_phase
 from core.utils.preprocessing.static.inference import prepare_static_inference_sources
 from core.utils.preprocessing.static.strings import prepare_static_string_chunks
 
 
 __all__ = [
     "prepare_report_chunks",
+    "prepare_report_sources",
+    "group_sources_by_phase",
     "prepare_static_enrichment_sources",
     "prepare_static_inference_sources",
     "prepare_static_string_chunks",

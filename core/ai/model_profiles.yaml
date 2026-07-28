@@ -21,7 +21,7 @@ providers:
       env: GEMINI_API_KEY
     base_url:
       env: GEMINI_BASE_URL
-      default: https://generativelanguage.googleapis.com/v1beta/openai
+      default: https://generativelanguage.googleapis.com/v1beta
 
 profiles:
   local-static:
@@ -51,7 +51,7 @@ profiles:
   local-report:
     provider: ollama
     model: llama3.1:8b
-    temperature: 0.1
+    temperature: 0
     response_format: text
 
   openai-static:
@@ -94,28 +94,28 @@ profiles:
     provider: gemini
     model:
       env: GEMINI_STATIC_MODEL
-      default: "gemini-2.5-flash"
+      default: "gemini-3.5-flash"
     temperature: 0.1
 
   gemini-dynamic:
     provider: gemini
     model:
       env: GEMINI_DYNAMIC_MODEL
-      default: "gemini-2.5-flash"
+      default: "gemini-3.5-flash"
     temperature: 0.1
 
   gemini-enrichment:
     provider: gemini
     model:
       env: GEMINI_ENRICHMENT_MODEL
-      default: "gemini-2.5-flash"
+      default: "gemini-3.5-flash"
     temperature: 0.1
 
   gemini-reversing:
     provider: gemini
     model:
       env: GEMINI_REVERSING_MODEL
-      default: "gemini-2.5-flash"
+      default: "gemini-3.5-flash"
     temperature: 0.1
     response_format: json
 
@@ -123,7 +123,7 @@ profiles:
     provider: gemini
     model:
       env: GEMINI_REPORT_MODEL
-      default: "gemini-2.5-flash"
+      default: "gemini-3.5-flash"
     temperature: 0.1
 
 agents:

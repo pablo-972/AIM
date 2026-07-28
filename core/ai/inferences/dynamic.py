@@ -2,8 +2,10 @@ import json
 from typing import Any
 
 from core.ai.providers.base import BaseLLMProvider
-from core.ai.schemas.dynamic import DYNAMIC_INFERENCE_FINDING_SCHEMA
-from core.ai.schemas.parsing import parse_dynamic_inference_finding
+from core.ai.schemas.dynamic import (
+    DYNAMIC_INFERENCE_FINDING_SCHEMA,
+    parse_dynamic_inference_finding,
+)
 
 SYSTEM_PROMPT = """
 # Role

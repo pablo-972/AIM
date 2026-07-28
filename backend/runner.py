@@ -45,10 +45,13 @@ class BackendPipelineEventSink(PipelineEventSink):
             return
 
         if event.type == "metadata_updated" and event.data:
+            sha256 = event.data.get("sample_sha256")
+            output_dir = event.data.get("output_dir")
+            
             self.observer.metadata_changed(
                 AnalysisMetadata(
-                    sample_sha256=_optional_string(event.data.get("sample_sha256")),
-                    output_dir=_optional_string(event.data.get("output_dir")),
+                    sample_sha256=_optional_string(sha256),
+                    output_dir=_optional_string(output_dir),
                 )
             )
 

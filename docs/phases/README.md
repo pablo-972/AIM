@@ -41,3 +41,4 @@ For the tool implementation pattern and the tools available in each phase, see
 | `enrichment.md` | Enrichment phase |
 | `reverse_agent.json` | Agentic reverse engineering |
 | `report.md` | Report phase |
+| `assessment.json` | Structured report assessment |

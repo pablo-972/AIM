@@ -19,6 +19,7 @@ API keys out of version control.
 | `VT_API_BASE_URL` | VirusTotal static tool is used | VirusTotal API base URL |
 | `AIM_VBOXMANAGE_API_HOST` | Dynamic analysis is used | Hostname for the VirtualBox Manager API |
 | `AIM_VBOXMANAGE_API_PORT` | Dynamic analysis is used | Port for the VirtualBox Manager API |
+| `AIM_VBOXMANAGE_PATH` | Optional for dynamic analysis | Override path to `VBoxManage.exe` for the environment running the VirtualBox Manager API |
 | `AIM_DYNAMIC_VICTIM_VM` | Dynamic analysis is used | VirtualBox name of the Windows victim VM |
 | `AIM_DYNAMIC_VICTIM_SNAPSHOT` | Dynamic analysis is used | Snapshot restored before execution |
 | `AIM_DYNAMIC_VICTIM_SHARED_PATH` | Dynamic analysis is used | Windows path to the shared execution folder |
@@ -31,7 +32,7 @@ API keys out of version control.
 | `OPENAI_API_KEY` | OpenAI profiles are used | OpenAI API key |
 | `OPENAI_BASE_URL` | OpenAI profiles are used | OpenAI-compatible base URL |
 | `GEMINI_API_KEY` | Gemini profiles are used | Gemini API key |
-| `GEMINI_BASE_URL` | Gemini profiles are used | Gemini OpenAI-compatible base URL |
+| `GEMINI_BASE_URL` | Gemini profiles are used | Gemini native API base URL |
 
 Cloud model variables are task-specific:
 
@@ -52,8 +53,8 @@ GEMINI_REPORT_MODEL
 
 - Keep `.env.example` as a template and edit only `.env`.
 - Use exact VirtualBox VM and snapshot names.
+- AIM autodetects the `VBoxManage` path for Windows PowerShell, WSL, and Linux.
+  Set `AIM_VBOXMANAGE_PATH` only if VirtualBox is installed somewhere else.
 - Use `host.docker.internal` for Docker-to-host access when supported by your
   environment.
 - Configure only the providers you actually use.
-
-

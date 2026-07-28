@@ -31,7 +31,7 @@ flowchart TD
     Request --> Provider
 
     Provider --> Response[Model response]
-    Response --> Parsing[schemas/parsing.py or document sanitizer]
+    Response --> Parsing[Schema-local parser / document sanitizer]
     Parsing --> Output[TraceMemory / markdown document / JSON artifact]
 ```
 
@@ -53,7 +53,7 @@ core/ai/
 | --- | --- |
 | `agents/` | Agent prompt logic, currently the reversing agent |
 | `inferences/` | Task-specific prompt logic for static, dynamic, enrichment, and report |
-| `providers/` | Ollama and OpenAI-compatible HTTP clients |
+| `providers/` | Ollama, OpenAI-compatible, and Gemini HTTP clients |
 | `runner/` | Workflow orchestration for each AI task |
 | `runtime/` | Shared execution state, trace memory, agent validation, and reversing loop helpers |
 | `schemas/` | JSON schemas and response parsing helpers |
@@ -86,11 +86,11 @@ Profiles can read values from environment variables:
 ```yaml
 model:
   env: GEMINI_DYNAMIC_MODEL
-  default: "gemini-2.5-flash"
+  default: "gemini-3.5-flash"
 ```
 
 This allows the same code to run against local Ollama, OpenAI-compatible APIs,
-or Gemini-compatible OpenAI endpoints.
+or the native Gemini API.
 
 ## Registry and Factory
 
@@ -119,10 +119,15 @@ It converts a profile and provider config into a concrete provider:
 | --- | --- |
 | `ollama` | `OllamaProvider` |
 | `openai` | `OpenAICompatibleProvider` |
-| `gemini` | `OpenAICompatibleProvider` |
+| `gemini` | `GeminiProvider` |
 
 The rest of the AI layer receives only the shared provider interface, so runners
 and inference classes do not need provider-specific branches.
+
+Runners may still adapt how evidence is batched before it reaches the model.
+Local SLM profiles favor smaller chunks. Cloud profiles such as `openai` and
+`gemini` favor fewer calls, so enrichment and report sources are grouped by
+phase before being sent to the model.
 
 ## Providers
 
@@ -155,9 +160,24 @@ shape to produce.
 /chat/completions
 ```
 
-When a JSON schema is supplied, it is sent through `response_format`. The same
-provider path is used for OpenAI-compatible cloud APIs and Gemini's
-OpenAI-compatible endpoint.
+When a JSON schema is supplied, it is sent through `response_format`.
+OpenAI-compatible providers use strict `json_schema` formatting.
+
+`GeminiProvider` sends requests to the native Gemini Interactions API:
+
+```text
+/interactions
+```
+
+Gemini receives the system prompt through `system_instruction`, the user-facing
+prompt through `input`, and JSON schemas through its native `response_format`
+shape:
+
+```text
+type: text
+mime_type: application/json
+schema: ...
+```
 
 ## Schemas
 
@@ -176,14 +196,32 @@ Important files:
 
 | File | Purpose |
 | --- | --- |
-| `static.py` | Static strings inference JSON schema |
-| `dynamic.py` | Dynamic behavior inference JSON schema |
-| `reversing.py` | Reversing seed, action, target, and finding schemas |
-| `parsing.py` | Defensive parsing and fallback responses |
+| `static.py` | Static strings inference schema, parser, and fallback response |
+| `dynamic.py` | Dynamic behavior inference schema, parser, and fallback response |
+| `reversing.py` | Reversing seed, action, target, finding schemas, and parsers |
+| `report.py` | Structured report schema and final assessment validation |
 
-The parser layer is deliberately defensive. If a model returns empty text,
-invalid JSON, missing keys, or wrong confidence values, AIM records a low
-confidence fallback instead of crashing the whole run.
+Each schema file owns the parser for the response it describes. This keeps the
+contract, validation, and fallback behavior together. If a static, dynamic, or
+reversing model returns empty text, invalid JSON, missing keys, or wrong
+confidence values, AIM records a low-confidence fallback instead of crashing the
+whole run.
+
+The report schema is stricter. Its final structured response must contain
+`report_markdown` and `assessment`. AIM validates the assessment fields before
+writing `report.md` and `assessment.json`; invalid structured report responses
+are retried once and are not persisted if validation still fails.
+
+In the report assessment, `family` and `categories` have different meanings.
+`family` is only for a concrete malware family or malicious tool name, such as
+`AgentTesla`, `Emotet`, `TrickBot`, `QakBot`, `RedLine`, `AsyncRAT`, `LockBit`,
+or `DarkGate`. If the evidence only supports a broad type, `family` stays
+`null`.
+
+`categories` stores the broad malware type, objective, or capability labels,
+such as `ransomware`, `credential_stealer`, `information_stealer`, `keylogger`,
+`remote_access_trojan`, `downloader`, `dropper`, `backdoor`, `spyware`, `bot`,
+`banking_trojan`, `wiper`, `cryptominer`, or `loader`.
 
 ## Runtime
 
@@ -251,10 +289,18 @@ own persistence or pipeline state.
 | `StaticInference` | Looks for natural-language threat messages in strings |
 | `DynamicInference` | Looks for behavioral findings in dynamic evidence sections |
 | `EnrichmentGenerator` | Updates the enrichment document from prior outputs |
-| `ReportGenerator` | Updates the final report from all available evidence |
+| `ReportGenerator` | Updates the final report and produces the final structured assessment |
 
 The matching runners live in `core/ai/runner/` and own the workflow around each
 inference class.
+
+`ReportGenerator` uses separate prompt modes:
+
+- incremental updates return Markdown only;
+- the final pass returns structured JSON with `report_markdown` and `assessment`.
+
+This prevents JSON-only structured-output instructions from leaking into normal
+Markdown report updates.
 
 ## Agents
 
@@ -292,8 +338,8 @@ tool is executed.
 
 To add a new model-backed task:
 
-1. Add schemas under `core/ai/schemas/` if the task expects JSON.
-2. Add prompt and parsing logic under `core/ai/inferences/`.
+1. Add schemas and response parsers under `core/ai/schemas/` if the task expects JSON.
+2. Add prompt and task logic under `core/ai/inferences/`.
 3. Add a runner under `core/ai/runner/`.
 4. Add preprocessing helpers under `core/utils/preprocessing/` if the raw
    artifacts need selection, chunking, or compaction.

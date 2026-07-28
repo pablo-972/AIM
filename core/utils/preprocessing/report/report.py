@@ -33,3 +33,24 @@ def prepare_report_chunks(tool_name: str, tool_data: Any) -> list[Any]:
         return prepare_vt_report_chunks(prepared_data)
 
     return prepare_generic_report_chunks(tool_name, prepared_data)
+
+
+def prepare_report_sources(tool_name: str, tool_data: Any) -> list[tuple[str, Any]]:
+    chunks = prepare_report_chunks(tool_name, tool_data)
+    sources: list[tuple[str, Any]] = []
+
+    for chunk_index, chunk_data in enumerate(chunks, start=1):
+        section = None
+        if isinstance(chunk_data, dict):
+            section = chunk_data.get("section")
+
+        if section:
+            source_name = f"static.{tool_name}.{section}"
+        elif len(chunks) > 1:
+            source_name = f"static.{tool_name}.{chunk_index}"
+        else:
+            source_name = f"static.{tool_name}"
+
+        sources.append((source_name, chunk_data))
+
+    return sources

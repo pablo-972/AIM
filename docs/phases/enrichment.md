@@ -10,6 +10,12 @@ then updates:
 enrichment.md
 ```
 
+Input batching depends on the selected enrichment profile:
+
+- local SLM profiles process prepared sources in smaller chunks;
+- cloud profiles such as Gemini and OpenAI group evidence by phase to reduce the
+  number of API calls.
+
 The goal is not to write the final report. The goal is to collect the most
 important points of interest before reverse engineering starts:
 

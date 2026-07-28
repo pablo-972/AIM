@@ -2,11 +2,11 @@ import json
 from typing import Any
 
 from core.ai.providers.base import BaseLLMProvider
-from core.ai.schemas.parsing import parse_json_object
 from core.ai.schemas.reversing import (
     REVERSING_ACTION_NAMES,
     REVERSING_ANALYSIS_SCHEMA,
     REVERSING_SEED_SCHEMA,
+    parse_json_object,
 )
 
 SYSTEM_PROMPT = """

@@ -19,7 +19,7 @@ artifacts for later review.
 | Dynamic analysis | Windows victim execution, REMnux receiver, Autoruns, Registry exports, and Procmon artifacts |
 | AI inference | Static string inference and dynamic behavior inference |
 | Reverse engineering | Manual radare2 tools and an AI reversing agent |
-| Reporting | Incremental enrichment and technical report generation |
+| Reporting | Incremental enrichment, technical report generation, and structured assessment output |
 | Web interface | Upload, search, reanalyze, and inspect analysis artifacts |
 
 ## Architecture Overview

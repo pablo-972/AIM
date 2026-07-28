@@ -159,7 +159,7 @@ core/ai/runner/
 | `StaticInferenceRunner` | `static_strings_inference.json` |
 | `DynamicInferenceRunner` | `dynamic_inference.json` |
 | `EnrichmentAIRunner` | `enrichment.md` |
-| `ReportAIRunner` | `report.md` |
+| `ReportAIRunner` | `report.md`, `assessment.json` |
 | `ReversingAgentRunner` | `reverse_agent.json` |
 
 AI runners own workflow state and persistence for their specific task. They use
@@ -283,6 +283,7 @@ evidence references, queue events, and generated prose:
 | `reverse_agent.json` | Reversing agent |
 | `enrichment.md` | Enrichment runner |
 | `report.md` | Report runner |
+| `assessment.json` | Report runner structured final assessment |
 
 ## Extension Points
 

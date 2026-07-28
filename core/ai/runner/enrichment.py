@@ -10,6 +10,7 @@ from core.utils.logger import Logger
 from core.utils.io.files import load_json
 from core.utils.artifacts.documents import ENRICHMENT_TITLE, MarkdownDocument
 from core.utils.preprocessing import (
+    group_sources_by_phase,
     prepare_dynamic_artifact_sources,
     prepare_dynamic_inference_sources,
     prepare_static_enrichment_sources,
@@ -21,8 +22,15 @@ from core.ai.runner.base import BaseAIRunner
 from core.ai.inferences.enrichment import EnrichmentGenerator
 
 
+CLOUD_PROVIDER_TYPES = {"gemini", "openai"}
+
+
 class EnrichmentAIRunner(BaseAIRunner):
-    def __init__(self, context: AnalysisContext, model_registry: ModelRegistry) -> None:
+    def __init__(
+        self, 
+        context: AnalysisContext, 
+        model_registry: ModelRegistry,
+    ) -> None:
         super().__init__(context)
 
         enrichment_path = self.context.output / ENRICHMENT_FILENAME
@@ -100,12 +108,17 @@ class EnrichmentAIRunner(BaseAIRunner):
             load_json(self.context.output, DYNAMIC_INFERENCE_RESULT_FILENAME)
             or {}
         )
-        return [
+        sources = [
             *prepare_static_enrichment_sources(result),
             *prepare_static_inference_sources(static_inference_data),
             *prepare_dynamic_artifact_sources(result),
             *prepare_dynamic_inference_sources(dynamic_inference_data),
         ]
+
+        if self._uses_cloud_profile():
+            return group_sources_by_phase(sources)
+
+        return sources
     
     
     def _create_generator(self) -> EnrichmentGenerator:
@@ -116,3 +129,10 @@ class EnrichmentAIRunner(BaseAIRunner):
 
         return EnrichmentGenerator(llm)
 
+    def _uses_cloud_profile(self) -> bool:
+        provider_type = self.model_registry.get_task_provider_type(
+            "enrichment",
+            profile_override=self.context.profile,
+        )
+
+        return provider_type in CLOUD_PROVIDER_TYPES
