@@ -1,7 +1,7 @@
 from typing import Any
 
 
-FINAL_ASSESSMENT_HEADING = "## Final Assessment"
+FINAL_ASSESSMENT_HEADING = "## Assessment"
 EVIDENCE_SUMMARY_HEADING = "### Evidence Summary"
 MAX_EVIDENCE_ITEMS = 5
 
