@@ -21,6 +21,7 @@ PACKER_NAMES = {
 ENTROPY_THRESHOLD = 7.3
 SMALL_IMPORTS_THRESHOLD = 10
 VIRTUAL_RAW_RATIO_THRESHOLD = 2.0
+RATIO_DECIMALS = 2
 
 
 def detect_packer(path: str | Path) -> dict[str, Any]:
@@ -111,7 +112,7 @@ def _is_virtual_larger_than_raw(pe: Any) -> dict[str, Any]:
                     "section": _get_section_name(section),
                     "raw": raw,
                     "virtual": virtual,
-                    "ratio": round(ratio, VIRTUAL_RAW_RATIO_THRESHOLD)
+                    "ratio": round(ratio, RATIO_DECIMALS)
                 }
             )
 
