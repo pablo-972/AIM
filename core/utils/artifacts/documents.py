@@ -36,6 +36,7 @@ class MarkdownDocument:
             if len(lines) >= 2:
                 content = "\n".join(lines[1:-1]).strip()
 
+        content = content.replace("•", "-")
         content = self._remove_markdown_fences(content)
 
         return "" if content == MARKDOWN_FENCE else content
