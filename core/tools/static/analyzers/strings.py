@@ -118,12 +118,25 @@ def get_emails(strings: list[str]) -> list[str]:
 
 def get_crypto_wallets(strings: list[str]) -> dict[str, list[str]]:
     return {
-        "btc": find_regex(strings, BTC_REGEX),
-        "bch": find_regex(strings, BCH_REGEX),
-        "xmr": find_regex(strings, XMR_REGEX),
-        "eth": find_regex(strings, ETH_REGEX),
-        "ltc": find_regex(strings, LTC_REGEX),
+        "btc": find_wallet_regex(strings, BTC_REGEX),
+        "bch": find_wallet_regex(strings, BCH_REGEX),
+        "xmr": find_wallet_regex(strings, XMR_REGEX),
+        "eth": find_wallet_regex(strings, ETH_REGEX),
+        "ltc": find_wallet_regex(strings, LTC_REGEX),
     }
+
+
+def find_wallet_regex(strings: list[str], regex: re.Pattern[str]) -> list[str]:
+    wallets = []
+    for wallet in find_regex(strings, regex):
+        if not _is_repeated_character(wallet):
+            wallets.append(wallet)
+
+    return wallets
+
+
+def _is_repeated_character(value: str) -> bool:
+    return len(set(value.lower())) == 1
 
 
 def _is_noise(string: str) -> bool:
