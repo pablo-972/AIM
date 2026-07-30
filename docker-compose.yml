@@ -31,7 +31,7 @@ services:
       - ollama_data:/home/ollama/.ollama
     environment:
       OLLAMA_HOST: 0.0.0.0:11434
-      OLLAMA_PRELOAD_MODELS: ${OLLAMA_PRELOAD_MODELS:-gemma4:e2b llama3.1:8b}
+      OLLAMA_PRELOAD_MODELS: ${OLLAMA_PRELOAD_MODELS:-gemma4:e2b qwen3:4b}
     deploy:
       resources:
         reservations:
