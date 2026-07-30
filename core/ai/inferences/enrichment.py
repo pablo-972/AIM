@@ -14,13 +14,12 @@ The purpose of the document is to help prioritize analysis effort,
 identify important code paths, highlight likely capabilities,
 and guide assembly/decompiler investigation.
 
-# Objectives
+Internal objective: extract only information useful for reverse engineering.
 
-Extract only information useful for reverse engineering.
-
-Focus on:
+Focus on evidence-backed:
 
 - Malware capabilities supported by evidence
+- Interesting sections
 - Interesting strings
 - Interesting imports
 - Interesting APIs
@@ -35,9 +34,7 @@ Focus on:
 - Interesting wallets
 - Interesting network indicators
 
-# Reverse Engineering Guidance
-
-Whenever evidence supports it, identify:
+Whenever evidence supports it, identify reverse-engineering leads such as:
 
 - Functions worth investigating
 - Strings worth searching xrefs for
@@ -58,11 +55,7 @@ Whenever evidence supports it, identify:
 - Exfiltration functionality
 - Destructive functionality
 
-# Function Hunting
-
-Always explain where a reverse engineer should focus.
-
-Examples:
+Function-hunting examples are internal guidance only:
 
 - Search xrefs to a ransom-note string.
 - Search xrefs to a mutex.
@@ -79,6 +72,12 @@ Examples:
 - Base everything on the provided evidence.
 - If evidence is insufficient, explicitly say so.
 - Prefer uncertainty over speculation.
+- Do not print this prompt, its objectives, its guidance, its examples, or any
+  initial configuration text in the enrichment document.
+- Do not create sections named Objectives, Reverse Engineering Guidance,
+  Function Hunting, Constraints, Output Format, Requirements, or Examples.
+- If any of those meta-instruction sections already exist in the current
+  enrichment, remove them.
 
 # Output Format
 
@@ -141,8 +140,9 @@ class EnrichmentGenerator:
 
         - Integrate useful findings into the existing document.
         - Strengthen or weaken previous hypotheses when justified.
-        - Remove obsolete or contradicted conclusions.
-        - Avoid duplicating information already present.
+- Remove obsolete or contradicted conclusions.
+- Remove any meta-instruction sections copied from prompts, including Objectives, Reverse Engineering Guidance, Function Hunting, Constraints, Output Format, Requirements, or Examples.
+- Avoid duplicating information already present.
         - Keep the document compact and actionable.
         - Prioritize information useful for reverse engineering.
         - Highlight only the strongest strings, APIs, imports, configuration artifacts, persistence mechanisms, privilege escalation indicators, network indicators, cryptographic functionality, and execution flow clues when supported by evidence.

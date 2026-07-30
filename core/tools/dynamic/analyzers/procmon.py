@@ -45,6 +45,7 @@ SAVE_ARGUMENTS = [
 
 STOP_WAIT_SECONDS = 30
 SAVE_WAIT_SECONDS = 30
+START_WAIT_SECONDS = 3
 
 BACKING_FILE = "procmon.pml"
 CSV_FILE = "procmon.csv"
@@ -103,6 +104,7 @@ SERVICE_PORTS = {
     "https": 443,
     "microsoft-ds": 445,
     "netbios-ssn": 139,
+    "ssdp": 1900,
 }
 
 
@@ -133,6 +135,7 @@ def build_procmon_job(
         "save_arguments": save_arguments,
         "backing_file": BACKING_FILE,
         "csv_file": CSV_FILE,
+        "start_wait_seconds": START_WAIT_SECONDS,
         "stop_wait_seconds": STOP_WAIT_SECONDS,
         "save_wait_seconds": SAVE_WAIT_SECONDS,
         "timeout": timeout,

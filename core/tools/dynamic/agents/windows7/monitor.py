@@ -708,6 +708,11 @@ def start_procmon(job, job_path):
 
     log("procmon launcher pid={0} pml={1}".format(process.pid, pml_path))
 
+    start_wait_seconds = params.get("start_wait_seconds")
+    if start_wait_seconds:
+        log("waiting for procmon startup seconds={0}".format(start_wait_seconds))
+        time.sleep(float(start_wait_seconds))
+
     return {
         "params": params,
         "pml_name": pml_name,
