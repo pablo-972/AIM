@@ -36,7 +36,19 @@ class MarkdownDocument:
             if len(lines) >= 2:
                 content = "\n".join(lines[1:-1]).strip()
 
+        content = self._remove_markdown_fences(content)
+
         return "" if content == MARKDOWN_FENCE else content
+
+    def _remove_markdown_fences(self, content: str) -> str:
+        lines = []
+        for line in content.splitlines():
+            if line.strip().startswith(MARKDOWN_FENCE):
+                continue
+
+            lines.append(line)
+
+        return "\n".join(lines).strip()
     
     def extract_body(self, content: str) -> str:
         lines = content.splitlines()
