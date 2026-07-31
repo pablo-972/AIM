@@ -40,9 +40,9 @@ def sample_path_for_status(
     status: dict[str, Any],
     analysis_data: dict[str, Any] | None = None,
 ) -> Path:
-    sample_sha256 = status.get("sample_sha256")
-    if isinstance(sample_sha256, str):
-        canonical_path = WEB_UPLOADS_PATH / sample_sha256
+    sha256 = status.get("sha256")
+    if isinstance(sha256, str):
+        canonical_path = WEB_UPLOADS_PATH / sha256
         if canonical_path.exists() and canonical_path.is_file():
             return canonical_path
 
@@ -61,10 +61,10 @@ def sample_path_for_status(
     )
 
 
-def move_upload_to_sample_path(path: Path, sample_sha256: str) -> Path:
+def move_upload_to_sample_path(path: Path, sha256: str) -> Path:
     WEB_UPLOADS_PATH.mkdir(parents=True, exist_ok=True)
 
-    target = WEB_UPLOADS_PATH / sample_sha256
+    target = WEB_UPLOADS_PATH / sha256
     if target.exists():
         if target.is_dir():
             raise HTTPException(
@@ -82,14 +82,14 @@ def move_upload_to_sample_path(path: Path, sample_sha256: str) -> Path:
 
 def store_or_discard_duplicate_upload(
     path: Path,
-    sample_sha256: str,
+    sha256: str,
 ) -> None:
-    target = WEB_UPLOADS_PATH / sample_sha256
+    target = WEB_UPLOADS_PATH / sha256
     if target.exists():
         cleanup_upload_temp(path)
         return
 
-    move_upload_to_sample_path(path, sample_sha256)
+    move_upload_to_sample_path(path, sha256)
 
 
 def cleanup_upload_temp(path: Path) -> None:

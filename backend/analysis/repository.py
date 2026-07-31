@@ -12,47 +12,47 @@ class AnalysisRepository:
 
     def add(self, job: AnalysisJob) -> None:
         with self._lock:
-            self._jobs[job.analysis_id] = job
+            self._jobs[job.sha256] = job
 
-    def get(self, analysis_id: str) -> AnalysisJob:
+    def get(self, sha256: str) -> AnalysisJob:
         with self._lock:
-            job = self._jobs.get(analysis_id)
+            job = self._jobs.get(sha256)
             if job is None:
-                raise KeyError(analysis_id)
+                raise KeyError(sha256)
             
             return job.copy()
 
-    def status(self, analysis_id: str) -> dict[str, Any]:
-        job = self.get(analysis_id)
+    def status(self, sha256: str) -> dict[str, Any]:
+        job = self.get(sha256)
         return job.to_status()
 
     def list_statuses(self) -> dict[str, dict[str, Any]]:
         with self._lock:
             statuses: dict[str, dict[str, Any]] = {}
-            for analysis_id, job in self._jobs.items():
-                statuses[analysis_id] = job.to_status()
+            for sha256, job in self._jobs.items():
+                statuses[sha256] = job.to_status()
 
             return statuses
 
     def set_status(
         self,
-        analysis_id: str,
+        sha256: str,
         status: AnalysisStatus,
         current_phase: str | None = None,
     ) -> None:
         with self._lock:
-            job = self._get_existing_job(analysis_id)
+            job = self._get_existing_job(sha256)
             job.status = status.value
             job.current_phase = current_phase
 
     def set_phase(
         self, 
-        analysis_id: str, 
+        sha256: str, 
         phase: str, 
         state: str,
     ) -> None:
         with self._lock:
-            job = self._get_existing_job(analysis_id)
+            job = self._get_existing_job(sha256)
             job.status = AnalysisStatus.RUNNING.value
 
             if state == PhaseStatus.RUNNING.value:
@@ -69,20 +69,18 @@ class AnalysisRepository:
 
     def set_metadata(
         self, 
-        analysis_id: str, 
+        sha256: str, 
         metadata: AnalysisMetadata,
     ) -> None:
         with self._lock:
-            job = self._get_existing_job(analysis_id)
+            job = self._get_existing_job(sha256)
 
             if metadata.output_dir is not None:
                 job.output_dir = metadata.output_dir
-            if metadata.sample_sha256 is not None:
-                job.sample_sha256 = metadata.sample_sha256
 
-    def fail(self, analysis_id: str, error: str) -> None:
+    def fail(self, sha256: str, error: str) -> None:
         with self._lock:
-            job = self._get_existing_job(analysis_id)
+            job = self._get_existing_job(sha256)
             job.status = AnalysisStatus.FAILED.value
             job.error = error
 
@@ -91,9 +89,9 @@ class AnalysisRepository:
                 job.current_phase = None
 
 
-    def _get_existing_job(self, analysis_id: str) -> AnalysisJob:
-        job = self._jobs.get(analysis_id)
+    def _get_existing_job(self, sha256: str) -> AnalysisJob:
+        job = self._jobs.get(sha256)
         if job is None:
-            raise KeyError(analysis_id)
+            raise KeyError(sha256)
 
         return job

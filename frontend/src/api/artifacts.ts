@@ -2,56 +2,56 @@ import type { AgentTrace, JsonArtifact, TextArtifact } from "../types";
 
 import { request } from "./client";
 
-export function getAnalysisJson(analysisId: string): Promise<JsonArtifact> {
-  const encodedAnalysisId = encodeURIComponent(analysisId);
+export function getAnalysisJson(sha256: string): Promise<JsonArtifact> {
+  const encodedSha256 = encodeURIComponent(sha256);
 
   return request<JsonArtifact>(
-    `/api/analyses/${encodedAnalysisId}/analysis-json`,
+    `/api/analyses/${encodedSha256}/analysis-json`,
   );
 }
 
 export function getStaticInference(
-  analysisId: string
+  sha256: string
 ): Promise<JsonArtifact<AgentTrace>> {
-  const encodedAnalysisId = encodeURIComponent(analysisId);
+  const encodedSha256 = encodeURIComponent(sha256);
 
   return request<JsonArtifact<AgentTrace>>(
-    `/api/analyses/${encodedAnalysisId}/static-inference`,
+    `/api/analyses/${encodedSha256}/static-inference`,
   );
 }
 
 export function getDynamicInference(
-  analysisId: string
+  sha256: string
 ): Promise<JsonArtifact<AgentTrace>> {
-  const encodedAnalysisId = encodeURIComponent(analysisId);
+  const encodedSha256 = encodeURIComponent(sha256);
 
   return request<JsonArtifact<AgentTrace>>(
-    `/api/analyses/${encodedAnalysisId}/dynamic-inference`,
+    `/api/analyses/${encodedSha256}/dynamic-inference`,
   );
 }
 
-export function getEnrichment(analysisId: string): Promise<TextArtifact> {
-  const encodedAnalysisId = encodeURIComponent(analysisId);
+export function getEnrichment(sha256: string): Promise<TextArtifact> {
+  const encodedSha256 = encodeURIComponent(sha256);
 
   return request<TextArtifact>(
-    `/api/analyses/${encodedAnalysisId}/enrichment`,
+    `/api/analyses/${encodedSha256}/enrichment`,
   );
 }
 
 export function getReverseAgent(
-  analysisId: string
+  sha256: string
 ): Promise<JsonArtifact<AgentTrace>> {
-  const encodedAnalysisId = encodeURIComponent(analysisId);
+  const encodedSha256 = encodeURIComponent(sha256);
 
   return request<JsonArtifact<AgentTrace>>(
-    `/api/analyses/${encodedAnalysisId}/reverse-agent`,
+    `/api/analyses/${encodedSha256}/reverse-agent`,
   );
 }
 
-export function getReport(analysisId: string): Promise<TextArtifact> {
-  const encodedAnalysisId = encodeURIComponent(analysisId);
+export function getReport(sha256: string): Promise<TextArtifact> {
+  const encodedSha256 = encodeURIComponent(sha256);
 
   return request<TextArtifact>(
-    `/api/analyses/${encodedAnalysisId}/report`,
+    `/api/analyses/${encodedSha256}/report`,
   );
 }

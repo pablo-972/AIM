@@ -26,11 +26,16 @@ function AnalysisView({
   onReanalyze,
   onTabChange,
 }: AnalysisViewProps) {
-  const identifier = status?.sample_sha256 ?? status?.analysis_id ?? "Loading analysis";
+  const analysisData = isRecord(artifacts.analysisJson?.data) ? artifacts.analysisJson.data : null;
+  const sample = isRecord(analysisData?.sample) ? analysisData.sample : null;
+  const identifier = status?.sha256 ?? "Loading analysis";
+  const sampleFilename = stringValue(sample?.filename) ?? status?.filename;
+  const displayName = sampleFilename || identifier;
 
   return (
     <section className="space-y-5">
       <AnalysisHeader
+        displayName={displayName}
         identifier={identifier}
         reanalyzing={reanalyzing}
         onReanalyze={onReanalyze}
@@ -54,6 +59,14 @@ function AnalysisView({
       {activeTab === "Report" && <ReportView artifact={artifacts.report} />}
     </section>
   );
+}
+
+function stringValue(value: unknown): string | null {
+  return typeof value === "string" && value ? value : null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 export default AnalysisView;

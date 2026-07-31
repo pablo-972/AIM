@@ -25,7 +25,7 @@ function AnalysisOverview({ status, artifact }: AnalysisOverviewProps) {
             {Object.entries(sample).map(([key, value]) => (
               <div key={key} className="rounded border border-line bg-panelSoft p-3">
                 <dt className="text-xs uppercase text-muted">{key}</dt>
-                <dd className="mt-1 break-all text-ink">{String(value)}</dd>
+                <dd className="mt-1 break-all text-ink">{formatSampleValue(key, value)}</dd>
               </div>
             ))}
           </dl>
@@ -47,7 +47,7 @@ function AnalysisOverview({ status, artifact }: AnalysisOverviewProps) {
       </Panel>
 
       <Panel title="Errors">
-        {status.error ? (<p className="text-sm text-danger">{status.error}</p>) : (
+        {status?.error ? (<p className="text-sm text-danger">{status.error}</p>) : (
           <Empty text="No pipeline errors reported." />
         )}
       </Panel>
@@ -127,6 +127,14 @@ function Panel({ title, children }: { title: string; children: ReactNode }) {
 
 function Empty({ text }: { text: string }) {
   return <p className="text-sm text-muted">{text}</p>;
+}
+
+function formatSampleValue(key: string, value: unknown) {
+  if (key === "size" && typeof value === "number") {
+    return `${value.toLocaleString()} B`;
+  }
+
+  return String(value);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

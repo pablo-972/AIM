@@ -63,8 +63,8 @@ def resolve_analysis(store: AnalysisService, identifier: str) -> dict[str, Any]:
     )
 
 
-def analysis_status(store: AnalysisService, analysis_id: str) -> dict[str, Any]:
-    status = _find_analysis_status(store, analysis_id)
+def analysis_status(store: AnalysisService, sha256: str) -> dict[str, Any]:
+    status = _find_analysis_status(store, sha256)
     if status is not None:
         return status
 
@@ -76,10 +76,10 @@ def analysis_status(store: AnalysisService, analysis_id: str) -> dict[str, Any]:
 
 def json_artifact(
     store: AnalysisService,
-    analysis_id: str,
+    sha256: str,
     filename: str,
 ) -> dict[str, Any]:
-    artifact_dir = _artifact_dir(store, analysis_id)
+    artifact_dir = _artifact_dir(store, sha256)
     if artifact_dir is None:
         return {
             "available": False,
@@ -101,10 +101,10 @@ def json_artifact(
 
 def text_artifact(
     store: AnalysisService,
-    analysis_id: str,
+    sha256: str,
     filename: str,
 ) -> dict[str, Any]:
-    artifact_dir = _artifact_dir(store, analysis_id)
+    artifact_dir = _artifact_dir(store, sha256)
     if artifact_dir is None:
         return {
             "available": False,
@@ -124,8 +124,8 @@ def text_artifact(
     }
 
 
-def list_analysis_files(store: AnalysisService, analysis_id: str) -> dict[str, Any]:
-    artifact_dir = _artifact_dir(store, analysis_id)
+def list_analysis_files(store: AnalysisService, sha256: str) -> dict[str, Any]:
+    artifact_dir = _artifact_dir(store, sha256)
     if artifact_dir is None or not artifact_dir.exists():
         return {
             "available": False,
@@ -137,7 +137,7 @@ def list_analysis_files(store: AnalysisService, analysis_id: str) -> dict[str, A
         if not path.is_file():
             continue
 
-        file_status = create_file_status(path, artifact_dir, analysis_id)
+        file_status = create_file_status(path, artifact_dir, sha256)
         files.append(file_status)
 
     return {
@@ -149,10 +149,10 @@ def list_analysis_files(store: AnalysisService, analysis_id: str) -> dict[str, A
 
 def read_analysis_file(
     store: AnalysisService,
-    analysis_id: str,
+    sha256: str,
     file_path: str,
 ) -> dict[str, Any]:
-    artifact_dir = _artifact_dir(store, analysis_id)
+    artifact_dir = _artifact_dir(store, sha256)
     path = resolve_artifact_file(artifact_dir, file_path)
     response = create_file_response(path, file_path)
 
@@ -194,56 +194,56 @@ def _find_analysis_status(
 
 def _memory_status_by_id(
     store: AnalysisService,
-    analysis_id: str,
+    sha256: str,
 ) -> dict[str, Any] | None:
     try:
-        return store.status(analysis_id)
+        return store.status(sha256)
     except KeyError:
         return None
 
 
 def _memory_status_by_sha256(
     store: AnalysisService,
-    sample_sha256: str,
+    sha256: str,
 ) -> dict[str, Any] | None:
     for status in store.list_statuses().values():
-        if status.get("sample_sha256") == sample_sha256:
+        if status.get("sha256") == sha256:
             return status
 
     return None
 
 
-def _memory_job(store: AnalysisService, analysis_id: str) -> Any | None:
+def _memory_job(store: AnalysisService, sha256: str) -> Any | None:
     try:
-        return store.get(analysis_id)
+        return store.get(sha256)
     except KeyError:
         return None
 
 
-def _artifact_dir(store: AnalysisService, analysis_id: str) -> Path | None:
-    job = _memory_job(store, analysis_id)
+def _artifact_dir(store: AnalysisService, sha256: str) -> Path | None:
+    job = _memory_job(store, sha256)
     if job is not None:
         if job.output_dir is not None:
             return Path(job.output_dir)
 
-        return disk_artifact_dir(analysis_id)
+        return disk_artifact_dir(sha256)
 
-    disk_dir = disk_artifact_dir(analysis_id)
+    disk_dir = disk_artifact_dir(sha256)
     if disk_dir is not None:
         return disk_dir
 
-    return _artifact_dir_by_sha256(store, analysis_id)
+    return _artifact_dir_by_sha256(store, sha256)
 
 
 def _artifact_dir_by_sha256(
     store: AnalysisService,
-    sample_sha256: str,
+    sha256: str,
 ) -> Path | None:
-    status = _memory_status_by_sha256(store, sample_sha256)
+    status = _memory_status_by_sha256(store, sha256)
     if status is not None and isinstance(status.get("output_dir"), str):
         return Path(status["output_dir"])
 
-    status = disk_status_by_sha256(sample_sha256)
+    status = disk_status_by_sha256(sha256)
     if status is not None and isinstance(status.get("output_dir"), str):
         return Path(status["output_dir"])
 

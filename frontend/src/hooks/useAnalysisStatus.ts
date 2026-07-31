@@ -11,12 +11,12 @@ type UseAnalysisStatusResult = {
 };
 
 export function useAnalysisStatus(
-  analysisId: string | null,
+  sha256: string | null,
 ): UseAnalysisStatusResult {
   const [status, setStatus] = useState<AnalysisStatusPayload | null>(null);
 
   useEffect(() => {
-    if (!analysisId) {
+    if (!sha256) {
       setStatus(null);
       return;
     }
@@ -24,7 +24,7 @@ export function useAnalysisStatus(
     let cancelled = false;
     const pollStatus = async () => {
       try {
-        const payload = await getStatus(analysisId);
+        const payload = await getStatus(sha256);
         if (!cancelled) {
           setStatus(payload);
         }
@@ -45,7 +45,7 @@ export function useAnalysisStatus(
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, [analysisId]);
+  }, [sha256]);
 
   const isActive = useMemo(
     () => status?.status === "queued" || status?.status === "running",

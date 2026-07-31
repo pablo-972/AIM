@@ -17,8 +17,14 @@ class LocalPipelineRunner(PipelineRunner):
         sample_path: Path,
         output_base: Path,
         observer: PipelineObserver,
+        sample_filename: str | None = None,
     ) -> None:
-        run_full_local_pipeline(sample_path, output_base, observer)
+        run_full_local_pipeline(
+            sample_path, 
+            output_base, 
+            observer, 
+            sample_filename,
+        )
 
 
 DEFAULT_PIPELINE_NAME = "full"
@@ -45,12 +51,10 @@ class BackendPipelineEventSink(PipelineEventSink):
             return
 
         if event.type == "metadata_updated" and event.data:
-            sha256 = event.data.get("sample_sha256")
             output_dir = event.data.get("output_dir")
             
             self.observer.metadata_changed(
                 AnalysisMetadata(
-                    sample_sha256=_optional_string(sha256),
                     output_dir=_optional_string(output_dir),
                 )
             )
@@ -59,9 +63,11 @@ class BackendPipelineEventSink(PipelineEventSink):
 def create_full_pipeline_orchestrator(
     sample_path: Path,
     output_base: Path,
+    sample_filename: str | None = None,
 ) -> Orchestrator:
     args = Namespace(
         sample=str(sample_path),
+        sample_filename=sample_filename or sample_path.name,
         output=str(output_base.parent),
         format="json",
         phase="full",
@@ -84,7 +90,6 @@ def emit_pipeline_metadata(
     event_sink.emit(
         metadata_updated(
             {
-                "sample_sha256": orchestrator.context.sample_sha256,
                 "output_dir": str(orchestrator.context.output),
             }
         )
@@ -99,8 +104,13 @@ def run_full_local_pipeline(
     sample_path: Path,
     output_base: Path,
     observer: PipelineObserver,
+    sample_filename: str | None = None,
 ) -> None:
-    orchestrator = create_full_pipeline_orchestrator(sample_path, output_base)
+    orchestrator = create_full_pipeline_orchestrator(
+        sample_path,
+        output_base,
+        sample_filename,
+    )
     event_sink = BackendPipelineEventSink(observer)
     emit_pipeline_metadata(orchestrator, event_sink)
 

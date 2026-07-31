@@ -7,7 +7,7 @@ import type { AnalysisStatusPayload } from "../../types";
 type NavbarProps = {
   darkMode: boolean;
   existingDisabled: boolean;
-  selectedAnalysisId: string | null;
+  selectedSha256: string | null;
   searching: boolean;
   uploading: boolean;
   onSelectExisting: (analysis: AnalysisStatusPayload) => void;
@@ -19,7 +19,7 @@ type NavbarProps = {
 function Navbar({
   darkMode,
   existingDisabled,
-  selectedAnalysisId,
+  selectedSha256,
   searching,
   uploading,
   onSelectExisting,
@@ -129,7 +129,7 @@ function Navbar({
             <div className="absolute right-0 top-12 z-50 max-h-[70vh] w-[min(92vw,48rem)] overflow-y-auto rounded-md shadow-xl">
               <ExistingAnalysesPanel
                 disabled={existingDisabled}
-                selectedAnalysisId={selectedAnalysisId}
+                selectedSha256={selectedSha256}
                 onSelect={(analysis) => {
                   setExistingOpen(false);
                   onSelectExisting(analysis);

@@ -9,6 +9,7 @@ from core.utils.crypto import sha256_file
 @dataclass(frozen=True)
 class AnalysisContext:
     sample: Path
+    sample_filename: str
     sample_sha256: str
     output: Path
     output_format: str
@@ -48,6 +49,7 @@ class AnalysisContext:
             raise CLIValidationError(f"Sample is not a file: {sample}")
 
         sample_sha256 = sha256_file(sample)
+        sample_filename = getattr(args, "sample_filename", None) or sample.name
         base_output = Path(args.output).expanduser().resolve()
 
         dynamic_filter = getattr(args, "dynamic_filter", None)
@@ -63,6 +65,7 @@ class AnalysisContext:
 
         return cls(
             sample=sample,
+            sample_filename=str(sample_filename),
             sample_sha256=sample_sha256,
             output=base_output / sample_sha256,
             output_format=args.format,

@@ -81,7 +81,6 @@ function FindingCard({ finding, index }: { finding: unknown; index: number }) {
 
 function StepCard({ step }: { step: TraceStep }) {
   const decision = step.decision ?? {};
-  const input = isRecord(step.input) ? step.input : {};
 
   return (
     <article className="rounded-md border border-line bg-panel p-5">
@@ -90,9 +89,7 @@ function StepCard({ step }: { step: TraceStep }) {
           <MessageSquareText className="h-5 w-5 text-accent" aria-hidden="true" />
           <div>
             <h3 className="font-semibold">Step {step.step}</h3>
-            <p className="text-sm text-muted">
-              {String(input.tool ?? "unknown")}.{String(input.section ?? "unknown")}
-            </p>
+            <p className="text-sm text-muted">{decision.action ?? "none"}</p>
           </div>
         </div>
         <span className="w-fit rounded border border-line bg-panelSoft px-2 py-1 text-xs uppercase text-muted">

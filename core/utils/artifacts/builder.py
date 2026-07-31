@@ -11,9 +11,11 @@ class JsonBuilder:
         output_path: str | Path,
         sample_path: Path,
         sample_sha256: str,
+        sample_filename: str | None = None,
     ) -> None:
         self.output_path: str | Path = output_path
         self.sample_path: Path = sample_path
+        self.sample_filename: str = sample_filename or sample_path.name
         self.data: dict[str, Any] = self._load_data()
 
         self._set_sample(sample_sha256)
@@ -53,6 +55,7 @@ class JsonBuilder:
     
     def _set_sample(self, sample_sha256: str) -> None:
         self.data["sample"] = {
+            "filename": self.sample_filename,
             "path": str(self.sample_path),
             "sha256": sample_sha256,
             "size": self.sample_path.stat().st_size,

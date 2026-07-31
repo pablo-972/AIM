@@ -30,7 +30,7 @@ ARTIFACT_FILENAMES = (
 )
 
 
-def disk_status_by_sha256(sample_sha256: str) -> dict[str, Any] | None:
+def disk_status_by_sha256(sha256: str) -> dict[str, Any] | None:
     if not WEB_ANALYSES_PATH.exists():
         return None
 
@@ -39,33 +39,32 @@ def disk_status_by_sha256(sample_sha256: str) -> dict[str, Any] | None:
             continue
 
         status = disk_analysis_status(path.name)
-        if status and status.get("sample_sha256") == sample_sha256:
+        if status and status.get("sha256") == sha256:
             return status
 
     return None
 
 
-def disk_analysis_status(analysis_id: str) -> dict[str, Any] | None:
-    analysis_dir = _disk_analysis_dir(analysis_id)
+def disk_analysis_status(sha256: str) -> dict[str, Any] | None:
+    analysis_dir = _disk_analysis_dir(sha256)
     if analysis_dir is None:
         return None
 
     artifact_dir = _find_artifact_dir(analysis_dir)
     analysis_data = load_json(artifact_dir, RESULT_FILENAME) or {}
     phases = _build_disk_phases(artifact_dir, analysis_data)
-    filename = _resolve_sample_filename(analysis_id, analysis_data)
-    resolved_sample_sha256 = _resolve_sample_sha256(artifact_dir, analysis_data)
+    filename = _resolve_sample_filename(sha256, analysis_data)
+    resolved_sha256 = _resolve_sha256(artifact_dir, analysis_data)
     created_at = _directory_created_at(analysis_dir)
 
     return {
-        "analysis_id": analysis_id,
+        "sha256": resolved_sha256,
         "status": "completed",
         "current_phase": None,
         "phases": phases,
         "error": None,
         "filename": filename,
         "pipeline_name": "full",
-        "sample_sha256": resolved_sample_sha256,
         "output_dir": str(artifact_dir),
         "created_at": created_at,
     }
@@ -134,27 +133,31 @@ def _analysis_sample(
 
 
 def _resolve_sample_filename(
-    analysis_id: str,
+    sha256: str,
     analysis_data: dict[str, Any],
 ) -> str:
     sample = _analysis_sample(analysis_data)
-    sample_path = sample.get("path")
 
+    sample_filename = sample.get("filename")
+    if isinstance(sample_filename, str) and sample_filename:
+        return sample_filename
+
+    sample_path = sample.get("path")
     if isinstance(sample_path, str):
         return Path(sample_path).name
 
-    return analysis_id
+    return sha256
 
 
-def _resolve_sample_sha256(
+def _resolve_sha256(
     artifact_dir: Path,
     analysis_data: dict[str, Any],
 ) -> str:
     sample = _analysis_sample(analysis_data)
-    sample_sha256 = sample.get("sha256")
+    sha256 = sample.get("sha256")
 
-    if isinstance(sample_sha256, str):
-        return sample_sha256
+    if isinstance(sha256, str):
+        return sha256
 
     return artifact_dir.name
 
@@ -163,9 +166,9 @@ def _directory_created_at(path: Path) -> str:
     return format_modified_at(path.stat().st_mtime)
 
 
-def _disk_analysis_dir(analysis_id: str) -> Path | None:
+def _disk_analysis_dir(sha256: str) -> Path | None:
     root = WEB_ANALYSES_PATH.resolve()
-    candidate = (WEB_ANALYSES_PATH / analysis_id).resolve()
+    candidate = (WEB_ANALYSES_PATH / sha256).resolve()
 
     if not is_path_inside(root, candidate):
         raise HTTPException(
@@ -179,8 +182,8 @@ def _disk_analysis_dir(analysis_id: str) -> Path | None:
     return candidate
 
 
-def disk_artifact_dir(analysis_id: str) -> Path | None:
-    analysis_dir = _disk_analysis_dir(analysis_id)
+def disk_artifact_dir(sha256: str) -> Path | None:
+    analysis_dir = _disk_analysis_dir(sha256)
     if analysis_dir is None:
         return None
 

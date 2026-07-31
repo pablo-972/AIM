@@ -25,7 +25,7 @@ const emptyArtifacts: AnalysisArtifacts = {
 };
 
 export function useAnalysisArtifacts(
-  analysisId: string | null,
+  sha256: string | null,
   isActive: boolean,
 ): UseAnalysisArtifactsResult {
   const [artifacts, setArtifacts] = useState<AnalysisArtifacts>(emptyArtifacts);
@@ -35,7 +35,7 @@ export function useAnalysisArtifacts(
   }, []);
 
   useEffect(() => {
-    if (!analysisId) {
+    if (!sha256) {
       clearArtifacts();
       return;
     }
@@ -43,12 +43,12 @@ export function useAnalysisArtifacts(
     let cancelled = false;
     const pollArtifacts = async () => {
       const artifactRequests = [
-        getAnalysisJson(analysisId),
-        getStaticInference(analysisId),
-        getDynamicInference(analysisId),
-        getEnrichment(analysisId),
-        getReverseAgent(analysisId),
-        getReport(analysisId),
+        getAnalysisJson(sha256),
+        getStaticInference(sha256),
+        getDynamicInference(sha256),
+        getEnrichment(sha256),
+        getReverseAgent(sha256),
+        getReport(sha256),
       ] as const;
       const results = await Promise.allSettled(artifactRequests) as [
         PromiseSettledResult<JsonArtifact>,
@@ -79,7 +79,7 @@ export function useAnalysisArtifacts(
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, [analysisId, clearArtifacts, isActive]);
+  }, [sha256, clearArtifacts, isActive]);
 
   return {
     artifacts,

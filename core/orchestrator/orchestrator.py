@@ -338,6 +338,7 @@ class Orchestrator:
                 context.output,
                 context.sample,
                 context.sample_sha256,
+                context.sample_filename,
             )
             self.json_builders[output_key] = builder
 

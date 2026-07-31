@@ -1,12 +1,14 @@
 import { RotateCcw } from "lucide-react";
 
 type AnalysisHeaderProps = {
+  displayName: string;
   identifier: string;
   reanalyzing: boolean;
   onReanalyze: () => void;
 };
 
 function AnalysisHeader({
+  displayName,
   identifier,
   reanalyzing,
   onReanalyze,
@@ -16,8 +18,13 @@ function AnalysisHeader({
       <div>
         <p className="text-sm uppercase text-muted">Sample</p>
         <h1 className="break-all text-xl font-semibold text-ink">
-          {identifier}
+          {displayName}
         </h1>
+        {displayName !== identifier && (
+          <p className="mt-1 break-all text-sm leading-6 text-muted">
+            SHA256: {identifier}
+          </p>
+        )}
       </div>
       <button
         type="button"

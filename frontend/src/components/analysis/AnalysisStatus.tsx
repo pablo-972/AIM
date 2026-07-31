@@ -21,8 +21,7 @@ function AnalysisStatus({ status }: AnalysisStatusProps) {
     <section className="rounded-md border border-line bg-panel p-5">
       <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-sm uppercase text-muted">Analysis</p>
-          <p className="break-all text-lg font-semibold">{status.analysis_id}</p>
+          <p className="text-sm uppercase text-muted">Analysis status</p>
         </div>
         <StatusBadge state={status.status} />
       </div>

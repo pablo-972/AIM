@@ -127,7 +127,7 @@ function DocsView({ slug }: DocsViewProps) {
       </aside>
 
       <section className="min-w-0">
-        <div className="mx-auto w-full max-w-4xl">
+        <div className="mx-auto w-full max-w-5xl">
           {loading && (
             <div className="rounded border border-line bg-panel p-4 text-sm text-muted">
               Loading documentation...

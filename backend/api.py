@@ -24,6 +24,7 @@ from backend.artifacts import (
 )
 from backend.storage import (
     WEB_ANALYSES_PATH,
+    cleanup_upload_temp,
     move_upload_to_sample_path,
     sample_path_for_status,
     save_upload_file,
@@ -54,20 +55,25 @@ async def create_analysis(
 ) -> dict[str, Any]:
     pipeline_name = _validate_pipeline_name(pipeline)
     filename, sample_path = await save_upload_file(file)
-    sample_sha256 = sha256_file(sample_path)
+    sha256 = sha256_file(sample_path)
+    
+    active_status = service.active_status(sha256)
+    if active_status is not None:
+        cleanup_upload_temp(sample_path)
+        return active_status
 
     if not reanalyze:
         try:
-            status = resolve_analysis(service, sample_sha256)
-            store_or_discard_duplicate_upload(sample_path, sample_sha256)
+            status = resolve_analysis(service, sha256)
+            store_or_discard_duplicate_upload(sample_path, sha256)
             return status
         except HTTPException as exc:
             if exc.status_code != 404:
                 raise
 
-    sample_path = move_upload_to_sample_path(sample_path, sample_sha256)
+    sample_path = move_upload_to_sample_path(sample_path, sha256)
     
-    output_base = WEB_ANALYSES_PATH / sample_sha256
+    output_base = WEB_ANALYSES_PATH / sha256
     output_base.mkdir(parents=True, exist_ok=True)
 
     job = service.create(
@@ -103,23 +109,29 @@ def reanalyze_existing_analysis(
     pipeline_name = _validate_pipeline_name(pipeline)
     status = resolve_analysis(service, identifier)
     analysis_data = None
-    if isinstance(status.get("analysis_id"), str):
-        artifact = json_artifact(service, status["analysis_id"], RESULT_FILENAME)
+    sha256 = status.get("sha256") or identifier
+
+    if isinstance(sha256, str):
+        active_status = service.active_status(sha256)
+        if active_status is not None:
+            return active_status
+
+    if isinstance(sha256, str):
+        artifact = json_artifact(service, sha256, RESULT_FILENAME)
         data = artifact.get("data")
         if isinstance(data, dict):
             analysis_data = data
 
     sample_path = sample_path_for_status(status, analysis_data)
-    sample_sha256 = status.get("sample_sha256") or identifier
     filename = status.get("filename") or sample_path.name
 
-    if not isinstance(sample_sha256, str) or not sample_sha256:
+    if not isinstance(sha256, str) or not sha256:
         raise HTTPException(
             status_code=400, 
             detail="Analysis has no sample hash",
         )
 
-    output_base = WEB_ANALYSES_PATH / sample_sha256
+    output_base = WEB_ANALYSES_PATH / sha256
     output_base.mkdir(parents=True, exist_ok=True)
 
     job = service.create(
@@ -133,53 +145,53 @@ def reanalyze_existing_analysis(
     return result
 
 
-@app.get("/api/analyses/{analysis_id}/status")
-def get_status(analysis_id: str) -> dict[str, Any]:
-    return analysis_status(service, analysis_id)
+@app.get("/api/analyses/{sha256}/status")
+def get_status(sha256: str) -> dict[str, Any]:
+    return analysis_status(service, sha256)
 
 
-@app.get("/api/analyses/{analysis_id}/analysis-json")
-def get_analysis_json(analysis_id: str) -> dict[str, Any]:
-    return json_artifact(service, analysis_id, RESULT_FILENAME)
+@app.get("/api/analyses/{sha256}/analysis-json")
+def get_analysis_json(sha256: str) -> dict[str, Any]:
+    return json_artifact(service, sha256, RESULT_FILENAME)
 
 
-@app.get("/api/analyses/{analysis_id}/files")
-def get_analysis_files(analysis_id: str) -> dict[str, Any]:
-    return list_analysis_files(service, analysis_id)
+@app.get("/api/analyses/{sha256}/files")
+def get_analysis_files(sha256: str) -> dict[str, Any]:
+    return list_analysis_files(service, sha256)
 
 
-@app.get("/api/analyses/{analysis_id}/files/{file_path:path}")
-def get_analysis_file(analysis_id: str, file_path: str) -> dict[str, Any]:
-    return read_analysis_file(service, analysis_id, file_path)
+@app.get("/api/analyses/{sha256}/files/{file_path:path}")
+def get_analysis_file(sha256: str, file_path: str) -> dict[str, Any]:
+    return read_analysis_file(service, sha256, file_path)
 
 
-@app.get("/api/analyses/{analysis_id}/static-inference")
-def get_static_inference(analysis_id: str) -> dict[str, Any]:
+@app.get("/api/analyses/{sha256}/static-inference")
+def get_static_inference(sha256: str) -> dict[str, Any]:
     return json_artifact(
         service, 
-        analysis_id, 
+        sha256, 
         STATIC_STRINGS_INFERENCE_RESULT_FILENAME,
     )
 
 
-@app.get("/api/analyses/{analysis_id}/dynamic-inference")
-def get_dynamic_inference(analysis_id: str) -> dict[str, Any]:
-    return json_artifact(service, analysis_id, DYNAMIC_INFERENCE_RESULT_FILENAME)
+@app.get("/api/analyses/{sha256}/dynamic-inference")
+def get_dynamic_inference(sha256: str) -> dict[str, Any]:
+    return json_artifact(service, sha256, DYNAMIC_INFERENCE_RESULT_FILENAME)
 
 
-@app.get("/api/analyses/{analysis_id}/enrichment")
-def get_enrichment(analysis_id: str) -> dict[str, Any]:
-    return text_artifact(service, analysis_id, ENRICHMENT_FILENAME)
+@app.get("/api/analyses/{sha256}/enrichment")
+def get_enrichment(sha256: str) -> dict[str, Any]:
+    return text_artifact(service, sha256, ENRICHMENT_FILENAME)
 
 
-@app.get("/api/analyses/{analysis_id}/reverse-agent")
-def get_reverse_agent(analysis_id: str) -> dict[str, Any]:
-    return json_artifact(service, analysis_id, REVERSING_AGENT_RESULT_FILENAME)
+@app.get("/api/analyses/{sha256}/reverse-agent")
+def get_reverse_agent(sha256: str) -> dict[str, Any]:
+    return json_artifact(service, sha256, REVERSING_AGENT_RESULT_FILENAME)
 
 
-@app.get("/api/analyses/{analysis_id}/report")
-def get_report(analysis_id: str) -> dict[str, Any]:
-    return text_artifact(service, analysis_id, REPORT_FILENAME)
+@app.get("/api/analyses/{sha256}/report")
+def get_report(sha256: str) -> dict[str, Any]:
+    return text_artifact(service, sha256, REPORT_FILENAME)
 
 
 @app.get("/api/docs/{slug:path}")

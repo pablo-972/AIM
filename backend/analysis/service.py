@@ -14,16 +14,16 @@ class AnalysisJobObserver(PipelineObserver):
     def __init__(
         self, 
         repository: AnalysisRepository, 
-        analysis_id: str,
+        sha256: str,
     ) -> None:
         self.repository = repository
-        self.analysis_id = analysis_id
+        self.sha256 = sha256
 
     def phase_changed(self, phase: str, state: str) -> None:
-        self.repository.set_phase(self.analysis_id, phase, state)
+        self.repository.set_phase(self.sha256, phase, state)
 
     def metadata_changed(self, metadata: AnalysisMetadata) -> None:
-        self.repository.set_metadata(self.analysis_id, metadata)
+        self.repository.set_metadata(self.sha256, metadata)
 
 
 class AnalysisService:
@@ -52,9 +52,9 @@ class AnalysisService:
     ) -> AnalysisJob:
         self._validate_pipeline_name(pipeline_name)
 
-        analysis_id = output_base.name
+        sha256 = output_base.name
         job = AnalysisJob(
-            analysis_id=analysis_id,
+            sha256=sha256,
             filename=filename,
             sample_path=sample_path,
             output_base=output_base,
@@ -63,15 +63,29 @@ class AnalysisService:
         )
 
         self._repository.add(job)
-        self._executor.submit(self._run, analysis_id)
+        self._executor.submit(self._run, sha256)
 
         return job.copy()
 
-    def get(self, analysis_id: str) -> AnalysisJob:
-        return self._repository.get(analysis_id)
+    def get(self, sha256: str) -> AnalysisJob:
+        return self._repository.get(sha256)
 
-    def status(self, analysis_id: str) -> dict[str, Any]:
-        return self._repository.status(analysis_id)
+    def status(self, sha256: str) -> dict[str, Any]:
+        return self._repository.status(sha256)
+
+    def active_status(self, sha256: str) -> dict[str, Any] | None:
+        try:
+            status = self._repository.status(sha256)
+        except KeyError:
+            return None
+
+        if status["status"] in {
+            AnalysisStatus.QUEUED.value,
+            AnalysisStatus.RUNNING.value,
+        }:
+            return status
+
+        return None
 
     def list_statuses(self) -> dict[str, dict[str, Any]]:
         return self._repository.list_statuses()
@@ -81,20 +95,25 @@ class AnalysisService:
             self._executor.shutdown(wait=wait)
 
 
-    def _run(self, analysis_id: str) -> None:
-        job = self._repository.get(analysis_id)
-        observer = AnalysisJobObserver(self._repository, analysis_id)
-        self._repository.set_status(analysis_id, AnalysisStatus.RUNNING)
+    def _run(self, sha256: str) -> None:
+        job = self._repository.get(sha256)
+        observer = AnalysisJobObserver(self._repository, sha256)
+        self._repository.set_status(sha256, AnalysisStatus.RUNNING)
 
         try:
             runner = self._pipeline_registry[job.pipeline_name]
-            runner.run(job.sample_path, job.output_base, observer)
+            runner.run(
+                job.sample_path,
+                job.output_base,
+                observer,
+                job.filename,
+            )
         except Exception as exc:
-            self._repository.fail(analysis_id, str(exc))
+            self._repository.fail(sha256, str(exc))
             return
 
         self._repository.set_status(
-            analysis_id,
+            sha256,
             AnalysisStatus.COMPLETED,
             current_phase=None,
         )

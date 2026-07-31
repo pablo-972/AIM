@@ -26,14 +26,6 @@ function StaticInferenceTrace({ trace }: StaticInferenceTraceProps) {
         </div>
       </header>
 
-      <div className="grid gap-4">
-        {steps.length ? (
-          steps.map((step) => <StepCard key={step.step} step={step} />)
-        ) : (
-          <EmptyPanel text="No static inference steps recorded yet." />
-        )}
-      </div>
-
       <section className="rounded-md border border-line bg-panel p-5">
         <h2 className="mb-4 text-lg font-semibold">Findings</h2>
         {findings.length ? (
@@ -51,6 +43,14 @@ function StaticInferenceTrace({ trace }: StaticInferenceTraceProps) {
           <p className="text-sm text-muted">No findings recorded.</p>
         )}
       </section>
+
+      <div className="grid gap-4">
+        {steps.length ? (
+          steps.map((step) => <StepCard key={step.step} step={step} />)
+        ) : (
+          <EmptyPanel text="No static inference steps recorded yet." />
+        )}
+      </div>
     </section>
   );
 }
@@ -75,11 +75,7 @@ function StepCard({ step }: { step: TraceStep }) {
 
       <div className="grid gap-3">
         <InfoBlock label="Thought" value={decision.thought || "No thought recorded."} />
-        <InfoBlock label="Tool" value={step.tool?.name ?? "none"} />
         {step.error && <InfoBlock label="Error" value={step.error} tone="danger" />}
-        {step.tool?.output && (
-          <JsonExpandable data={step.tool.output} label="Tool output" />
-        )}
         {step.finding && (
           <JsonExpandable data={step.finding} label="Finding" defaultOpen />
         )}

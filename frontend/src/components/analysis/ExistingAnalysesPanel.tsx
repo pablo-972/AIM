@@ -5,13 +5,13 @@ import type { AnalysisStatusPayload } from "../../types";
 
 type ExistingAnalysesPanelProps = {
   disabled: boolean;
-  selectedAnalysisId: string | null;
+  selectedSha256: string | null;
   onSelect: (analysis: AnalysisStatusPayload) => void;
 };
 
 function ExistingAnalysesPanel({
   disabled,
-  selectedAnalysisId,
+  selectedSha256,
   onSelect,
 }: ExistingAnalysesPanelProps) {
   const [analyses, setAnalyses] = useState<AnalysisStatusPayload[]>([]);
@@ -60,21 +60,27 @@ function ExistingAnalysesPanel({
         <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
           {uniqueAnalyses.map((analysis) => (
             <button
-              key={analysis.analysis_id}
+              key={analysis.sha256}
               type="button"
               onClick={() => onSelect(analysis)}
               disabled={disabled}
-              className={`min-w-0 rounded border p-3 text-left transition disabled:cursor-not-allowed disabled:opacity-60 ${
-                selectedAnalysisId === analysis.analysis_id
+              className={`flex min-h-32 min-w-0 flex-col justify-between rounded border p-3 text-left transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                selectedSha256 === analysis.sha256
                   ? "border-pink-500 bg-pink-500/10"
                   : "border-line bg-panelSoft hover:border-pink-500/70"
               }`}
             >
-              <p className="break-all text-sm font-semibold">{analysis.analysis_id}</p>
-              <p className="mt-1 break-all text-xs text-muted">
-                {analysis.sample_sha256 ?? analysis.filename ?? "no sample metadata"}
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold" title={analysis.filename ?? analysis.sha256}>
+                  {analysis.filename ?? analysis.sha256}
+                </p>
+                <p className="mt-2 break-all text-xs leading-relaxed text-muted">
+                  {analysis.sha256}
+                </p>
+              </div>
+              <p className="mt-4 text-xs font-semibold uppercase text-muted">
+                {analysis.status}
               </p>
-              <p className="mt-2 text-xs uppercase text-muted">{analysis.status}</p>
             </button>
           ))}
         </div>
@@ -90,7 +96,7 @@ function dedupeAnalyses(analyses: AnalysisStatusPayload[]): AnalysisStatusPayloa
   const unique: AnalysisStatusPayload[] = [];
 
   for (const analysis of analyses) {
-    const key = analysis.sample_sha256 || analysis.analysis_id;
+    const key = analysis.sha256;
     if (seen.has(key)) {
       continue;
     }

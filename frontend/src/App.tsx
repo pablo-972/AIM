@@ -19,9 +19,9 @@ import type { AnalysisStatusPayload, AnalysisTab } from "./types";
 import { formatElapsed } from "./utils/formatElapsed";
 
 function App() {
-  const { analysisId, docsSlug, navigateToAnalysis } = useAnalysisRoute();
-  const { status, setStatus, isActive } = useAnalysisStatus(analysisId);
-  const { artifacts, clearArtifacts } = useAnalysisArtifacts(analysisId, isActive);
+  const { sha256, docsSlug, navigateToAnalysis } = useAnalysisRoute();
+  const { status, setStatus, isActive } = useAnalysisStatus(sha256);
+  const { artifacts, clearArtifacts } = useAnalysisArtifacts(sha256, isActive);
   const { darkMode, toggleDarkMode } = useTheme();
   const elapsedSeconds = useElapsedTime(status?.created_at, isActive);
 
@@ -37,10 +37,10 @@ function App() {
   useEffect(() => {
     setActiveTab("Overview");
     clearArtifacts();
-  }, [analysisId, clearArtifacts]);
+  }, [sha256, clearArtifacts]);
 
   const loadAnalysis = useCallback((payload: AnalysisStatusPayload) => {
-    const targetId = payload.sample_sha256 || payload.analysis_id;
+    const targetId = payload.sha256;
     setStatus(payload);
     setActiveTab("Overview");
     clearArtifacts();
@@ -80,7 +80,7 @@ function App() {
   };
 
   const handleReanalyze = async () => {
-    const identifier = status?.sample_sha256 || analysisId;
+    const identifier = status?.sha256 || sha256;
     if (!identifier) {
       return;
     }
@@ -101,8 +101,8 @@ function App() {
     <div className="flex min-h-screen flex-col bg-page text-ink">
       <Navbar
         darkMode={darkMode}
-        existingDisabled={isActive || uploading}
-        selectedAnalysisId={status?.sample_sha256 ?? analysisId}
+        existingDisabled={uploading}
+        selectedSha256={status?.sha256 ?? sha256}
         searching={searching}
         uploading={uploading}
         onSelectExisting={loadAnalysis}
@@ -133,14 +133,14 @@ function App() {
           <DocsView slug={docsSlug} />
         )}
 
-        {analysisId === null && docsSlug === null && (
+        {sha256 === null && docsSlug === null && (
           <HomeView
             disabled={isActive || uploading}
             onAnalysisCreated={loadAnalysis}
           />
         )}
 
-        {analysisId !== null && docsSlug === null && (
+        {sha256 !== null && docsSlug === null && (
           <AnalysisView
             activeTab={activeTab}
             artifacts={artifacts}

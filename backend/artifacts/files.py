@@ -50,14 +50,14 @@ def is_path_inside(
 def create_file_status(
     path: Path,
     artifact_dir: Path,
-    analysis_id: str,
+    sha256: str,
 ) -> dict[str, Any]:
     relative_path = path.relative_to(artifact_dir).as_posix()
     stat = path.stat()
     modified_at = format_modified_at(stat.st_mtime)
     content_type = mimetypes.guess_type(path.name)[0]
     viewable = is_viewable_file(path)
-    endpoint = f"/api/analyses/{analysis_id}/files/{relative_path}"
+    endpoint = f"/api/analyses/{sha256}/files/{relative_path}"
 
     return {
         "path": relative_path,

@@ -42,10 +42,10 @@ export function reanalyzeAnalysis(identifier: string): Promise<AnalysisStatusPay
   );
 }
 
-export function getStatus(analysisId: string): Promise<AnalysisStatusPayload> {
-  const encodedAnalysisId = encodeURIComponent(analysisId);
+export function getStatus(sha256: string): Promise<AnalysisStatusPayload> {
+  const encodedSha256 = encodeURIComponent(sha256);
 
   return request<AnalysisStatusPayload>(
-    `/api/analyses/${encodedAnalysisId}/status`,
+    `/api/analyses/${encodedSha256}/status`,
   );
 }

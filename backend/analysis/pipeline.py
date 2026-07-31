@@ -21,6 +21,7 @@ class PipelineRunner(ABC):
         sample_path: Path,
         output_base: Path,
         observer: PipelineObserver,
+        sample_filename: str | None = None,
     ) -> None:
         raise NotImplementedError
     
