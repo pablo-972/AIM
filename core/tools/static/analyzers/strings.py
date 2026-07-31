@@ -1,4 +1,5 @@
 import re
+import ipaddress
 
 from core.exceptions import ToolError
 from core.utils.io.commands import run_command
@@ -87,13 +88,19 @@ def find_regex(strings: list[str], regex: re.Pattern[str]) -> list[str]:
     matches: list[str] = []
 
     for string in strings:
-        matches.extend(match.group(0) for match in regex.finditer(string))
+        for match in regex.finditer(string):
+            matches.append(match.group(0)) 
         
     return list(dict.fromkeys(matches))
 
 
 def get_ips(strings: list[str]) -> list[str]:
-    return find_regex(strings, IP_REGEX)
+    ips = []
+    for ip in find_regex(strings, IP_REGEX):
+        if _is_interesting_ip(ip):
+            ips.append(ip)
+
+    return ips
 
 
 def get_urls(strings: list[str]) -> list[str]:
@@ -137,6 +144,25 @@ def find_wallet_regex(strings: list[str], regex: re.Pattern[str]) -> list[str]:
 
 def _is_repeated_character(value: str) -> bool:
     return len(set(value.lower())) == 1
+
+
+def _is_interesting_ip(value: str) -> bool:
+    try:
+        address = ipaddress.ip_address(value)
+    except ValueError:
+        return False
+
+    if address.version != 4:
+        return False
+
+    octets = value.split(".")
+    if len(octets) != 4:
+        return False
+
+    if octets[0] != "0" and octets[1:] == ["0", "0", "0"]:
+        return False
+
+    return True
 
 
 def _is_noise(string: str) -> bool:
