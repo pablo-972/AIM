@@ -3,6 +3,7 @@ import { RotateCcw } from "lucide-react";
 type AnalysisHeaderProps = {
   displayName: string;
   identifier: string;
+  reanalyzeDisabled: boolean;
   reanalyzing: boolean;
   onReanalyze: () => void;
 };
@@ -10,6 +11,7 @@ type AnalysisHeaderProps = {
 function AnalysisHeader({
   displayName,
   identifier,
+  reanalyzeDisabled,
   reanalyzing,
   onReanalyze,
 }: AnalysisHeaderProps) {
@@ -29,7 +31,7 @@ function AnalysisHeader({
       <button
         type="button"
         onClick={onReanalyze}
-        disabled={reanalyzing}
+        disabled={reanalyzeDisabled}
         className="inline-flex w-fit items-center gap-2 rounded border border-line bg-panelSoft px-3 py-2 text-sm font-medium text-ink transition hover:border-pink-500 disabled:cursor-not-allowed disabled:opacity-60"
       >
         <RotateCcw className={`h-4 w-4 ${reanalyzing ? "animate-spin" : ""}`} aria-hidden="true" />

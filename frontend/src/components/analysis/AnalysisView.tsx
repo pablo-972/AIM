@@ -31,12 +31,15 @@ function AnalysisView({
   const identifier = status?.sha256 ?? "Loading analysis";
   const sampleFilename = stringValue(sample?.filename) ?? status?.filename;
   const displayName = sampleFilename || identifier;
+  const analysisActive = status?.status === "queued" || status?.status === "running";
+  const reanalyzeDisabled = reanalyzing || analysisActive;
 
   return (
     <section className="space-y-5">
       <AnalysisHeader
         displayName={displayName}
         identifier={identifier}
+        reanalyzeDisabled={reanalyzeDisabled}
         reanalyzing={reanalyzing}
         onReanalyze={onReanalyze}
       />
