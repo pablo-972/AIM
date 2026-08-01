@@ -59,6 +59,8 @@ REPORT_SCHEMA: dict[str, Any] = {
 
 
 def parse_report_result(content: str) -> dict[str, Any]:
+    content = sanitize_json_response(content)
+
     try:
         result = json.loads(content)
     except (JSONDecodeError, TypeError) as exc:
@@ -67,11 +69,9 @@ def parse_report_result(content: str) -> dict[str, Any]:
     if not isinstance(result, dict):
         raise ValueError("Report response must be a JSON object")
 
-    required_keys = {
-        "report_markdown",
-        "assessment",
-    }
+    required_keys = {"report_markdown", "assessment"}
     missing_keys = required_keys - set(result)
+
     if missing_keys:
         missing = ", ".join(sorted(missing_keys))
         raise ValueError(f"Report response is missing required fields: {missing}")
@@ -95,6 +95,22 @@ def parse_report_result(content: str) -> dict[str, Any]:
         "report_markdown": report_markdown,
         "assessment": assessment,
     }
+
+
+def sanitize_json_response(content: str) -> str:
+    content = (content or "").strip()
+
+    if not content.startswith("```"):
+        return content
+
+    lines = content.splitlines()
+    if lines and lines[0].strip().startswith("```"):
+        lines = lines[1:]
+
+    if lines and lines[-1].strip() == "```":
+        lines = lines[:-1]
+
+    return "\n".join(lines).strip()
 
 
 def validate_assessment(assessment: dict[str, Any]) -> None:
