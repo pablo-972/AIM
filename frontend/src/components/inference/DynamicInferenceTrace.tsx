@@ -64,7 +64,6 @@ function FindingCard({ finding, index }: { finding: unknown; index: number }) {
         </div>
         <div className="flex flex-wrap gap-2">
           <Badge text={String(data.confidence ?? "unknown")} />
-          <Badge text={String(data.tone ?? "unknown")} />
         </div>
       </div>
 

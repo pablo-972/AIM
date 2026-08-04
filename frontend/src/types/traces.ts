@@ -9,7 +9,6 @@ export type TraceToolExecution = {
   name?: string;
   status?: string;
   output?: unknown;
-  artifact_ref?: unknown;
 };
 
 export type TraceStep = {

@@ -165,14 +165,12 @@ class JsonExtractor:
 
         confidence = finding.get("confidence")
         category = finding.get("category")
-        tone = finding.get("tone")
         source = finding.get("source")
         explanation = finding.get("explanation")
 
         return {
             "confidence": confidence,
             "category": category,
-            "tone": tone,
             "source": source,
             "explanation": explanation,
             "evidence": evidence,

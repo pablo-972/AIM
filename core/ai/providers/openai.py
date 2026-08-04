@@ -1,21 +1,22 @@
-import random
-import time
+import json
 from typing import Any
-
-import requests
 
 from core.ai.providers.base import (
     BaseLLMProvider,
     JsonSchema,
     LLMResponse,
     Message,
+    ToolCall,
+    ToolDefinition,
+)
+from core.ai.providers.transport import (
+    DEFAULT_MAX_RETRIES,
+    DEFAULT_MIN_REQUEST_INTERVAL,
+    JsonTransport,
 )
 from core.exceptions import ProviderError
 
 
-REQUEST_TIMEOUT = 120
-DEFAULT_MAX_RETRIES = 4
-DEFAULT_MIN_REQUEST_INTERVAL = 5.0
 DEFAULT_SCHEMA_NAME = "aim_schema"
 
 
@@ -27,7 +28,7 @@ class OpenAICompatibleProvider(BaseLLMProvider):
         model: str,
         temperature: float = 0.2,
         response_format: str = "text",
-        provider_type: str = "openai",
+        provider_type: str = "OpenAI",
         max_retries: int = DEFAULT_MAX_RETRIES,
         min_request_interval: float = DEFAULT_MIN_REQUEST_INTERVAL,
     ) -> None:
@@ -37,13 +38,16 @@ class OpenAICompatibleProvider(BaseLLMProvider):
         self.temperature: float = temperature
         self.response_format: str = response_format
         self.provider_type: str = provider_type
-        self.max_retries: int = max_retries
-        self.min_request_interval: float = min_request_interval
-        self._last_request_at: float = 0.0
-        self.headers: dict[str, str] = {
+        headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
         }
+        self.transport = JsonTransport(
+            provider_name=self.provider_type,
+            headers=headers,
+            max_retries=max_retries,
+            min_request_interval=min_request_interval,
+        )
 
     def chat(self, system_prompt: str, user_prompt: str) -> LLMResponse:
         return self._chat(
@@ -97,21 +101,39 @@ class OpenAICompatibleProvider(BaseLLMProvider):
             schema=schema,
         )
 
+    def chat_tools(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        tools: list[ToolDefinition],
+    ) -> LLMResponse:
+        return self._chat(
+            [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            tools=tools,
+            allow_empty_content=True,
+        )
+
     def _chat(
         self,
         messages: list[Message],
         schema: JsonSchema | None = None,
+        tools: list[ToolDefinition] | None = None,
+        allow_empty_content: bool = False,
     ) -> LLMResponse:
-        payload = self._build_payload(messages, schema)
-        data = self._post_with_retries(payload)
-        content = self._extract_content(data)
+        payload = self._build_payload(messages, schema, tools)
+        data = self.transport.post(f"{self.base_url}/chat/completions", payload)
+        content, tool_calls = self._extract_response(data, allow_empty_content)
 
-        return LLMResponse(content=content)
+        return LLMResponse(content=content, tool_calls=tool_calls)
 
     def _build_payload(
         self,
         messages: list[Message],
         schema: JsonSchema | None = None,
+        tools: list[ToolDefinition] | None = None,
     ) -> dict[str, Any]:
         payload: dict[str, Any] = {
             "model": self.model,
@@ -120,11 +142,26 @@ class OpenAICompatibleProvider(BaseLLMProvider):
             "temperature": self.temperature,
         }
 
-        response_format = self._response_format_payload(schema)
-        if response_format is not None:
-            payload["response_format"] = response_format
+        if tools:
+            payload["tools"] = self._tool_payload(tools)
+        else:
+            response_format = self._response_format_payload(schema)
+            if response_format is not None:
+                payload["response_format"] = response_format
 
         return payload
+
+    def _tool_payload(self, tools: list[ToolDefinition]) -> list[dict[str, Any]]:
+        tool_payload = []
+        for tool in tools:
+            tool_payload.append(
+                {
+                    "type": "function",
+                    "function": tool,
+                }
+            )
+
+        return tool_payload
 
     def _response_format_payload(
         self,
@@ -132,7 +169,9 @@ class OpenAICompatibleProvider(BaseLLMProvider):
     ) -> dict[str, Any] | None:
         if schema is None:
             if self.response_format == "json":
-                return {"type": "json_object"}
+                return {
+                    "type": "json_object",
+                }
 
             return None
 
@@ -145,101 +184,63 @@ class OpenAICompatibleProvider(BaseLLMProvider):
             },
         }
 
-    def _post_with_retries(self, payload: dict[str, Any]) -> dict[str, Any]:
-        last_error: Exception | None = None
-
-        for attempt in range(self.max_retries + 1):
-            self._wait_for_rate_limit()
-
-            try:
-                response = requests.post(
-                    f"{self.base_url}/chat/completions",
-                    headers=self.headers,
-                    json=payload,
-                    timeout=REQUEST_TIMEOUT,
-                )
-            except requests.RequestException as exc:
-                last_error = exc
-                if self._is_last_attempt(attempt):
-                    break
-
-                self._sleep_before_retry(None, attempt)
-                continue
-
-            if response.status_code == 429:
-                if attempt >= self.max_retries:
-                    last_error = ProviderError("Rate limit exceeded")
-                    break
-
-                self._sleep_before_retry(response, attempt)
-                continue
-
-            try:
-                response.raise_for_status()
-                return self._parse_response(response)
-            except requests.RequestException as exc:
-                last_error = exc
-                if self._is_last_attempt(attempt):
-                    break
-
-                self._sleep_before_retry(response, attempt)
-            except ValueError as exc:
-                raise ProviderError(
-                    f"Invalid JSON response from {self.provider_type}"
-                ) from exc
-
-        raise ProviderError(
-            f"{self.provider_type} request failed after retries: {last_error}"
-        )
-
-    def _extract_content(self, data: dict[str, Any]) -> str:
+    def _extract_response(
+        self,
+        data: dict[str, Any],
+        allow_empty_content: bool,
+    ) -> tuple[str, tuple[ToolCall, ...]]:
         try:
-            content = data["choices"][0]["message"]["content"]
+            message = data["choices"][0]["message"]
         except (KeyError, IndexError, TypeError) as exc:
             raise ProviderError(
-                f"{self.provider_type} response does not contain choices[0].message.content"
+                f"{self.provider_type} response does not contain choices[0].message"
             ) from exc
 
-        if not isinstance(content, str) or not content.strip():
-            raise ProviderError(f"{self.provider_type} response content is empty")
+        if not isinstance(message, dict):
+            raise ProviderError(
+                f"{self.provider_type} response message must be an object"
+            )
 
-        return content
+        content = message.get("content")
+        if not isinstance(content, str):
+            content = ""
 
-    def _wait_for_rate_limit(self) -> None:
-        elapsed = time.monotonic() - self._last_request_at
-        remaining = self.min_request_interval - elapsed
+        tool_calls = self._extract_tool_calls(message)
+        if content.strip() or (allow_empty_content and tool_calls):
+            return content, tool_calls
 
-        if remaining > 0:
-            time.sleep(remaining)
+        raise ProviderError(f"{self.provider_type} response content is empty")
 
-        self._last_request_at = time.monotonic()
+    def _extract_tool_calls(self, message: dict[str, Any]) -> tuple[ToolCall, ...]:
+        raw_calls = message.get("tool_calls")
+        if not isinstance(raw_calls, list):
+            return ()
 
-    def _sleep_before_retry(
-        self,
-        response: requests.Response | None,
-        attempt: int,
-    ) -> None:
-        retry_after = None
+        calls = []
+        for raw_call in raw_calls:
+            if not isinstance(raw_call, dict):
+                continue
 
-        if response is not None:
-            retry_after_header = response.headers.get("Retry-After")
+            function = raw_call.get("function")
+            if not isinstance(function, dict):
+                continue
 
-            if retry_after_header:
-                try:
-                    retry_after = float(retry_after_header)
-                except ValueError:
-                    retry_after = None
+            name = function.get("name")
+            arguments = self._tool_arguments(function.get("arguments"))
+            if isinstance(name, str) and name:
+                calls.append(ToolCall(name=name, arguments=arguments))
 
-        delay = retry_after or min(60.0, (2 ** attempt) + random.uniform(0, 1))
-        time.sleep(delay)
+        return tuple(calls)
 
-    def _parse_response(self, response: requests.Response) -> dict[str, Any]:
-        data = response.json()
+    def _tool_arguments(self, value: Any) -> dict[str, Any]:
+        if isinstance(value, dict):
+            return value
+        if not isinstance(value, str):
+            return {}
 
-        if not isinstance(data, dict):
-            raise ProviderError(f"{self.provider_type} response must be a JSON object")
+        try:
+            arguments = json.loads(value)
+        except ValueError:
+            return {}
 
-        return data
-
-    def _is_last_attempt(self, attempt: int) -> bool:
-        return attempt >= self.max_retries
+        return arguments if isinstance(arguments, dict) else {}

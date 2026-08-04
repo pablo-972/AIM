@@ -20,10 +20,5 @@ REVERSING_AGENT_TOOLS: dict[str, ReversingAgentTool] = {
     "import_xrefs": import_xrefs,
 }
 
-
-
-
-
-
-
+REVERSING_AGENT_TOOL_NAMES = list(REVERSING_AGENT_TOOLS)
 

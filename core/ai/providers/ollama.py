@@ -1,18 +1,15 @@
 from typing import Any
 
-import requests
-
 from core.ai.providers.base import (
     BaseLLMProvider, 
     JsonSchema, 
     LLMResponse, 
     Message,
+    ToolCall,
+    ToolDefinition,
 )
+from core.ai.providers.transport import JsonTransport
 from core.exceptions import ProviderError
-
-
-REQUEST_TIMEOUT = 120
-MAX_ERROR_BODY_LENGTH = 2000
 
 
 class OllamaProvider(BaseLLMProvider):
@@ -29,6 +26,11 @@ class OllamaProvider(BaseLLMProvider):
         self.temperature: float = temperature
         self.response_format: str = response_format
         self.num_ctx: int | None = num_ctx
+        self.transport = JsonTransport(
+            provider_name="Ollama",
+            headers={},
+            min_request_interval=0,
+        )
 
     def chat(self, system_prompt: str, user_prompt: str) -> LLMResponse:
         return self._chat(
@@ -82,42 +84,40 @@ class OllamaProvider(BaseLLMProvider):
             schema=schema,
         )
 
+    def chat_tools(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        tools: list[ToolDefinition],
+    ) -> LLMResponse:
+        return self._chat(
+            [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            tools=tools,
+            allow_empty_content=True,
+        )
+
     def _chat(
         self,
         messages: list[Message],
         schema: JsonSchema | None = None,
+        tools: list[ToolDefinition] | None = None,
+        allow_empty_content: bool = False,
     ) -> LLMResponse:
-        payload = self._build_payload(messages, schema)
+        payload = self._build_payload(messages, schema, tools)
+        data = self.transport.post(f"{self.base_url}/api/chat", payload)
+        content, tool_calls = self._extract_response(data, allow_empty_content)
 
-        try:
-            response = requests.post( 
-                f"{self.base_url}/api/chat", 
-                json=payload, 
-                timeout=REQUEST_TIMEOUT,
-            )
-        except requests.RequestException as exc:
-            raise ProviderError(
-                f"Ollama connection failed for {self.base_url}/api/chat: {exc}"
-            ) from exc
-
-        if not response.ok:
-            error_message = self._http_error_message(response)
-            raise ProviderError(error_message)
-
-        try:
-            data = response.json()
-        except ValueError as exc:
-                raise ProviderError("Invalid JSON response from Ollama") from exc
-
-        content = self._extract_content(data)
-
-        return LLMResponse(content=content)
+        return LLMResponse(content=content, tool_calls=tool_calls)
     
 
     def _build_payload(
         self,
         messages: list[Message],
         schema: JsonSchema | None,
+        tools: list[ToolDefinition] | None,
     ) -> dict[str, Any]:
         options: dict[str, Any] = {
             "temperature": self.temperature,
@@ -135,42 +135,77 @@ class OllamaProvider(BaseLLMProvider):
     
         if schema is not None:
             payload["format"] = schema
-        elif self.response_format == "json":
+        elif tools is None and self.response_format == "json":
             payload["format"] = "json"
+
+        if tools:
+            payload["tools"] = self._tool_payload(tools)
 
         return payload
 
-    def _http_error_message(self, response: requests.Response) -> str:
-        error_body = response.text.strip()
+    def _tool_payload(self, tools: list[ToolDefinition]) -> list[dict[str, Any]]:
+        return [
+            {
+                "type": "function",
+                "function": tool,
+            }
+            for tool in tools
+        ]
 
-        if len(error_body) > MAX_ERROR_BODY_LENGTH:
-            error_body = f"{error_body[:MAX_ERROR_BODY_LENGTH]}..."
-
-        details = error_body or "<empty response body>"
-
-        return (
-            f"Ollama request failed with HTTP {response.status_code}: "
-            f"{details}"
-        )
-    
-    def _extract_content(self, data: Any) -> str:
+    def _extract_response(
+        self,
+        data: Any,
+        allow_empty_content: bool,
+    ) -> tuple[str, tuple[ToolCall, ...]]:
         if not isinstance(data, dict):
             raise ProviderError("Ollama response must be a JSON object")
 
         message = data.get("message")
 
-        content = None
+        content = ""
         if isinstance(message, dict):
-            content = message.get("content")
+            value = message.get("content")
+            if isinstance(value, str):
+                content = value
 
-        if isinstance(content, str) and content.strip():
-            return content
+        tool_calls = self._extract_tool_calls(message)
+
+        if content.strip() or (allow_empty_content and tool_calls):
+            return content, tool_calls
         
         diagnostics = self._response_diagnostics(data, message)
         raise ProviderError(
             "Ollama response does not contain message.content. "
             f"Diagnostics: {diagnostics}"
         )
+
+    def _extract_tool_calls(self, message: Any) -> tuple[ToolCall, ...]:
+        if not isinstance(message, dict):
+            return ()
+
+        raw_calls = message.get("tool_calls")
+        if not isinstance(raw_calls, list):
+            return ()
+
+        calls = []
+        for raw_call in raw_calls:
+            if not isinstance(raw_call, dict):
+                continue
+
+            function = raw_call.get("function")
+            if not isinstance(function, dict):
+                continue
+
+            name = function.get("name")
+            arguments = function.get("arguments")
+            if not isinstance(name, str) or not name:
+                continue
+            if not isinstance(arguments, dict):
+                arguments = {}
+
+            calls.append(ToolCall(name=name, arguments=arguments))
+
+        return tuple(calls)
     
     def _response_diagnostics(
         self,

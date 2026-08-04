@@ -1,22 +1,19 @@
-import random
-import time
 from typing import Any
-
-import requests
 
 from core.ai.providers.base import (
     BaseLLMProvider,
     JsonSchema,
     LLMResponse,
     Message,
+    ToolCall,
+    ToolDefinition,
+)
+from core.ai.providers.transport import (
+    DEFAULT_MAX_RETRIES,
+    DEFAULT_MIN_REQUEST_INTERVAL,
+    JsonTransport,
 )
 from core.exceptions import ProviderError
-
-
-REQUEST_TIMEOUT = 120
-DEFAULT_MAX_RETRIES = 4
-DEFAULT_MIN_REQUEST_INTERVAL = 5.0
-PROVIDER_TYPE = "gemini"
 
 
 class GeminiProvider(BaseLLMProvider):
@@ -35,13 +32,16 @@ class GeminiProvider(BaseLLMProvider):
         self.model: str = model
         self.temperature: float = temperature
         self.response_format: str = response_format
-        self.max_retries: int = max_retries
-        self.min_request_interval: float = min_request_interval
-        self._last_request_at: float = 0.0
-        self.headers: dict[str, str] = {
+        headers = {
             "x-goog-api-key": self.api_key,
             "Content-Type": "application/json",
         }
+        self.transport = JsonTransport(
+            provider_name="Gemini",
+            headers=headers,
+            max_retries=max_retries,
+            min_request_interval=min_request_interval,
+        )
 
     def chat(self, system_prompt: str, user_prompt: str) -> LLMResponse:
         return self._chat(
@@ -95,21 +95,39 @@ class GeminiProvider(BaseLLMProvider):
             schema=schema,
         )
 
+    def chat_tools(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        tools: list[ToolDefinition],
+    ) -> LLMResponse:
+        return self._chat(
+            [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            tools=tools,
+            allow_empty_content=True,
+        )
+
     def _chat(
         self,
         messages: list[Message],
         schema: JsonSchema | None = None,
+        tools: list[ToolDefinition] | None = None,
+        allow_empty_content: bool = False,
     ) -> LLMResponse:
-        payload = self._build_payload(messages, schema)
-        data = self._post_with_retries(payload)
-        content = self._extract_content(data)
+        payload = self._build_payload(messages, schema, tools)
+        data = self.transport.post(f"{self.base_url}/interactions", payload)
+        content, tool_calls = self._extract_response(data, allow_empty_content)
 
-        return LLMResponse(content=content)
+        return LLMResponse(content=content, tool_calls=tool_calls)
 
     def _build_payload(
         self,
         messages: list[Message],
         schema: JsonSchema | None = None,
+        tools: list[ToolDefinition] | None = None,
     ) -> dict[str, Any]:
         system_instruction = self._system_instruction(messages)
 
@@ -126,15 +144,29 @@ class GeminiProvider(BaseLLMProvider):
         if system_instruction:
             payload["system_instruction"] = system_instruction
 
-        response_format = self._response_format_payload(schema)
-        if response_format is not None:
-            payload["response_format"] = response_format
+        if tools:
+            payload["tools"] = self._tool_payload(tools)
+        else:
+            response_format = self._response_format_payload(schema)
+            if response_format is not None:
+                payload["response_format"] = response_format
 
         return payload
 
+    def _tool_payload(self, tools: list[ToolDefinition]) -> list[dict[str, Any]]:
+        tool_payload = []
+        for tool in tools:
+            tool_payload.append(
+                {
+                    "type": "function",
+                    **tool,
+                }
+            )
+
+        return tool_payload
+
     def _system_instruction(self, messages: list[Message]) -> str:
         parts: list[str] = []
-
         for message in messages:
             content = message.get("content", "").strip()
 
@@ -183,77 +215,52 @@ class GeminiProvider(BaseLLMProvider):
             "schema": schema,
         }
 
-    def _post_with_retries(self, payload: dict[str, Any]) -> dict[str, Any]:
-        last_error: Exception | None = None
 
-        for attempt in range(self.max_retries + 1):
-            self._wait_for_rate_limit()
+    def _extract_response(
+        self,
+        data: dict[str, Any],
+        allow_empty_content: bool,
+    ) -> tuple[str, tuple[ToolCall, ...]]:
+        content = self._extract_optional_content(data)
+        tool_calls = self._extract_tool_calls(data)
 
-            try:
-                response = requests.post(
-                    f"{self.base_url}/interactions",
-                    headers=self.headers,
-                    json=payload,
-                    timeout=REQUEST_TIMEOUT,
-                )
-            except requests.RequestException as exc:
-                last_error = exc
-                if self._is_last_attempt(attempt):
-                    break
-
-                self._sleep_before_retry(None, attempt)
-                continue
-
-            if response.status_code == 429:
-                if self._is_last_attempt(attempt):
-                    last_error = ProviderError("Rate limit exceeded")
-                    break
-
-                self._sleep_before_retry(response, attempt)
-                continue
-
-            try:
-                if not response.ok:
-                    raise ProviderError(self._http_error_message(response))
-
-                return self._parse_response(response)
-            except requests.RequestException as exc:
-                last_error = exc
-                if self._is_last_attempt(attempt):
-                    break
-
-                self._sleep_before_retry(response, attempt)
-            except ProviderError as exc:
-                last_error = exc
-                if self._is_last_attempt(attempt):
-                    break
-
-                self._sleep_before_retry(response, attempt)
-            except ValueError as exc:
-                raise ProviderError(
-                    f"Invalid JSON response from {PROVIDER_TYPE}"
-                ) from exc
+        if content or (allow_empty_content and tool_calls):
+            return content, tool_calls
 
         raise ProviderError(
-            f"{PROVIDER_TYPE} request failed after retries: {last_error}"
+            f"Gemini response does not contain output text"
         )
 
-    def _extract_content(self, data: dict[str, Any]) -> str:
+    def _extract_optional_content(self, data: dict[str, Any]) -> str:
         content = data.get("output_text")
-
         if not isinstance(content, str) or not content.strip():
             content = self._extract_content_from_steps(data)
 
-        if not isinstance(content, str) or not content.strip():
-            raise ProviderError(
-                f"{PROVIDER_TYPE} response does not contain output text"
-            )
+        result = ""
+        if isinstance(content, str):
+            result = content.strip()
 
-        return content
+        return result
+
+    def _extract_tool_calls(self, data: dict[str, Any]) -> tuple[ToolCall, ...]:
+        steps = data.get("steps")
+        if not isinstance(steps, list):
+            return ()
+
+        calls = []
+        for step in steps:
+            if not isinstance(step, dict) or step.get("type") != "function_call":
+                continue
+
+            name = step.get("name")
+            arguments = step.get("arguments")
+            if isinstance(name, str) and name and isinstance(arguments, dict):
+                calls.append(ToolCall(name=name, arguments=arguments))
+
+        return tuple(calls)
 
     def _extract_content_from_steps(self, data: dict[str, Any]) -> str | None:
         steps = data.get("steps")
-
         if not isinstance(steps, list):
             return None
 
@@ -281,56 +288,3 @@ class GeminiProvider(BaseLLMProvider):
                 return text
 
         return None
-
-    def _wait_for_rate_limit(self) -> None:
-        elapsed = time.monotonic() - self._last_request_at
-        remaining = self.min_request_interval - elapsed
-
-        if remaining > 0:
-            time.sleep(remaining)
-
-        self._last_request_at = time.monotonic()
-
-    def _sleep_before_retry(
-        self,
-        response: requests.Response | None,
-        attempt: int,
-    ) -> None:
-        retry_after = None
-
-        if response is not None:
-            retry_after_header = response.headers.get("Retry-After")
-
-            if retry_after_header:
-                try:
-                    retry_after = float(retry_after_header)
-                except ValueError:
-                    retry_after = None
-
-        delay = retry_after or min(60.0, (2 ** attempt) + random.uniform(0, 1))
-        time.sleep(delay)
-
-    def _parse_response(self, response: requests.Response) -> dict[str, Any]:
-        data = response.json()
-
-        if not isinstance(data, dict):
-            raise ProviderError(f"{PROVIDER_TYPE} response must be a JSON object")
-
-        return data
-
-    def _http_error_message(self, response: requests.Response) -> str:
-        body = response.text.strip()
-        if len(body) > 1000:
-            body = f"{body[:1000]}..."
-
-        message = (
-            f"{response.status_code} {response.reason} for "
-            f"{response.request.method} {response.url}"
-        )
-        if body:
-            message = f"{message}: {body}"
-
-        return message
-
-    def _is_last_attempt(self, attempt: int) -> bool:
-        return attempt >= self.max_retries
