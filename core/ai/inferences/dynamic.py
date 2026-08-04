@@ -63,8 +63,6 @@ If there is relevant behavior, return finding with:
   "network_attempt", "network_reconnect", "network_transfer",
   "autorun_persistence", "registry_persistence", "registry_modification",
   "process_execution", "file_modification", "file_deletion", or "file_rename".
-- tone: concise behavior label such as "persistence", "network", "filesystem",
-  "process", "registry", "ransomware", or "unknown".
 - explanation: a brief plain-language explanation of what the behavior means
   and why the evidence supports it. Mention concrete evidence such as the file,
   registry key, process, or network endpoint when available.

@@ -2,12 +2,13 @@ import json
 from typing import Any
 
 from core.ai.providers.base import BaseLLMProvider
-from core.ai.schemas.reversing import (
-    REVERSING_ACTION_NAMES,
-    REVERSING_ANALYSIS_SCHEMA,
-    REVERSING_SEED_SCHEMA,
-    parse_json_object,
+from core.ai.agents.reversing_tools import (
+    build_reversing_tool_definitions,
+    tool_call_action,
+    tool_call_finding,
+    tool_calls_to_targets,
 )
+
 
 SYSTEM_PROMPT = """
 You are a malware reverse-engineering agent.
@@ -48,13 +49,11 @@ Rules:
 - Do not request disassembly for every function or for a simple import thunk,
   one-jump wrapper, or function with no meaningful instructions.
 - Avoid repeated related-string searches unless code evidence requires one.
-- Return at most one concise finding and one next action.
+- Use tool calls for findings and next actions.
+- You may record one concise finding and request one next investigation tool.
 - Use short analyst notes, not chain-of-thought.
-- Return only JSON matching the supplied schema.
+- Do not invent tool arguments.
 """
-MAX_EVIDENCE_ENRICHMENT_LENGTH = 3500
-MAX_TARGET_REASON_LENGTH = 500
-
 
 class ReversingAgent:
     def __init__(self, llm: BaseLLMProvider) -> None:
@@ -75,9 +74,6 @@ class ReversingAgent:
         Bounded reconnaissance:
         {json.dumps(reconnaissance, indent=2, ensure_ascii=False, default=str)}
 
-        Available tools:
-        {json.dumps(available_tools, indent=2, ensure_ascii=False)}
-
         Prioritize targets that can lead to critical code regions:
         - suspicious imports with import_xrefs
         - behaviorally meaningful strings with string_xrefs
@@ -85,20 +81,32 @@ class ReversingAgent:
 
         Do not prioritize wallet, payment, contact, Session, or onion strings unless
         they are needed to locate ransom-note generation code. Do not invent addresses.
-        Return no more than six targets.
+        Make no more than six investigation tool calls. Do not call record_finding or
+        finish_investigation during initial target selection.
         """
-        
-        response = self.llm.chat_json(
-            SYSTEM_PROMPT, 
-            prompt, 
-            REVERSING_SEED_SCHEMA,
+
+        reversing_tool_definitions = build_reversing_tool_definitions(
+            available_tools,
+            include_finding_tools=False,
         )
 
-        result = parse_json_object(response.content, fallback={})
-        if not isinstance(result.get("targets"), list):
-            raise ValueError("Invalid reversing seed response.")
-        
-        return result
+        response = self.llm.chat_tools(
+            SYSTEM_PROMPT,
+            prompt,
+            reversing_tool_definitions,
+        )
+
+        reason = response.content.strip() or "Initial target selected by the model."
+        targets = tool_calls_to_targets(
+            response.tool_calls,
+            priority=70,
+            reason=reason,
+        )
+
+        return {
+            "reasoning": reason,
+            "targets": targets,
+        }
 
     def analyze_evidence(
         self,
@@ -110,46 +118,13 @@ class ReversingAgent:
         total_chunks: int,
         available_tools: dict[str, Any],
     ) -> dict[str, Any]:
-        bounded_enrichment = self._bounded_text(
-            enrichment,
-            MAX_EVIDENCE_ENRICHMENT_LENGTH,
-        )
-
-        tool = target["tool"]
-        parameters = target["parameters"]
-        priority = target.get("priority")
-        reason = str(target.get("reason") or "")
-        bounded_reason = self._bounded_text(
-                reason,
-                MAX_TARGET_REASON_LENGTH,
-        )
-
-        compact_target = {
-            "tool": tool,
-            "parameters": parameters,
-            "priority": priority,
-            "reason": bounded_reason,
-        }
-
-        compact_tools = {}
-        for tool_name, tool_spec in available_tools.items():
-            if not isinstance(tool_spec, dict):
-                continue
-
-            parameters = list(tool_spec.get("parameters", {}))
-
-            compact_tools[tool_name] = {
-                "parameters": parameters,
-            }
+        compact_target = self._compact_target(target)
 
         prompt = f"""
-        Analyze the observation and choose at most one next action.
+        Analyze this evidence chunk.
 
         Current input target:
         {json.dumps(compact_target, ensure_ascii=False, default=str)}
-
-        Tool executed:
-        {target["tool"]}
 
         Tool output summary:
         {json.dumps(observation, ensure_ascii=False, default=str)}
@@ -157,64 +132,64 @@ class ReversingAgent:
         Bounded raw tool chunk {chunk_index} of {total_chunks}:
         {json.dumps(chunk, ensure_ascii=False, default=str)}
 
-        Bounded enrichment context:
-        {bounded_enrichment or "No enrichment is available."}
+        Enrichment context:
+        {enrichment or "No enrichment is available."}
 
-        Available next actions:
-        {json.dumps(compact_tools, ensure_ascii=False)}
-
-        Choose:
-        - action=none when this observation is not useful.
-        - action=finish when investigation is sufficient.
-        - a tool action only when more investigation is justified.
-
-        For xref observations with code_targets, use one of those exact values for a
-        disassembly follow-up when the reference is relevant.
-        For disassembly observations, if an instruction shows a direct jump or
-        call to a different concrete internal function/address and that target
-        appears behaviorally relevant, choose disassembly for that target.
-        Do not choose callers just to follow a jump or call; use callers only
-        when you need to know which functions invoke the current target.
-        If the current target is disassembly, treat chunks as parts of the same
-        complete function output and avoid requesting the same function again unless
-        a different tool or a different code target is justified.
+        Call record_finding only for evidence-backed malicious behaviour.
+        Call at most one investigation tool when a follow-up is justified.
+        For xref observations with code_targets, choose disassembly using one of
+        those exact values. For a disassembly jump or call to another concrete,
+        behaviorally relevant internal function or address, choose disassembly for
+        that target. Do not request the same disassembly merely to continue reading
+        its chunks. Call finish_investigation when this line of investigation is
+        sufficient. Make no tool call when the observation is not useful.
         """
 
-        response = self.llm.chat_json(
-            SYSTEM_PROMPT, 
-            prompt, 
-            REVERSING_ANALYSIS_SCHEMA,
+        reversing_tool_definitions = build_reversing_tool_definitions(
+            available_tools,
+            include_finding_tools=True,
         )
 
-        result = parse_json_object(response.content, fallback={})
-        required = {
-            "thought", 
-            "confidence", 
-            "action", 
-            "parameters", 
-            "finding",
+        response = self.llm.chat_tools(
+            SYSTEM_PROMPT,
+            prompt,
+            reversing_tool_definitions,
+        )
+
+        action, parameters = tool_call_action(response.tool_calls)
+        thought = response.content.strip() or self._native_thought(action)
+        finding = tool_call_finding(response.tool_calls)
+        confidence = "medium"
+        if isinstance(finding, dict) and finding.get("confidence") in {
+            "low",
+            "medium",
+            "high",
+        }:
+            confidence = finding["confidence"]
+
+        return {
+            "thought": thought,
+            "confidence": confidence,
+            "action": action,
+            "parameters": parameters,
+            "finding": finding,
         }
-        
-        if not required.issubset(result):
-            raise ValueError("Invalid reversing evidence response.")
-        if result["action"] not in REVERSING_ACTION_NAMES:
-            raise ValueError("Invalid reversing action.")
-        if result["confidence"] not in {"low", "medium", "high"}:
-            raise ValueError("Invalid reversing confidence.")
-        if not isinstance(result["parameters"], dict):
-            raise ValueError("Invalid reversing parameters.")
-        if result["finding"] is not None and not isinstance(
-            result["finding"],
-            dict,
-        ):
-            raise ValueError("Invalid reversing finding.")
-        
-        return result
 
-    def _bounded_text(self, value: str, limit: int) -> str:
-        if len(value) <= limit:
-            return value
+    def _compact_target(self, target: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "tool": target["tool"],
+            "parameters": target["parameters"],
+            "priority": target.get("priority"),
+            "reason": str(target.get("reason") or ""),
+        }
 
-        half = limit // 2
-        
-        return f"{value[:half]}\n...[truncated]...\n{value[-half:]}"
+    def _native_thought(
+        self,
+        action: str,
+    ) -> str:
+        if action == "finish":
+            return "The current investigation line is sufficient."
+        if action == "none":
+            return "No evidence-backed follow-up was selected."
+
+        return f"Selected {action} from the current evidence."

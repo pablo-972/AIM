@@ -33,9 +33,12 @@ class ReversingTraceBuilder:
         if trace_action not in NO_TOOL_ACTIONS:
             parameters = target.get("parameters")
 
+        thought = self._thought(analysis.get("thought"), observation)
+        confidence = analysis.get("confidence", "low")
+
         return {
-            "thought": self._thought(analysis.get("thought"), observation),
-            "confidence": analysis.get("confidence", "low"),
+            "thought": thought,
+            "confidence": confidence,
             "action": trace_action,
             "parameters": parameters,
         }
@@ -54,10 +57,13 @@ class ReversingTraceBuilder:
 
         if action in NO_TOOL_ACTIONS:
             return None
+
+        thought = analysis.get("thought")
+        reason = self._thought(thought, observation)
         
-        reason = self._thought(analysis.get("thought"), observation)
         if not reason:
-            reason = f"Follow code evidence from {target.get("tool")}."
+            tool = target.get("tool")
+            reason = f"Follow code evidence from {tool}."
 
         return {
             "tool": action,

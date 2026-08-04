@@ -24,7 +24,7 @@ def validate_static_args(args: argparse.Namespace) -> None:
     selected_tools = set(args.static_tools)
 
     if len(selected_tools) < 1:
-        raise CLIValidationError("Select at least one static mode with --mode")
+        raise CLIValidationError("Select at least one static tool with --tool")
 
     if "full" in selected_tools and len(selected_tools) > 1:
         raise CLIValidationError("'full' cannot be combined with other static modes")

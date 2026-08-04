@@ -49,7 +49,6 @@ class TraceMemory:
             "status": "running",
             "steps": [],
             "findings": [],
-            "artifacts": [],
             "queue": [],
             "errors": [],
         }
@@ -62,7 +61,6 @@ class TraceMemory:
         tool_output: dict[str, Any] | None = None,
         input_ref: dict[str, Any] | None = None,
         finding: dict[str, Any] | None = None,
-        artifact_ref: dict[str, Any] | None = None,
         error: str | None = None,
     ) -> None:
         steps = self.data["steps"]
@@ -74,7 +72,6 @@ class TraceMemory:
             decision=normalized_decision,
             tool_name=tool_name,
             tool_output=tool_output,
-            artifact_ref=artifact_ref,
         )
 
         step = {
@@ -97,9 +94,6 @@ class TraceMemory:
                     "step": step_number,
                 }
             )
-
-        if artifact_ref is not None and artifact_ref not in self.data["artifacts"]:
-            self.data["artifacts"].append(artifact_ref)
 
         if normalized_error:
             self.data["errors"].append(
@@ -201,7 +195,6 @@ class TraceMemory:
         decision: dict[str, Any],
         tool_name: str | None,
         tool_output: dict[str, Any] | None,
-        artifact_ref: dict[str, Any] | None,
     ) -> dict[str, Any]:
         action = decision["action"]
         if (
@@ -218,7 +211,6 @@ class TraceMemory:
                 "name": "none",
                 "status": "error" if tool_output else "skipped",
                 "output": output,
-                "artifact_ref": artifact_ref,
             }
 
         success = False
@@ -229,10 +221,12 @@ class TraceMemory:
             "name": tool_name,
             "status": "ok" if success else "error",
             "output": output,
-            "artifact_ref": artifact_ref,
         }
 
-    def _compact_tool_output(self, tool_output: dict[str, Any] | None) -> dict[str, Any] | None:
+    def _compact_tool_output(
+        self, 
+        tool_output: dict[str, Any] | None,
+    ) -> dict[str, Any] | None:
         if not isinstance(tool_output, dict):
             return None
 
@@ -250,7 +244,11 @@ class TraceMemory:
 
         return compact or None
 
-    def _copy_compact_fields(self, source: dict[str, Any], target: dict[str, Any]) -> None:
+    def _copy_compact_fields(
+        self, 
+        source: dict[str, Any], 
+        target: dict[str, Any],
+    ) -> None:
         for key in COMPACT_OUTPUT_KEYS:
             value = source.get(key)
             if value is not None and not isinstance(value, (dict, list)):
@@ -260,7 +258,11 @@ class TraceMemory:
         if isinstance(item, dict) and item.get("id") is not None:
             target["item_id"] = item["id"]
 
-    def _add_collection_counts(self, source: dict[str, Any], target: dict[str, Any]) -> None:
+    def _add_collection_counts(
+        self, 
+        source: dict[str, Any], 
+        target: dict[str, Any],
+    ) -> None:
         for key, value in source.items():
             if key in LARGE_OUTPUT_KEYS and isinstance(value, (dict, list)):
                 target.setdefault(f"{key}_count", len(value))
