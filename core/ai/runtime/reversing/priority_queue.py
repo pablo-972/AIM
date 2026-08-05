@@ -43,7 +43,7 @@ class TargetPriorityQueue:
         parameters = target["parameters"]
         if target["tool"] == "disassembly":
             parameters = {
-                "function": parameters.get("function"),
+                "address": parameters.get("address"),
             }
 
         return json.dumps(

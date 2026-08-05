@@ -1,48 +1,77 @@
 from typing import Any
 
+from core.utils.postprocessing.reversing.functions import (
+    find_containing_function,
+    is_import_function,
+    parse_address,
+)
 
-def resolve_function(r2: Any, function: str) -> str:
-    address = parse_address(function)
-    if address is None:
-        return function
 
-    raw_functions = r2.cmdj("aflj") or []
-    functions = raw_functions if isinstance(raw_functions, list) else []
-    containing = find_containing_function(functions, address)
+def resolve_code_target(
+    r2: Any,
+    address: str | None = None,
+    function: str | None = None,
+) -> str:
+    if address and function:
+        raise ValueError("address and function cannot be combined")
+    if address:
+        return resolve_address(r2, address)
+    if function:
+        return resolve_internal_function(r2, function)
+
+    raise ValueError("address or function is required")
+
+
+def resolve_address(r2: Any, address: str) -> str:
+    parsed_address = parse_address(address)
+    if parsed_address is None:
+        raise ValueError(f"Invalid Radare2 code address: {address}")
+
+    containing = find_containing_function(_functions(r2), parsed_address)
 
     if containing is not None:
-        name = containing.get("name")
+        if is_import_function(containing.get("name")):
+            raise ValueError(
+                f"Imported function is not an internal code target: {address}"
+            )
+
         offset = containing.get("offset") or containing.get("addr")
-
-        if isinstance(name, str) and name:
-            return name
-
         if isinstance(offset, int):
             return hex(offset)
 
-    r2.cmd(f"af @ {hex(address)}")
-    return hex(address)
+    return hex(parsed_address)
 
 
-def parse_address(value: str) -> int | None:
-    try:
-        return int(value, 0)
-    except (TypeError, ValueError):
-        return None
+def resolve_internal_function(r2: Any, function: str) -> str:
+    function_name = function.strip()
+    if not function_name:
+        raise ValueError("function is required")
 
+    for item in _functions(r2):
+        name = item.get("name")
+        address = item.get("offset") or item.get("addr")
 
-def find_containing_function(
-    functions: list[dict[str, Any]],
-    address: int,
-) -> dict[str, Any] | None:
-    for function in functions:
-        offset = function.get("offset") or function.get("addr")
-        size = function.get("size") or 0
-
-        if not isinstance(offset, int) or not isinstance(size, int):
+        if name != function_name or not isinstance(address, int):
             continue
 
-        if offset <= address < offset + max(size, 1):
-            return function
+        if is_import_function(name):
+            raise ValueError(
+                f"Imported function is not an internal code target: {function}"
+            )
 
-    return None
+        return hex(address)
+
+    raise ValueError(f"Internal function not found: {function}")
+
+
+def _functions(r2: Any) -> list[dict[str, Any]]:
+    items = r2.cmdj("aflj") or []
+    if not isinstance(items, list):
+        return []
+
+    functions = []
+    for item in items:
+        if isinstance(item, dict):
+            functions.append(item)
+
+    return functions

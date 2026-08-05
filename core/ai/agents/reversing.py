@@ -34,13 +34,16 @@ Rules:
 - Create critical_code_region findings only when xref, caller/callee,
   or disassembly evidence ties the behavior to code.
 - After string_xrefs or import_xrefs returns code references, inspect an actual
-  returned function/address with disassembly instead of continuing with broad
+  returned internal code address with disassembly instead of continuing with broad
   artifact searches.
 - Request disassembly when target context, xrefs, imports, strings, callers,
   callees, or size make deeper assembly inspection useful.
-- When disassembly shows a direct jump or call to another concrete function or
-  internal code address, prefer a disassembly follow-up for that jump/call target
+- When disassembly shows a direct jump or call to another concrete internal code
+  address, prefer a disassembly follow-up for that jump/call target
   to understand the next code path.
+- disassembly, callers, and callees accept only internal code addresses. Do not
+  request them for imported APIs, Windows functions, or import thunks. Use
+  import_xrefs for imports, then inspect a returned caller address when useful.
 - Do not use callers merely because the current function jumps or calls another
   function. Callers answers the inverse question: who invokes this function.
 - Disassembly returns the complete selected function. Large disassembly output
@@ -77,7 +80,7 @@ class ReversingAgent:
         Prioritize targets that can lead to critical code regions:
         - suspicious imports with import_xrefs
         - behaviorally meaningful strings with string_xrefs
-        - concrete functions with disassembly
+        - concrete internal code addresses with disassembly
 
         Do not prioritize wallet, payment, contact, Session, or onion strings unless
         they are needed to locate ransom-note generation code. Do not invent addresses.
@@ -138,9 +141,9 @@ class ReversingAgent:
         Call record_finding only for evidence-backed malicious behaviour.
         Call at most one investigation tool when a follow-up is justified.
         For xref observations with code_targets, choose disassembly using one of
-        those exact values. For a disassembly jump or call to another concrete,
-        behaviorally relevant internal function or address, choose disassembly for
-        that target. Do not request the same disassembly merely to continue reading
+        those exact addresses. For a disassembly jump or call to another concrete,
+        behaviorally relevant internal address, choose disassembly for that target.
+        Do not request the same disassembly merely to continue reading
         its chunks. Call finish_investigation when this line of investigation is
         sufficient. Make no tool call when the observation is not useful.
         """

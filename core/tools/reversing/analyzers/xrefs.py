@@ -1,17 +1,22 @@
 from typing import Any
 
+from core.tools.reversing.analyzers.functions import resolve_code_target
 from core.tools.reversing.analyzers.session import R2Session
+from core.utils.postprocessing.reversing.functions import target_reference
 
 
-def xrefs(sample: str, function: str) -> dict[str, Any]:
-    if not function:
-        raise ValueError("function is required")
-
+def xrefs(
+    sample: str,
+    address: str | None = None,
+    function: str | None = None,
+) -> dict[str, Any]:
     with R2Session(sample) as r2:
-        refs = r2.cmdj(f"axtj @ {function}") or []
+        resolved_function = resolve_code_target(r2, address, function)
+        refs = r2.cmdj(f"axtj @ {resolved_function}") or []
 
     return {
-        "function": function,
+        **target_reference(address, function),
+        "resolved_function": resolved_function,
         "xrefs": _normalize_xrefs(refs),
     }
 

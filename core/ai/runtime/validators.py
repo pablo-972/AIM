@@ -1,5 +1,7 @@
 from typing import Any
 
+from core.utils.postprocessing.reversing.functions import parse_address
+
 NO_TOOL_ACTIONS = {"none", "finish"}
 
 
@@ -8,7 +10,7 @@ def normalize_tool_parameters(
     parameters: dict[str, Any],
 ) -> dict[str, Any]:
     if tool_name in {"disassembly", "callers", "callees"}:
-        return _keep_parameters(parameters, {"function"})
+        return _normalize_code_address(parameters)
 
     if tool_name == "string_xrefs":
         return _keep_parameters(parameters, {"value"})
@@ -17,6 +19,17 @@ def normalize_tool_parameters(
         return _keep_parameters(parameters, {"import_name"})
 
     return dict(parameters)
+
+
+def _normalize_code_address(parameters: dict[str, Any]) -> dict[str, Any]:
+    normalized = _keep_parameters(parameters, {"address"})
+    address = normalized.get("address")
+    parsed_address = parse_address(address)
+
+    if parsed_address is not None:
+        normalized["address"] = hex(parsed_address)
+
+    return normalized
 
 
 def _keep_parameters(
@@ -83,6 +96,9 @@ def validate_tool_parameters(
         if value_type == "integer" and not isinstance(value, int):
             return False
         if value_type == "string" and not isinstance(value, str):
+            return False
+
+        if name == "address" and parse_address(value) is None:
             return False
 
         minimum = spec.get("minimum")

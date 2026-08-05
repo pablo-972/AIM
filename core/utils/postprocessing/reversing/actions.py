@@ -46,18 +46,14 @@ class ReversingActionPolicy:
             return "none", {}
 
         if current_tool in XREF_TOOLS and has_code_target:
-            return "disassembly", {"function": code_targets[0]}
+            return "disassembly", {"address": code_targets[0]}
 
-        if action in CODE_FOLLOW_UP_TOOLS and has_code_target:
-            requested_function = parameters.get("function")
-
-            if requested_function not in code_targets:
-                parameters = self._parameters_for_code_target(
+        if action in CODE_FOLLOW_UP_TOOLS and not parameters.get("address"):
+            if has_code_target:
+                return action, self._parameters_for_code_target(
                     action,
                     code_targets[0],
                 )
-
-                return action, parameters
 
         parameters = normalize_tool_parameters(action, parameters)
         
@@ -86,7 +82,7 @@ class ReversingActionPolicy:
         code_target: str,
     ) -> dict[str, Any]:
         normalized = {
-            "function": code_target,
+            "address": code_target,
         }
         
         return normalize_tool_parameters(action, normalized)

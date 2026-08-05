@@ -40,18 +40,25 @@ core/tools/reversing/agent_tools.json
 | `callers` | Lists callers of a selected function | Shows incoming control flow |
 | `callees` | Lists callees of a selected function | Shows outgoing control flow |
 
+The code-oriented manual tools (`details`, `disasm`, `xrefs`, `callers`, and
+`callees`) accept either `--function` for an internal Radare2 function name or
+`--address` for a code address. Use `--address` for values such as `0x401000`,
+or `fcn.00401000`. The options are mutually exclusive.
+
 ## Agent-Callable Tools
 
 | Tool | Purpose |
 | --- | --- |
-| `disassembly` | Return structured disassembly instructions for one function |
-| `callers` | Return incoming calls for one function |
-| `callees` | Return outgoing calls for one function |
+| `disassembly` | Return structured disassembly instructions for one internal code address |
+| `callers` | Return incoming calls for one internal code address |
+| `callees` | Return outgoing calls for one internal code address |
 | `string_xrefs` | Find strings and their code references |
 | `import_xrefs` | Find imports and their code references |
 
 The reversing agent uses these tools through a priority queue. The JSON contract
 limits what the model can ask for and validates parameters before execution.
+Imported APIs are investigated with `import_xrefs`; the agent then follows a
+returned caller address into the sample's code.
 
 ## Related Phase
 

@@ -1,29 +1,29 @@
 {
     "disassembly": {
-        "description": "Return function details and complete structured disassembly instructions for one function.",
+        "description": "Return complete structured disassembly instructions for one internal code address.",
         "parameters": {
-            "function": {
-                "description": "Function name or address.",
+            "address": {
+                "description": "Internal code address, for example 0x401000, 4427076, or fcn.00401000.",
                 "type": "string",
                 "required": true
             }
         }
     },
     "callers": {
-        "description": "Return callers of one function.",
+        "description": "Return callers of one internal code address.",
         "parameters": {
-            "function": {
-                "description": "Function name or address.",
+            "address": {
+                "description": "Internal code address, for example 0x401000, 4427076, or fcn.00401000.",
                 "type": "string",
                 "required": true
             }
         }
     },
     "callees": {
-        "description": "Return callees of one function.",
+        "description": "Return callees of one internal code address.",
         "parameters": {
-            "function": {
-                "description": "Function name or address.",
+            "address": {
+                "description": "Internal code address, for example 0x401000, 4427076, or fcn.00401000.",
                 "type": "string",
                 "required": true
             }

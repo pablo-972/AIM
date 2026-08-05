@@ -1,7 +1,8 @@
 from typing import Any
 
-from core.tools.reversing.analyzers.functions import resolve_function
+from core.tools.reversing.analyzers.functions import resolve_code_target
 from core.tools.reversing.analyzers.session import R2Session
+from core.utils.postprocessing.reversing.functions import target_reference
 
 
 def binary_info(sample: str) -> dict[str, Any]:
@@ -36,7 +37,7 @@ def functions(sample: str) -> list[dict[str, Any]]:
     return [
         {
             "name": item.get("name"),
-            "address": item.get("addr"),
+            "address": item.get("offset") or item.get("addr"),
             "type": item.get("type"),
             "signature": item.get("signature"),
             "size": item.get("size"),
@@ -57,12 +58,13 @@ def functions(sample: str) -> list[dict[str, Any]]:
     ]
 
 
-def function_details(sample: str, function: str) -> dict[str, Any]:
-    if not function:
-        raise ValueError("function is required")
-
+def function_details(
+    sample: str,
+    address: str | None = None,
+    function: str | None = None,
+) -> dict[str, Any]:
     with R2Session(sample) as r2:
-        resolved_function = resolve_function(r2, function)
+        resolved_function = resolve_code_target(r2, address, function)
         info = r2.cmdj(f"afij @ {resolved_function}") or []
 
     function_info = info[0] if info else {}
@@ -79,6 +81,7 @@ def function_details(sample: str, function: str) -> dict[str, Any]:
             end_address = hex(offset + max(size, 0))
 
     return {
+        "address": address,
         "function": function,
         "resolved_function": resolved_function,
         "function_info": function_info,
@@ -105,15 +108,18 @@ def strings(sample: str) -> list[dict[str, Any]]:
     ]
 
 
-def callers(sample: str, function: str) -> dict[str, Any]:
-    if not function:
-        raise ValueError("function is required")
-
+def callers(
+    sample: str,
+    address: str | None = None,
+    function: str | None = None,
+) -> dict[str, Any]:
     with R2Session(sample) as r2:
-        items = r2.cmdj(f"axtj @ {function}") or []
+        resolved_function = resolve_code_target(r2, address, function)
+        items = r2.cmdj(f"axtj @ {resolved_function}") or []
 
     return {
-        "function": function,
+        **target_reference(address, function),
+        "resolved_function": resolved_function,
         "callers": [
             {
                 "from": item.get("from"),
@@ -128,12 +134,14 @@ def callers(sample: str, function: str) -> dict[str, Any]:
     }
 
 
-def callees(sample: str, function: str) -> dict[str, Any]:
-    if not function:
-        raise ValueError("function is required")
-
+def callees(
+    sample: str,
+    address: str | None = None,
+    function: str | None = None,
+) -> dict[str, Any]:
     with R2Session(sample) as r2:
-        function_info = r2.cmdj(f"pdfj @ {function}") or {}
+        resolved_function = resolve_code_target(r2, address, function)
+        function_info = r2.cmdj(f"pdfj @ {resolved_function}") or {}
 
     calls = []
     for op in function_info.get("ops", []):
@@ -141,7 +149,8 @@ def callees(sample: str, function: str) -> dict[str, Any]:
             calls.append(op)
 
     return {
-        "function": function,
+        **target_reference(address, function),
+        "resolved_function": resolved_function,
         "callees": [
             {
                 "call_address": op.get("addr") or op.get("offset"),

@@ -90,15 +90,15 @@ class ReversingTargetQueue:
             targets.append(target)
 
         for item in large_functions[:3]:
-            function_name = item.get("name")
+            address = item.get("address")
 
-            if not function_name:
+            if not isinstance(address, int):
                 continue
 
             target = {
                 "tool": "disassembly",
                 "parameters": {
-                    "function": function_name,
+                    "address": hex(address),
                 },
                 "priority": 80,
                 "reason": "Large function discovered during reconnaissance.",

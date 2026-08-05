@@ -19,8 +19,10 @@ If enrichment is unavailable, the agent performs bounded reconnaissance and uses
 deterministic fallback targets such as suspicious imports, large functions, and
 interesting strings.
 
-When xrefs or reconnaissance identify an interesting function, the agent uses
-`disassembly` directly to retrieve the function body.
+When xrefs or reconnaissance identify an interesting code address, the agent
+uses `disassembly` directly to retrieve the containing function body. Imports
+are first explored with `import_xrefs`, so the agent follows callers in the
+sample rather than disassembling API thunks.
 
 The agent is queue-driven:
 

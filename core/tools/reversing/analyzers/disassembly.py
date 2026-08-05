@@ -1,14 +1,19 @@
 from typing import Any
 
-from core.tools.reversing.analyzers.functions import resolve_function
+from core.tools.reversing.analyzers.functions import resolve_code_target
 from core.tools.reversing.analyzers.session import R2Session
+from core.utils.postprocessing.reversing.functions import target_reference
 
 
-def disassembly(sample: str, function: str) -> dict[str, Any]:
-    details = _function_analysis(sample, function)
+def disassembly(
+    sample: str,
+    address: str | None = None,
+    function: str | None = None,
+) -> dict[str, Any]:
+    details = _function_analysis(sample, address, function)
 
     return {
-        "function": function,
+        **target_reference(address, function),
         "resolved_function": details["resolved_function"],
         "function_info": details["info"],
         "instructions_count": len(details["instructions"]),
@@ -18,12 +23,14 @@ def disassembly(sample: str, function: str) -> dict[str, Any]:
     }
 
 
-def _function_analysis(sample: str, function: str) -> dict[str, Any]:
-    if not function:
-        raise ValueError("function is required")
-
+def _function_analysis(
+    sample: str,
+    address: str | None,
+    function: str | None,
+) -> dict[str, Any]:
     with R2Session(sample) as r2:
-        resolved_function = resolve_function(r2, function)
+        resolved_function = resolve_code_target(r2, address, function)
+
         info = r2.cmdj(f"afij @ {resolved_function}") or []
         disasm = r2.cmdj(f"pdfj @ {resolved_function}") or {}
 
