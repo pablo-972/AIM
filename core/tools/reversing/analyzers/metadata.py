@@ -117,8 +117,9 @@ def callers(
         resolved_function = resolve_code_target(r2, address, function)
         items = r2.cmdj(f"axtj @ {resolved_function}") or []
 
+    target = target_reference(address, function)
     return {
-        **target_reference(address, function),
+        **target,
         "resolved_function": resolved_function,
         "callers": [
             {
@@ -148,8 +149,9 @@ def callees(
         if op.get("type") in {"call", "ucall", "icall"}:
             calls.append(op)
 
+    target = target_reference(address, function)
     return {
-        **target_reference(address, function),
+        **target,
         "resolved_function": resolved_function,
         "callees": [
             {

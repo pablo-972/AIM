@@ -103,25 +103,23 @@ def collect_reconnaissance(sample: str) -> dict[str, Any]:
 
 
 def _is_clean_interesting_string(value: str) -> bool:
-    has_valid_length = 5 <= len(value) <= 256
-
-    if not has_valid_length:
+    if len(value) < 5:
         return False
 
-    has_invalid_characters = any(
-        ord(character) < 32 and not character.isspace()
-        for character in value
-    )
-
-    if has_invalid_characters:
+    if len(value) > 256:
         return False
 
-    contains_interesting_keyword = any(
-        keyword in value.lower()
-        for keyword in INTERESTING_STRING_KEYWORDS
-    )
+    for character in value:
+        if ord(character) < 32 and not character.isspace():
+            return False
 
-    return contains_interesting_keyword
+    normalized_value = value.lower()
+
+    for keyword in INTERESTING_STRING_KEYWORDS:
+        if keyword in normalized_value:
+            return True
+
+    return False
 
 
 

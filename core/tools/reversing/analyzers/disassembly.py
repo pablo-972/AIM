@@ -11,9 +11,10 @@ def disassembly(
     function: str | None = None,
 ) -> dict[str, Any]:
     details = _function_analysis(sample, address, function)
+    target = target_reference(address, function)
 
     return {
-        **target_reference(address, function),
+        **target,
         "resolved_function": details["resolved_function"],
         "function_info": details["info"],
         "instructions_count": len(details["instructions"]),
@@ -75,42 +76,4 @@ def _function_analysis(
     }
 
 
-# def text_disassembly(
-#     sample: str,
-#     function: str,
-# ) -> dict[str, Any]:
-#     details = _function_analysis(sample, function)
-#     ops = details["instructions"]
 
-#     text_lines = []
-#     addresses = []  
-
-#     for op in ops:
-#         address = op.get("address")
-#         disasm = op.get("disasm")
-
-#         if address is not None and disasm:
-#             text_lines.append(f"{address:#x}: {disasm}")
-
-#         if isinstance(address, int):
-#             addresses.append(address)
-
-#     text = "\n".join(text_lines)
-
-#     if addresses:
-#         start_address = hex(min(addresses))
-#         end_address = hex(max(addresses))
-#     else:
-#         start_address = details["start_address"]
-#         end_address = details["end_address"]
-
-#     return {
-#         "function": function,
-#         "resolved_function": details["resolved_function"],
-#         "function_info": details["info"],
-#         "instructions_count": len(ops),
-#         "returned_instructions": len(ops),
-#         "start_address": start_address,
-#         "end_address": end_address,
-#         "disassembly": text,
-#     }
