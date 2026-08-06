@@ -5,7 +5,9 @@ from core.exceptions import CLIValidationError
 
 REVERSING_TOOLS = [
     "info",
+    "entrypoints",
     "imports",
+    "sections",
     "functions",
     "details",
     "strings",

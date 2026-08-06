@@ -42,7 +42,6 @@ def string_xrefs(
 
         for item in items:
             text = str(item.get("string", "")).lower()
-
             if query in text:
                 matches.append(item)
 

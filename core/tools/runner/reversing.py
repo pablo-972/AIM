@@ -36,7 +36,7 @@ class ReversingToolRunner(BaseToolRunner):
     def _resolve_tools(self) -> list[str]:
         tools = list(self.context.reversing_tools)
         if "full" in tools:
-            return ["info", "imports"]
+            return ["info", "entrypoints", "sections", "imports"]
 
         unknown_tools = []
         for tool in tools:

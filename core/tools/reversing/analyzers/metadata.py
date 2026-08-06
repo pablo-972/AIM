@@ -9,10 +9,33 @@ from core.tools.reversing.analyzers.session import R2Session
 
 def binary_info(sample: str) -> dict[str, Any]:
     with R2Session(sample) as r2:
-        return {
-            "binary_info": r2.cmdj("ij") or {},
-            "entrypoints": r2.cmdj("iej") or [],
-        }
+        return r2.cmdj("ij") or {}
+
+
+def entrypoints(sample: str) -> list[dict[str, Any]]:
+    with R2Session(sample) as r2:
+        items = r2.cmdj("iej") or []
+
+    if not isinstance(items, list):
+        return []
+
+    result = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+
+        result.append(
+            {
+                "vaddr": item.get("vaddr"),
+                "paddr": item.get("paddr"),
+                "baddr": item.get("baddr"),
+                "laddr": item.get("laddr"),
+                "haddr": item.get("haddr"),
+                "type": item.get("type"),
+            }
+        )
+
+    return result
 
 
 def imports(sample: str) -> list[dict[str, Any]]:
@@ -58,6 +81,35 @@ def functions(sample: str) -> list[dict[str, Any]]:
         }
         for item in items
     ]
+
+
+def sections(sample: str) -> list[dict[str, Any]]:
+    with R2Session(sample) as r2:
+        items = r2.cmdj("iSj") or []
+
+    if not isinstance(items, list):
+        return []
+
+    result = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+
+        result.append(
+            {
+                "name": item.get("name"),
+                "vaddr": item.get("vaddr"),
+                "paddr": item.get("paddr"),
+                "size": item.get("size"),
+                "vsize": item.get("vsize"),
+                "perm": item.get("perm"),
+                "flags": item.get("flags"),
+                "type": item.get("type"),
+                "entropy": item.get("entropy"),
+            }
+        )
+
+    return result
 
 
 def function_details(

@@ -8,9 +8,11 @@ from core.tools.reversing.analyzers.metadata import (
     binary_info,
     callees,
     callers,
+    entrypoints,
     function_details,
     functions,
     imports,
+    sections,
     strings,
 )
 
@@ -23,7 +25,9 @@ def run_string_xrefs(sample: str, string_value: str) -> dict[str, Any]:
 
 REVERSING_MANUAL_TOOLS: dict[str, ManualTool] = {
     "info": binary_info,
+    "entrypoints": entrypoints,
     "imports": imports,
+    "sections": sections,
     "functions": functions,
     "details": function_details,
     "strings": strings,

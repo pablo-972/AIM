@@ -28,8 +28,10 @@ core/tools/reversing/agent_tools.json
 
 | Tool | Purpose | Why it is used |
 | --- | --- | --- |
-| `info` | Returns binary summary information | Establishes basic reversing context |
+| `info` | Returns binary metadata from Radare2 | Establishes basic reversing context |
+| `entrypoints` | Lists binary entrypoints with file and virtual addresses | Provides execution-start pivots for `disasm --address` |
 | `imports` | Lists imported libraries and APIs | Reveals API capabilities and likely behavior |
+| `sections` | Lists binary sections with addresses, sizes, and permissions | Provides section-level navigation pivots such as `.text` or `.data` |
 | `functions` | Lists discovered functions | Provides the navigation surface for deeper analysis |
 | `details` | Returns details for one selected function | Gives quick function context before full disassembly |
 | `strings` | Lists strings visible to the reversing backend | Provides pivots for xrefs and behavior clues |
