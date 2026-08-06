@@ -3,6 +3,7 @@ from typing import Any
 from core.utils.chunks import json_size, make_report_chunk
 
 MAX_REVERSING_EVIDENCE_SIZE = 4500
+MAX_DISASSEMBLY_INSTRUCTIONS_PER_CHUNK = 24
 
 
 def chunk_reversing_evidence(
@@ -10,6 +11,10 @@ def chunk_reversing_evidence(
     value: Any,
     chunk_size: int = MAX_REVERSING_EVIDENCE_SIZE,
 ) -> list[dict[str, Any]]:
+    disassembly_chunks = _chunk_disassembly_instructions(section, value)
+    if disassembly_chunks:
+        return disassembly_chunks
+
     if _fits_in_chunk(value, chunk_size):
         return [make_report_chunk(section, value)]
 
@@ -23,6 +28,39 @@ def chunk_reversing_evidence(
         return _chunk_text(section, value, chunk_size)
 
     return [make_report_chunk(section, str(value))]
+
+
+def _chunk_disassembly_instructions(
+    section: str,
+    value: Any,
+) -> list[dict[str, Any]]:
+    if section != "disassembly" or not isinstance(value, dict):
+        return []
+
+    instructions = value.get("instructions")
+    if not _is_instruction_lines(instructions):
+        return []
+
+    chunks = []
+    lines = list(instructions)
+    
+    for offset in range(0, len(lines), MAX_DISASSEMBLY_INSTRUCTIONS_PER_CHUNK):
+        chunk_lines = lines[offset:offset + MAX_DISASSEMBLY_INSTRUCTIONS_PER_CHUNK]
+        chunks.append(
+            make_report_chunk(
+                f"{section}.instructions.{len(chunks) + 1}",
+                "\n".join(chunk_lines),
+            )
+        )
+
+    return chunks
+
+
+def _is_instruction_lines(value: Any) -> bool:
+    return (
+        isinstance(value, list)
+        and all(isinstance(item, str) for item in value)
+    )
 
 
 def _fits_in_chunk(value: Any, chunk_size: int) -> bool:

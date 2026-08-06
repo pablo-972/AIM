@@ -1,6 +1,6 @@
 {
     "disassembly": {
-        "description": "Return complete structured disassembly instructions for one internal code address.",
+        "description": "Inspect disassembled code starting from the supplied address. If the address belongs to a recognized internal function, the complete containing function is returned. If no containing function is recognized, a configurable forward code region is returned instead. The result includes the requested address, the resolved function when available, and readable instruction lines formatted as hexadecimal address followed by instruction.",
         "parameters": {
             "address": {
                 "description": "Internal code address, for example 0x401000, 4427076, or fcn.00401000.",

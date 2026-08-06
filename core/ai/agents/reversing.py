@@ -122,6 +122,7 @@ class ReversingAgent:
         available_tools: dict[str, Any],
     ) -> dict[str, Any]:
         compact_target = self._compact_target(target)
+        chunk_text = self._format_chunk_for_prompt(chunk)
 
         prompt = f"""
         Analyze this evidence chunk.
@@ -133,7 +134,7 @@ class ReversingAgent:
         {json.dumps(observation, ensure_ascii=False, default=str)}
 
         Bounded raw tool chunk {chunk_index} of {total_chunks}:
-        {json.dumps(chunk, ensure_ascii=False, default=str)}
+        {chunk_text}
 
         Enrichment context:
         {enrichment or "No enrichment is available."}
@@ -185,6 +186,21 @@ class ReversingAgent:
             "priority": target.get("priority"),
             "reason": str(target.get("reason") or ""),
         }
+
+    def _format_chunk_for_prompt(
+        self,
+        chunk: Any,
+    ) -> str:
+        if isinstance(chunk, dict):
+            section = chunk.get("section")
+            data = chunk.get("data")
+
+            if isinstance(section, str):
+                if section.startswith("disassembly.instructions."):
+                    if isinstance(data, str):
+                        return f"{section}\n{data}"
+
+        return json.dumps(chunk, ensure_ascii=False, default=str)
 
     def _native_thought(
         self,

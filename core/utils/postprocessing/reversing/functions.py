@@ -1,4 +1,19 @@
+import unicodedata
 from typing import Any
+
+
+def escape_invisible_unicode(value: str) -> str:
+    result = []
+    
+    for character in value:
+        category = unicodedata.category(character)
+
+        if category in {"Cc", "Cf"}:
+            result.append(_unicode_escape(character))
+        else:
+            result.append(character)
+
+    return "".join(result)
 
 
 def parse_address(value: Any) -> int | None:
@@ -65,3 +80,11 @@ def _parse_address_value(value: str, base: int) -> int | None:
         return None
 
     return address if address >= 0 else None
+
+
+def _unicode_escape(character: str) -> str:
+    codepoint = ord(character)
+    if codepoint <= 0xFFFF:
+        return f"\\u{codepoint:04x}"
+
+    return f"\\U{codepoint:08x}"

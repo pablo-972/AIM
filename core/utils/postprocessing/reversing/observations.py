@@ -129,10 +129,29 @@ class ReversingObservationBuilder:
         summary: dict[str, Any],
     ) -> None:
         instructions = data.get("instructions")
+        if isinstance(instructions, str):
+            lines = []
+            
+            for line in instructions.splitlines():
+                if line.strip():
+                    lines.append(line)
+
+            summary.setdefault("instructions_count", len(lines))
+            return
+
         if not isinstance(instructions, list):
             return
 
         summary.setdefault("instructions_count", len(instructions))
+
+        invalid_instruction = False
+        for instruction in instructions:
+            if not isinstance(instruction, str):
+                invalid_instruction = True
+                break
+
+        if not invalid_instruction:
+            return
 
         addresses = []
         for instruction in instructions:
