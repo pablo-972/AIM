@@ -1,8 +1,10 @@
 from typing import Any
 
-from core.tools.reversing.analyzers.functions import resolve_code_target
+from core.tools.reversing.analyzers.common import (
+    resolve_code_target,
+    target_reference,
+)
 from core.tools.reversing.analyzers.session import R2Session
-from core.utils.postprocessing.reversing.functions import target_reference
 
 
 def binary_info(sample: str) -> dict[str, Any]:

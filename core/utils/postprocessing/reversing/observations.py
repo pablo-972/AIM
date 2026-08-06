@@ -1,7 +1,7 @@
 from typing import Any
 
 from core.utils.postprocessing.reversing.contracts import CODE_FOLLOW_UP_TOOLS
-from core.utils.postprocessing.reversing.functions import parse_address
+from core.utils.postprocessing.reversing.address import parse_address
 
 
 class ReversingObservationBuilder:

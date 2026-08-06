@@ -1,6 +1,6 @@
 from typing import Any
 
-from core.utils.postprocessing.reversing.functions import parse_address
+from core.utils.postprocessing.reversing.address import parse_address
 
 NO_TOOL_ACTIONS = {"none", "finish"}
 
