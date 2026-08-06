@@ -39,6 +39,7 @@ def tool_calls_to_targets(
     for tool_call in tool_calls:
         name = getattr(tool_call, "name", None)
         arguments = getattr(tool_call, "arguments", None)
+
         if name not in REVERSING_AGENT_TOOL_NAMES or not isinstance(arguments, dict):
             continue
 
@@ -95,16 +96,18 @@ def _tool_definition(
 
     properties = {}
     required = []
+
     for parameter_name, parameter in parameters.items():
         if not isinstance(parameter_name, str) or not isinstance(parameter, dict):
             continue
 
-        parameter_schema = {
-            key: value
-            for key, value in parameter.items()
-            if key != "required"
-        }
+        parameter_schema = {}
+        for key, value in parameter.items():
+            if key != "required":
+                parameter_schema[key] = value
+
         properties[parameter_name] = parameter_schema
+        
         if parameter.get("required") is True:
             required.append(parameter_name)
 

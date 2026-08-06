@@ -25,7 +25,6 @@ REVERSING_FINDING_SCHEMA = {
         "category": {
             "type": "string",
             "enum": [
-                "ransom_note_generation",
                 "file_encryption",
                 "crypto",
                 "defense_evasion",
