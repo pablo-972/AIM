@@ -36,16 +36,16 @@ core/tools/reversing/agent_tools.json
 | `details` | Returns details for one selected function | Gives quick function context before full disassembly |
 | `strings` | Lists strings visible to the reversing backend | Provides pivots for xrefs and behavior clues |
 | `disasm` | Returns disassembly for a selected function | Lets the analyst inspect code behavior directly |
-| `xrefs` | Returns references around a selected function | Helps understand code relationships |
+| `address-xrefs` | Finds references to one exact address | Helps inspect jumps, data references, and non-call pivots |
 | `string-xrefs` | Finds code references to a selected string | Turns string pivots into executable-code locations |
 | `import-xrefs` | Finds code references to a selected import | Turns API pivots into executable-code locations |
 | `callers` | Lists callers of a selected function | Shows incoming control flow |
 | `callees` | Lists callees of a selected function | Shows outgoing control flow |
 
-The code-oriented manual tools (`details`, `disasm`, `xrefs`, `callers`, and
-`callees`) accept either `--function` for an internal Radare2 function name or
-`--address` for a code address. Use `--address` for values such as `0x401000`,
-or `fcn.00401000`. The options are mutually exclusive.
+The code-oriented manual tools (`details`, `disasm`, `callers`, and `callees`)
+accept either `--function` for an internal Radare2 function name or `--address`
+for a code address. Use `--address` for values such as `0x401000`, or
+`fcn.00401000`. The options are mutually exclusive.
 
 ## Agent-Callable Tools
 

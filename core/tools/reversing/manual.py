@@ -3,7 +3,11 @@ from typing import Any
 
 
 from core.tools.reversing.analyzers.disassembly import disassembly
-from core.tools.reversing.analyzers.xrefs import import_xrefs, string_xrefs, xrefs
+from core.tools.reversing.analyzers.xrefs import (
+    address_xrefs,
+    import_xrefs,
+    string_xrefs,
+)
 from core.tools.reversing.analyzers.metadata import (
     binary_info,
     callees,
@@ -32,7 +36,7 @@ REVERSING_MANUAL_TOOLS: dict[str, ManualTool] = {
     "details": function_details,
     "strings": strings,
     "disasm": disassembly,
-    "xrefs": xrefs,
+    "address-xrefs": address_xrefs,
     "string-xrefs": run_string_xrefs,
     "import-xrefs": import_xrefs,
     "callers": callers,

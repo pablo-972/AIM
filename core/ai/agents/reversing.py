@@ -52,6 +52,17 @@ Rules:
 - Do not request disassembly for every function or for a simple import thunk,
   one-jump wrapper, or function with no meaningful instructions.
 - Avoid repeated related-string searches unless code evidence requires one.
+- Use string_xrefs selectively. Do not investigate generic file extensions or
+  common filename patterns in isolation, such as *.ini, *.txt, *.tmp, *.dll,
+  *.exe, .ini, .txt, .tmp, .dll, or .exe. Follow extension strings only when
+  they are unusual, campaign-specific, grouped with many target extensions, or
+  tied to file enumeration, encryption, deletion, persistence, or configuration
+  behavior.
+- Before calling string_xrefs, prefer strings that can identify a specific
+  behavior, configuration source, network endpoint, persistence mechanism,
+  command, file target set, ransom note, mutex-like artifact, or malware-family
+  artifact. Skip short fragments, boilerplate runtime text, and generic syntax
+  unless stronger evidence makes them relevant.
 - Use tool calls for findings and next actions.
 - You may record one concise finding and request one next investigation tool.
 - Use short analyst notes, not chain-of-thought.
@@ -82,6 +93,9 @@ class ReversingAgent:
         - behaviorally meaningful strings with string_xrefs
         - concrete internal code addresses with disassembly
 
+        Skip generic file extensions, wildcard patterns, short fragments, and
+        boilerplate runtime strings unless they are unusual, grouped with many
+        target extensions, or connected to stronger malware behavior evidence.
         Do not prioritize wallet, payment, contact, Session, or onion strings unless
         they are needed to locate ransom-note generation code. Do not invent addresses.
         Make no more than six investigation tool calls. Do not call record_finding or

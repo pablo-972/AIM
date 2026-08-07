@@ -178,10 +178,10 @@ def callers(
         "callers": [
             {
                 "from": item.get("from"),
-                "function": item.get("fcn_name"),
                 "to": item.get("to"),
                 "type": item.get("type"),
                 "opcode": item.get("opcode"),
+                "function": item.get("fcn_name"),
                 "perm": item.get("perm"),
             }
             for item in items

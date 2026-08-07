@@ -44,16 +44,20 @@ class ReversingToolRunner(BaseToolRunner):
                 unknown_tools.append(tool)
 
         if unknown_tools:
-            raise ValueError(f"Unknown reversing mode(s): {', '.join(unknown_tools)}")
+            raise ValueError(
+                f"Unknown reversing mode(s): {', '.join(unknown_tools)}"
+            )
 
         return tools
 
     def _build_tool_kwargs(self, mode: str) -> dict[str, Any]:
-        if mode in {"details", "disasm", "xrefs", "callers", "callees"}:
+        if mode in {"details", "disasm", "callers", "callees"}:
             if self.context.address:
                 return {"address": self.context.address}
             return {"function": self.context.function}
 
+        if mode == "address-xrefs":
+            return {"address": self.context.address}
         if mode == "string-xrefs":
             return {"string_value": self.context.value}
         if mode == "import-xrefs":

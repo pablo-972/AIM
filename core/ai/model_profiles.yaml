@@ -51,7 +51,7 @@ profiles:
     model:
       env: LOCAL_ENRICHMENT_MODEL
       default: llama3.2:3b
-    temperature: 0.2
+    temperature: 0
     response_format: text
     num_ctx:
       env: LOCAL_ENRICHMENT_NUM_CTX
@@ -134,7 +134,7 @@ profiles:
     model:
       env: GEMINI_ENRICHMENT_MODEL
       default: "gemini-3.5-flash"
-    temperature: 0.1
+    temperature: 0
 
   gemini-reversing:
     provider: gemini
@@ -149,7 +149,7 @@ profiles:
     model:
       env: GEMINI_REPORT_MODEL
       default: "gemini-3.5-flash"
-    temperature: 0.1
+    temperature: 0
 
 agents:
   reversing:

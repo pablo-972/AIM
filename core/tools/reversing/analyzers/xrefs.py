@@ -1,25 +1,19 @@
 from typing import Any
 
-from core.tools.reversing.analyzers.common import (
-    resolve_code_target,
-    target_reference,
-)
+from core.tools.reversing.analyzers.common import parse_radare_address
 from core.tools.reversing.analyzers.session import R2Session
 
 
-def xrefs(
-    sample: str,
-    address: str | None = None,
-    function: str | None = None,
-) -> dict[str, Any]:
-    with R2Session(sample) as r2:
-        resolved_function = resolve_code_target(r2, address, function)
-        refs = r2.cmdj(f"axtj @ {resolved_function}") or []
+def address_xrefs(sample: str, address: str) -> dict[str, Any]:
+    parsed_address = parse_radare_address(address)
+    resolved_address = hex(parsed_address)
 
-    target = target_reference(address, function)
+    with R2Session(sample) as r2:
+        refs = r2.cmdj(f"axtj @ {resolved_address}") or []
+
     return {
-        **target,
-        "resolved_function": resolved_function,
+        "address": address,
+        "resolved_address": resolved_address,
         "xrefs": _normalize_xrefs(refs),
     }
 

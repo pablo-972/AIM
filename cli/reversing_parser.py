@@ -12,7 +12,7 @@ REVERSING_TOOLS = [
     "details",
     "strings",
     "disasm",
-    "xrefs",
+    "address-xrefs",
     "string-xrefs",
     "import-xrefs",
     "callers",
@@ -44,7 +44,6 @@ def validate_reversing_args(args: argparse.Namespace) -> None:
     function_tools = {
         "details",
         "disasm",
-        "xrefs",
         "callers",
         "callees",
     }
@@ -57,6 +56,9 @@ def validate_reversing_args(args: argparse.Namespace) -> None:
             raise CLIValidationError(
                 f"reversing {tool} requires --function or --address"
             )
+
+    if "address-xrefs" in selected_tools and not args.address:
+        raise CLIValidationError("reversing address-xrefs requires --address")
     
     if "string-xrefs" in selected_tools and not args.value:
         raise CLIValidationError("reversing string-xrefs requires --value")
