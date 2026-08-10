@@ -5,10 +5,8 @@ from core.utils.postprocessing.reversing.contracts import (
     NO_TOOL_ACTIONS,
     XREF_TOOLS,
 )
-from core.ai.runtime.validators import (
-    normalize_tool_parameters,
-    validate_tool_parameters,
-)
+from core.ai.runtime.reversing.parameters import normalize_reversing_tool_parameters
+from core.ai.runtime.schema_validator import validate_tool_parameters
 
 
 class ReversingActionPolicy:
@@ -55,7 +53,7 @@ class ReversingActionPolicy:
                     code_targets[0],
                 )
 
-        parameters = normalize_tool_parameters(action, parameters)
+        parameters = normalize_reversing_tool_parameters(action, parameters)
         
         if not self._valid_tool_call(action, parameters):
             return "none", {}
@@ -85,7 +83,7 @@ class ReversingActionPolicy:
             "address": code_target,
         }
         
-        return normalize_tool_parameters(action, normalized)
+        return normalize_reversing_tool_parameters(action, normalized)
 
     def _valid_tool_call(
         self,

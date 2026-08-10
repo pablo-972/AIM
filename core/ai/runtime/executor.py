@@ -1,9 +1,8 @@
 from typing import Any
 from collections.abc import Callable
 
-from core.ai.runtime.validators import (
+from core.ai.runtime.schema_validator import (
     NO_TOOL_ACTIONS,
-    normalize_tool_parameters,
     validate_agent_step,
     validate_tool_parameters,
 )
@@ -47,16 +46,14 @@ class AgentStepExecutor:
         tool_executor: ToolExecutor,
     ) -> dict[str, Any]:
         tool_spec = self.available_tools.get(tool_name)
-        normalized_parameters = normalize_tool_parameters(tool_name, parameters)
-
         if not isinstance(tool_spec, dict):
             return self._error("Invalid agent tool call")
 
-        if not validate_tool_parameters(normalized_parameters, tool_spec):
+        if not validate_tool_parameters(parameters, tool_spec):
             return self._error(f"Invalid parameters for agent tool call: {tool_name}")
 
         try:
-            result = tool_executor(tool_name, normalized_parameters)
+            result = tool_executor(tool_name, parameters)
         except Exception as exc:
             return self._error(str(exc))
 

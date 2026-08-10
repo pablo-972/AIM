@@ -117,7 +117,7 @@ class ReversingInvestigationInitializer:
             }
 
         raw_targets = seed.get("targets")
-        targets = self.targets.valid_targets(raw_targets)
+        targets = self.targets.valid_targets(raw_targets, source="seed")
         if isinstance(raw_targets, list) and raw_targets and not targets:
             seed_error = self._append_error(
                 seed_error,

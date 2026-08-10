@@ -3,6 +3,7 @@ from typing import Any
 
 from core.tools.reversing.analyzers.disassembly import disassembly
 from core.tools.reversing.analyzers.metadata import callees, callers
+from core.tools.reversing.analyzers.sections import inspect_section
 from core.tools.reversing.analyzers.xrefs import string_xrefs, import_xrefs
 
 ReversingAgentTool = Callable[..., Any]
@@ -16,6 +17,7 @@ REVERSING_AGENT_TOOLS: dict[str, ReversingAgentTool] = {
     "disassembly": disassembly,
     "callers": callers,
     "callees": callees,
+    "inspect_section": inspect_section,
     "string_xrefs": get_string_xrefs,
     "import_xrefs": import_xrefs,
 }

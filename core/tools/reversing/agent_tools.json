@@ -29,6 +29,16 @@
             }
         }
     },
+    "inspect_section": {
+        "description": "Inspect one binary section and return a bounded overview of its metadata, counts, and previews.",
+        "parameters": {
+            "section": {
+                "description": "Section name, for example .text, .rdata, .data, or .rsrc.",
+                "type": "string",
+                "required": true
+            }
+        }
+    },
     "string_xrefs": {
         "description": "Find strings and their cross-references.",
         "parameters": {

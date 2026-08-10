@@ -1,12 +1,9 @@
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import Any, Protocol
 
 from core.utils.logger import Logger
 from core.utils.postprocessing.reversing import ReversingPostprocessor
 from core.ai.runtime.executor import AgentStepExecutor
-
-if TYPE_CHECKING:
-    from core.ai.runtime.memory import TraceMemory
-    from core.ai.runtime.reversing.targets import ReversingTargetQueue
+from core.utils.reversing.address import parse_address
 
 
 class ReversingToolExecutor(Protocol):
@@ -32,12 +29,12 @@ class ReversingExplorationLoop:
     def __init__(
         self,
         max_targets: int,
-        targets: "ReversingTargetQueue",
+        targets: Any,
         tool_runner: ReversingToolExecutor,
         step_executor: AgentStepExecutor,
         evaluator: EvidenceEvaluator,
         postprocessor: ReversingPostprocessor,
-        memory: "TraceMemory",
+        memory: Any,
     ) -> None:
         self.max_targets = max_targets
         self.targets = targets
@@ -46,6 +43,7 @@ class ReversingExplorationLoop:
         self.evaluator = evaluator
         self.postprocessor = postprocessor
         self.memory = memory
+        self.analyzed_functions: set[str] = set()
 
     def run(self) -> None:
         while (
@@ -64,9 +62,47 @@ class ReversingExplorationLoop:
             )
 
             if tool_output.get("success") is True:
+                if self._already_analyzed_function(target, tool_output):
+                    continue
+
                 self.evaluator.evaluate(target, tool_output)
             else:
                 self._record_failure(target, tool_output)
+
+    def _already_analyzed_function(
+        self,
+        target: dict[str, Any],
+        tool_output: dict[str, Any],
+    ) -> bool:
+        if target.get("tool") != "disassembly":
+            return False
+
+        function_key = self._resolved_function_key(tool_output)
+        if function_key is None:
+            return False
+
+        if function_key not in self.analyzed_functions:
+            self.analyzed_functions.add(function_key)
+            return False
+
+        requested_address = target.get("parameters", {}).get("address")
+        Logger.info(
+            "Skipping disassembly analysis for "
+            f"{requested_address}: function {function_key} was already analyzed"
+        )
+        return True
+
+    def _resolved_function_key(self, tool_output: dict[str, Any]) -> str | None:
+        data = tool_output.get("data")
+        if not isinstance(data, dict):
+            return None
+
+        function = data.get("resolved_function") or data.get("function")
+        address = parse_address(function)
+        if address is None:
+            return None
+
+        return hex(address)
 
     def _record_failure(
         self,

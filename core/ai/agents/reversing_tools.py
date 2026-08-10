@@ -75,6 +75,7 @@ def tool_call_action(tool_calls: Any) -> tuple[str, dict[str, Any]]:
     for tool_call in tool_calls:
         name = getattr(tool_call, "name", None)
         arguments = getattr(tool_call, "arguments", None)
+        
         if name in REVERSING_AGENT_TOOL_NAMES and isinstance(arguments, dict):
             return name, arguments
 

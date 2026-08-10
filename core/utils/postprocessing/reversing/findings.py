@@ -35,14 +35,14 @@ class ReversingFindingValidator:
         ):
             return None
 
-        self._normalize_location(finding, observation, code_targets)
+        self._normalize_location(normalized, observation, code_targets)
 
-        evidence = finding.get("evidence")
+        evidence = normalized.get("evidence")
         if not isinstance(evidence, list) or not evidence:
             return None
-        
+
         return normalized
-    
+
 
     def _is_too_small_disassembly(
         self,
