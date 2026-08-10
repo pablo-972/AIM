@@ -56,6 +56,8 @@ class ReversingToolRunner(BaseToolRunner):
                 return {"address": self.context.address}
             return {"function": self.context.function}
 
+        if mode == "inspect-section":
+            return {"section": self.context.section}
         if mode == "address-xrefs":
             return {"address": self.context.address}
         if mode == "string-xrefs":

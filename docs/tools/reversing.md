@@ -32,6 +32,7 @@ core/tools/reversing/agent_tools.json
 | `entrypoints` | Lists binary entrypoints with file and virtual addresses | Provides execution-start pivots for `disasm --address` |
 | `imports` | Lists imported libraries and APIs | Reveals API capabilities and likely behavior |
 | `sections` | Lists binary sections with addresses, sizes, and permissions | Provides section-level navigation pivots such as `.text` or `.data` |
+| `inspect-section` | Summarizes one selected section without dumping it fully | Separates code, data, and resource pivots by section permissions |
 | `functions` | Lists discovered functions | Provides the navigation surface for deeper analysis |
 | `details` | Returns details for one selected function | Gives quick function context before full disassembly |
 | `strings` | Lists strings visible to the reversing backend | Provides pivots for xrefs and behavior clues |
@@ -46,6 +47,10 @@ The code-oriented manual tools (`details`, `disasm`, `callers`, and `callees`)
 accept either `--function` for an internal Radare2 function name or `--address`
 for a code address. Use `--address` for values such as `0x401000`, or
 `fcn.00401000`. The options are mutually exclusive.
+
+`inspect-section` accepts `--section` and returns a bounded overview. Executable
+sections include function counts and a short disassembly preview; data and
+resource sections focus on metadata and string previews.
 
 ## Agent-Callable Tools
 

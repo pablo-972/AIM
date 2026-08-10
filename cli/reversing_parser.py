@@ -8,6 +8,7 @@ REVERSING_TOOLS = [
     "entrypoints",
     "imports",
     "sections",
+    "inspect-section",
     "functions",
     "details",
     "strings",
@@ -59,6 +60,9 @@ def validate_reversing_args(args: argparse.Namespace) -> None:
 
     if "address-xrefs" in selected_tools and not args.address:
         raise CLIValidationError("reversing address-xrefs requires --address")
+
+    if "inspect-section" in selected_tools and not args.section:
+        raise CLIValidationError("reversing inspect-section requires --section")
     
     if "string-xrefs" in selected_tools and not args.value:
         raise CLIValidationError("reversing string-xrefs requires --value")
@@ -96,6 +100,10 @@ def add_reversing_module(
     parser.add_argument(
         "--value",
         help="String/import/address value used by xref-style modes",
+    )
+    parser.add_argument(
+        "--section",
+        help="Section name used by section inspection modes, for example .text",
     )
     parser.add_argument(
         "--agent",

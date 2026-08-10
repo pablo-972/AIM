@@ -8,6 +8,7 @@ from core.tools.reversing.analyzers.xrefs import (
     import_xrefs,
     string_xrefs,
 )
+from core.tools.reversing.analyzers.sections import inspect_section, sections
 from core.tools.reversing.analyzers.metadata import (
     binary_info,
     callees,
@@ -16,7 +17,6 @@ from core.tools.reversing.analyzers.metadata import (
     function_details,
     functions,
     imports,
-    sections,
     strings,
 )
 
@@ -32,6 +32,7 @@ REVERSING_MANUAL_TOOLS: dict[str, ManualTool] = {
     "entrypoints": entrypoints,
     "imports": imports,
     "sections": sections,
+    "inspect-section": inspect_section,
     "functions": functions,
     "details": function_details,
     "strings": strings,
