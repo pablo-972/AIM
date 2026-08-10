@@ -123,7 +123,7 @@ class ReversingTargetQueue:
 
             targets.append(target)
 
-        return targets[:6]
+        return targets
 
     def valid_targets(self, targets: Any) -> list[dict[str, Any]]:
         if not isinstance(targets, list):
