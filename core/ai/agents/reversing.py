@@ -63,6 +63,15 @@ Rules:
   command, file target set, ransom note, mutex-like artifact, or malware-family
   artifact. Skip short fragments, boilerplate runtime text, and generic syntax
   unless stronger evidence makes them relevant.
+- If the investigation has insufficient concrete targets or is running out of
+  useful paths, use one focused discovery tool to inspect binary structure and
+  identify evidence-backed targets.
+- Use list_imports when available APIs are unknown, list_functions when internal
+  code candidates are needed, list_sections for binary layout, and
+  list_entrypoints for additional execution starts.
+- Do not call every discovery tool automatically. Do not repeat the same
+  discovery tool without new evidence. Discovery results are context for
+  selecting concrete follow-up targets, not instructions to inspect everything.
 - Use tool calls for findings and next actions.
 - You may record one concise finding and request one next investigation tool.
 - Use short analyst notes, not chain-of-thought.
@@ -92,6 +101,8 @@ class ReversingAgent:
         - suspicious imports with import_xrefs
         - behaviorally meaningful strings with string_xrefs
         - concrete internal code addresses with disassembly
+        - one focused discovery tool only when enrichment and reconnaissance do
+          not provide enough concrete targets
 
         Skip generic file extensions, wildcard patterns, short fragments, and
         boilerplate runtime strings unless they are unusual, grouped with many
@@ -158,6 +169,8 @@ class ReversingAgent:
         For xref observations with code_targets, choose disassembly using one of
         those exact addresses. For a disassembly jump or call to another concrete,
         behaviorally relevant internal address, choose disassembly for that target.
+        If this investigation line lacks concrete targets, use the single most
+        useful discovery tool instead of speculative string/import guesses.
         Do not request the same disassembly merely to continue reading
         its chunks. Call finish_investigation when this line of investigation is
         sufficient. Make no tool call when the observation is not useful.

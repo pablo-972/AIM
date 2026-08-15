@@ -58,5 +58,21 @@
                 "required": true
             }
         }
+    },
+    "list_imports": {
+        "description": "List available imports compactly. Use this for discovery when available APIs are unknown or enrichment is weak.",
+        "parameters": {}
+    },
+    "list_functions": {
+        "description": "List recognized internal functions compactly without disassembly. Use this for discovery when internal code candidates are needed.",
+        "parameters": {}
+    },
+    "list_sections": {
+        "description": "List binary sections compactly with address, size, and permissions. Use this for discovery when binary layout is needed.",
+        "parameters": {}
+    },
+    "list_entrypoints": {
+        "description": "List recognized entrypoints compactly. Use this for discovery when additional execution starts are needed.",
+        "parameters": {}
     }
 }

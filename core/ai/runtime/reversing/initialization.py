@@ -10,9 +10,14 @@ from core.utils.artifacts.documents import (
     MarkdownDocument,
 )
 from core.orchestrator.context import AnalysisContext
+from core.tools.reversing.analyzers.metadata import entrypoints
 from core.tools.reversing.analyzers.reconnaissance import collect_reconnaissance
 from core.ai.agents.reversing import ReversingAgent
 from core.ai.runtime.reversing.targets import ReversingTargetQueue
+from core.utils.reversing.address import parse_address
+
+
+ENTRY_POINT_BASE_PRIORITY = 55
 
 
 @dataclass(frozen=True)
@@ -23,6 +28,7 @@ class ReversingInitialization:
     source: str
     seed_error: str | None
     input_source: str
+    baseline_targets: list[dict[str, Any]]
 
     def seed_decision(self) -> dict[str, Any]:
         first_target = None
@@ -76,6 +82,8 @@ class ReversingInvestigationInitializer:
                 }
                 source = "fallback"
 
+        baseline_targets = self._entrypoint_baseline_targets()
+
         return ReversingInitialization(
             enrichment=enrichment,
             seed=seed,
@@ -83,6 +91,7 @@ class ReversingInvestigationInitializer:
             source=source,
             seed_error=seed_error,
             input_source="enrichment" if enrichment else "reconnaissance",
+            baseline_targets=baseline_targets,
         )
 
     def _load_enrichment(self) -> str:
@@ -134,6 +143,34 @@ class ReversingInvestigationInitializer:
             return f"{reason} Seed error: {seed_error}"
 
         return reason
+
+    def _entrypoint_baseline_targets(self) -> list[dict[str, Any]]:
+        try:
+            items = entrypoints(str(self.context.sample))
+        except Exception as exc:
+            Logger.warning(f"Failed to collect entrypoint baseline: {exc}")
+            return []
+
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+
+            address = parse_address(item.get("vaddr"))
+            if address is None:
+                continue
+
+            return [
+                {
+                    "tool": "disassembly",
+                    "parameters": {
+                        "address": hex(address),
+                    },
+                    "priority": ENTRY_POINT_BASE_PRIORITY,
+                    "reason": "Baseline entry point disassembly.",
+                }
+            ]
+
+        return []
 
     def _append_error(
         self,

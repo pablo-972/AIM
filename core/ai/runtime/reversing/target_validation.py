@@ -4,6 +4,7 @@ from typing import Any
 
 from core.ai.runtime.reversing.parameters import (
     CODE_ADDRESS_TOOLS,
+    DISCOVERY_TOOLS,
     normalize_reversing_tool_parameters,
 )
 from core.utils.reversing.address import parse_address
@@ -80,6 +81,9 @@ class ReversingTargetValidator:
                 f"Unknown tool: {tool_name}",
             )
 
+        if tool_name in DISCOVERY_TOOLS:
+            return _accepted_discovery(tool_name, original_parameters)
+
         value = _target_value(tool_name, parameters)
         if value is None:
             return _rejected(
@@ -143,6 +147,32 @@ def _accepted(
         original_tool=tool_name,
         original_parameters=original_parameters,
         target_type=target_type,
+        tool=tool_name,
+        parameters=normalized_parameters,
+        reason=reason,
+    )
+
+
+def _accepted_discovery(
+    tool_name: str,
+    original_parameters: dict[str, Any],
+) -> TargetValidationResult:
+    normalized_parameters = normalize_reversing_tool_parameters(
+        tool_name,
+        original_parameters,
+    )
+    status = TargetValidationStatus.VALID
+    reason = "Discovery tool is compatible without a target argument."
+
+    if normalized_parameters != original_parameters:
+        status = TargetValidationStatus.CORRECTED
+        reason = "Tool parameters were normalized."
+
+    return TargetValidationResult(
+        status=status,
+        original_tool=tool_name,
+        original_parameters=original_parameters,
+        target_type=None,
         tool=tool_name,
         parameters=normalized_parameters,
         reason=reason,

@@ -58,6 +58,10 @@ class ReversingAgentRunner(BaseAIRunner):
                 initialization.targets,
                 source=initialization.source,
             )
+            self.targets.enqueue(
+                initialization.baseline_targets,
+                source="baseline_entrypoint",
+            )
 
             evaluator = ReversingEvidenceEvaluator(
                 agent=agent,

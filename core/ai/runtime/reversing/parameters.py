@@ -3,6 +3,12 @@ from typing import Any
 from core.utils.reversing.address import parse_address
 
 CODE_ADDRESS_TOOLS = {"disassembly", "callers", "callees"}
+DISCOVERY_TOOLS = {
+    "list_imports",
+    "list_functions",
+    "list_sections",
+    "list_entrypoints",
+}
 
 
 def normalize_reversing_tool_parameters(
@@ -20,6 +26,9 @@ def normalize_reversing_tool_parameters(
 
     if tool_name == "import_xrefs":
         return _keep_parameters(parameters, {"import_name"})
+
+    if tool_name in DISCOVERY_TOOLS:
+        return {}
 
     return dict(parameters)
 
