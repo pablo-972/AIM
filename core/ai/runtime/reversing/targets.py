@@ -211,7 +211,22 @@ class ReversingTargetQueue:
             "priority": normalized_priority,
             "reason": reason,
             "validation": validation.debug(),
+            **self._trace_metadata(target),
         }
+
+    def _trace_metadata(self, target: dict[str, Any]) -> dict[str, Any]:
+        metadata = {}
+        for key in (
+            "origin_tool",
+            "origin_target",
+            "discovered_target",
+            "relation",
+        ):
+            value = target.get(key)
+            if isinstance(value, str) and value:
+                metadata[key] = value
+
+        return metadata
 
     def _record_rejected(
         self,

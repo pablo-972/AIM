@@ -11,7 +11,7 @@ from core.tools.reversing.analyzers.session import R2Session
 
 MAX_FUNCTIONS_PREVIEW = 10
 MAX_STRINGS_PREVIEW = 20
-MAX_DISASSEMBLY_PREVIEW = 24
+MAX_DISASSEMBLY_PREVIEW = 40
 
 
 def sections(sample: str) -> list[dict[str, Any]]:
