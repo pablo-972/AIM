@@ -10,7 +10,7 @@ Outputs are stored under the `static` phase in:
 analysis.json
 ```
 
-## Static Strings Inference
+## Static Inference
 
 The static inference model focuses on strings that look like natural language.
 Its main goal is to detect threat-facing text such as ransom notes, warnings,
@@ -20,10 +20,10 @@ that may indicate operator intent.
 The model receives prepared string chunks and stores structured findings in:
 
 ```text
-static_strings_inference.json
+static_inference.json
 ```
 
-Static strings inference does not execute tools directly. It consumes the
+Static inference does not execute tools directly. It consumes the
 strings already extracted during static analysis.
 
 ## Related Tools

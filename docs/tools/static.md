@@ -18,7 +18,7 @@ core/tools/static/manual.py
 | `metadata` | Extracts filesystem-level metadata | Provides size and timestamp context |
 | `hash` | Calculates hashes | Creates stable identifiers for the sample |
 | `packer` | Detects common packing indicators | Helps identify obfuscation or packed binaries |
-| `strings` | Extracts readable strings | Feeds analyst review and static strings inference |
+| `strings` | Extracts readable strings | Feeds analyst review and static inference |
 | `pe` | Parses PE structure | Exposes imports, sections, headers, and Windows binary structure |
 | `vt` | Queries VirusTotal when configured | Adds external reputation and detection context |
 

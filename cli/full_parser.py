@@ -27,7 +27,7 @@ def add_full_module(
         "--static-profile",
         choices=STATIC_AI_PROFILES,
         default="local-static",
-        help="Model profile for static strings inference",
+        help="Model profile for static inference",
     )
     parser.add_argument(
         "--dynamic-profile",

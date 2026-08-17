@@ -17,7 +17,7 @@ def prepare_static_inference_sources(
 
     return [
         (
-            f"static_strings_inference.findings.{index}",
+            f"static_inference.findings.{index}",
             {
                 "confidence": finding.get("confidence"),
                 "text": finding.get("text"),

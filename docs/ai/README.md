@@ -196,7 +196,7 @@ Important files:
 
 | File | Purpose |
 | --- | --- |
-| `static.py` | Static strings inference schema, parser, and fallback response |
+| `static.py` | Static inference schema, parser, and fallback response |
 | `dynamic.py` | Dynamic behavior inference schema, parser, and fallback response |
 | `reversing.py` | Reversing seed, action, target, finding schemas, and parsers |
 | `report.py` | Structured report schema and final assessment validation |

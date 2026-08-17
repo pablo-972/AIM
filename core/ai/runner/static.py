@@ -1,5 +1,5 @@
 from typing import Any
-from config import STATIC_STRINGS_INFERENCE_RESULT_FILENAME
+from config import STATIC_INFERENCE_RESULT_FILENAME
 from core.utils.logger import Logger
 from core.utils.preprocessing.static.strings import prepare_static_string_chunks
 from core.ai.inferences.static import StaticInference
@@ -25,8 +25,8 @@ class StaticInferenceRunner(BaseAIRunner):
         inference = self._create_inference_model()
         memory = TraceMemory(
             output_dir=self.context.output,
-            filename=STATIC_STRINGS_INFERENCE_RESULT_FILENAME,
-            agent_name="static_strings_inference",
+            filename=STATIC_INFERENCE_RESULT_FILENAME,
+            agent_name="static_inference",
         )
 
         string_chunks = prepare_static_string_chunks(self.strings)

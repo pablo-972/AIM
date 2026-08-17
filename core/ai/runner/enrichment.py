@@ -4,7 +4,7 @@ from config import (
     DYNAMIC_INFERENCE_RESULT_FILENAME,
     ENRICHMENT_FILENAME,
     RESULT_FILENAME,
-    STATIC_STRINGS_INFERENCE_RESULT_FILENAME,
+    STATIC_INFERENCE_RESULT_FILENAME,
 )
 from core.utils.artifacts.extractor import JsonExtractor
 from core.utils.logger import Logger
@@ -102,7 +102,7 @@ class EnrichmentAIRunner(BaseAIRunner):
     def _get_sources(self) -> list[tuple[str, Any]]:
         result = load_json(self.context.output, RESULT_FILENAME) or {}
         static_inference_data = (
-            load_json(self.context.output, STATIC_STRINGS_INFERENCE_RESULT_FILENAME)
+            load_json(self.context.output, STATIC_INFERENCE_RESULT_FILENAME)
             or {}
         )
         dynamic_inference_data = (
