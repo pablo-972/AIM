@@ -39,6 +39,27 @@ Report a finding only for concrete behavior supported by the evidence:
 - ransomware-style activity such as ransom note creation, many file writes,
   renames, deletes, or recovery/safety-control tampering
 
+Create a finding whenever the observed evidence provides malware-analysis-relevant
+behavior, capability, artifact, or system interaction.
+
+A finding does not need to prove malicious intent by itself.
+
+Relevant examples include:
+- cryptographic or networking libraries loaded;
+- file creation, modification, deletion or renaming;
+- process creation and command execution;
+- registry modification;
+- network communication;
+- security-control interaction;
+- persistence-related artifacts;
+- system reconnaissance.
+
+Use confidence to express how strongly the evidence supports a malware-relevant
+interpretation.
+
+Do not suppress a relevant finding merely because the behavior may also occur in
+legitimate software.
+
 # Diffing Rule
 For Autoruns and registry evidence, compare before and after values. Report only
 if the difference is behaviorally relevant. Do not report unchanged data.
@@ -51,7 +72,7 @@ disconnects, or repeated endpoint activity. Do not require the endpoint to be
 known malicious, and do not require confirmed connected=true.
 
 # Deduplication Rule
-Use the existing finding explanations as memory of behavior already reported.
+Use the existing finding summaries as memory of behavior already reported.
 Do not emit another finding when the current evidence describes the same
 behavior, impact, and evidence pattern as an existing finding. Prefer returning
 finding=null over repeating a finding with different wording.
@@ -63,9 +84,33 @@ If there is relevant behavior, return finding with:
   "network_attempt", "network_reconnect", "network_transfer",
   "autorun_persistence", "registry_persistence", "registry_modification",
   "process_execution", "file_modification", "file_deletion", or "file_rename".
-- explanation: a brief plain-language explanation of what the behavior means
-  and why the evidence supports it. Mention concrete evidence such as the file,
+- summary: a brief plain-language summary of what the behavior means and why
+  the evidence supports it. Mention concrete evidence such as the file,
   registry key, process, or network endpoint when available.
+- evidence: a list of short concrete observations from the supplied dynamic
+  evidence that directly support the finding.
+
+When producing a finding, include only the minimal concrete events from the
+supplied dynamic evidence that directly support the finding.
+Each evidence item must be a string representing one observed fact.
+Use short strings such as:
+- "Loaded C:\\Windows\\System32\\crypt32.dll"
+- "cmd.exe executed: cmd /C net session"
+- "Created C:\\Users\\Public\\payload.exe"
+- "TCP connection to www.server-q01.com:443"
+Do not copy the complete input section or chunk.
+Do not include unrelated surrounding events.
+Do not include context, metadata, counters, complete data blocks, groups, items,
+source, section, index, total_chunks, total_items, or selected_count inside
+evidence.
+Source information is stored separately and must not be duplicated in evidence.
+Evidence must be grounded in the supplied dynamic data.
+Preserve exact paths, command lines, process names, registry keys, domains,
+addresses, ports, protocols, or other concrete values when they are relevant.
+Do not serialize JSON objects, arrays, key=value blocks, full chunks, context,
+or data inside evidence.
+Do not add conclusions or hypotheses inside evidence; interpretation belongs in
+summary.
 
 If the evidence is not relevant, return finding=null.
 The "thought" field must be a short operational summary, maximum 1 sentence.
@@ -94,9 +139,9 @@ class DynamicInference:
     def analyze_section(
         self,
         input_ref: dict[str, Any],
-        existing_explanations: list[str] | None = None,
+        existing_summaries: list[str] | None = None,
     ) -> dict[str, Any]:
-        prompt = self._prompt(input_ref, existing_explanations or [])
+        prompt = self._prompt(input_ref, existing_summaries or [])
 
         response = self.llm.chat_json(
             SYSTEM_PROMPT, 
@@ -111,7 +156,7 @@ class DynamicInference:
     def _prompt(
         self,
         input_ref: dict[str, Any],
-        existing_explanations: list[str],
+        existing_summaries: list[str],
     ) -> str:
         tool = input_ref.get("tool", "unknown")
         section = input_ref.get("section", "unknown")
@@ -123,7 +168,8 @@ class DynamicInference:
         Task:
         Inspect this selected dynamic-analysis evidence section. Decide if it contains one
         malware-relevant finding. If it does not, return finding=null.
-        If it does, explain the concrete behavior in finding.explanation.
+        If it does, summarize the concrete behavior in finding.summary and
+        include only short concrete observations in finding.evidence.
 
         Tool: {tool}
         Section: {section}
@@ -131,8 +177,8 @@ class DynamicInference:
         Selection:
         {json.dumps(coverage, ensure_ascii=False, default=str)}
 
-        Existing finding explanations:
-        {json.dumps(existing_explanations, ensure_ascii=False, default=str)}
+        Existing finding summaries:
+        {json.dumps(existing_summaries, ensure_ascii=False, default=str)}
 
         Evidence:
         {json.dumps(evidence, ensure_ascii=False, default=str)}

@@ -148,8 +148,8 @@ class JsonExtractor:
         return items
 
     def _is_dynamic_inference_finding(self, finding: dict[str, Any]) -> bool:
-        explanation = finding.get("explanation")
-        return isinstance(explanation, str) and bool(explanation.strip())
+        summary = finding.get("summary")
+        return isinstance(summary, str) and bool(summary.strip())
 
     def _dynamic_inference_finding(
         self,
@@ -166,13 +166,13 @@ class JsonExtractor:
         confidence = finding.get("confidence")
         category = finding.get("category")
         source = finding.get("source")
-        explanation = finding.get("explanation")
+        summary = finding.get("summary")
 
         return {
             "confidence": confidence,
             "category": category,
             "source": source,
-            "explanation": explanation,
+            "summary": summary,
             "evidence": evidence,
             "evidence_count": evidence_count,
         }

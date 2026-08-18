@@ -37,7 +37,7 @@ class TraceMemory:
         self,
         output_dir: str | Path,
         filename: str,
-        agent_name: str,
+        name: str,
         flush_interval: int = DEFAULT_TRACE_FLUSH_INTERVAL,
     ) -> None:
         self.output_dir = output_dir
@@ -45,7 +45,7 @@ class TraceMemory:
         self.flush_interval = max(1, flush_interval)
         self._pending_events = 0
         self.data: dict[str, Any] = {
-            "agent": agent_name,
+            "name": name,
             "status": "running",
             "steps": [],
             "findings": [],

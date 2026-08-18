@@ -4,16 +4,16 @@ from typing import Any
 from core.utils.io.files import save_json
 
 
-DEFAULT_STATIC_INFERENCE_FLUSH_INTERVAL = 5
+DEFAULT_DYNAMIC_INFERENCE_FLUSH_INTERVAL = 5
 
 
-class StaticInferenceMemory:
+class DynamicInferenceMemory:
     def __init__(
         self,
         output_dir: str | Path,
         filename: str,
         name: str,
-        flush_interval: int = DEFAULT_STATIC_INFERENCE_FLUSH_INTERVAL,
+        flush_interval: int = DEFAULT_DYNAMIC_INFERENCE_FLUSH_INTERVAL,
     ) -> None:
         self.output_dir = output_dir
         self.filename = filename
@@ -106,8 +106,7 @@ class StaticInferenceMemory:
         }
 
     def _update_findings_count(self) -> None:
-        findings = self.data["findings"]
-        self.data["findings_count"] = len(findings)
+        self.data["findings_count"] = len(self.data["findings"])
 
     def _mark_dirty(self) -> None:
         self._pending_events += 1

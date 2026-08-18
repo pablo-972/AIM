@@ -58,15 +58,18 @@ def prepare_dynamic_inference_sources(
 
     dynamic_findings = []
     for index, finding in enumerate(findings, start=1):
-        explanation = finding.get("explanation")
-        if not isinstance(explanation, str) or not explanation.strip():
+        summary = finding.get("summary")
+        if not isinstance(summary, str) or not summary.strip():
             continue
 
         dynamic_findings.append(
             (
-                f"dynamic_inference.explanations.{index}",
+                f"dynamic_inference.findings.{index}",
                 {
-                    "explanation": explanation.strip(),
+                    "summary": summary.strip(),
+                    "category": finding.get("category"),
+                    "source": finding.get("source"),
+                    "evidence": finding.get("evidence"),
                 },
             )
         )
