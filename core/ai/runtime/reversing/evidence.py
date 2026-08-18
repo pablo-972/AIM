@@ -2,7 +2,7 @@ from typing import Any
 
 from core.utils.logger import Logger
 from core.utils.postprocessing.reversing import ReversingPostprocessor
-from core.utils.preprocessing.reversing.reversing import chunk_reversing_evidence
+from core.utils.preprocessing.reversing.assembly import chunk_reversing_evidence
 from core.ai.agents.reversing import ReversingAgent
 from core.ai.runtime.memory import TraceMemory
 from core.ai.runtime.reversing.fanout import deterministic_follow_ups
