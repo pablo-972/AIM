@@ -1,7 +1,7 @@
 from typing import Any
 
 from core.utils.postprocessing.reversing.contracts import CODE_FOLLOW_UP_TOOLS
-from core.utils.reversing.address import parse_address
+from core.utils.address import format_address
 
 
 class ReversingObservationBuilder:
@@ -76,7 +76,7 @@ class ReversingObservationBuilder:
 
         if tool_name == "disassembly":
             function = data.get("resolved_function") or data.get("function")
-            candidate = self._format_address(function)
+            candidate = format_address(function)
 
             if candidate:
                 code_targets.append(candidate)
@@ -195,7 +195,7 @@ class ReversingObservationBuilder:
                 continue
             
             address = callee.get("target_address") or callee.get("callee")
-            candidate = self._format_address(address)
+            candidate = format_address(address)
 
             if candidate:
                 targets.append(candidate)
@@ -213,19 +213,12 @@ class ReversingObservationBuilder:
                 continue
 
             address = value.get("from") or value.get("address")
-            target = self._format_address(address)
+            target = format_address(address)
 
             if target and target not in targets:
                 targets.append(target)
 
         return targets
-
-    def _format_address(self, value: Any) -> str | None:
-        address = parse_address(value)
-        if address is None:
-            return None
-
-        return hex(address)
 
     def _unique(self, values: list[str]) -> list[str]:
         return list(dict.fromkeys(values))

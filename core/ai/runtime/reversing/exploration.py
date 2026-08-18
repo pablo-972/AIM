@@ -3,7 +3,7 @@ from typing import Any, Protocol
 from core.utils.logger import Logger
 from core.utils.postprocessing.reversing import ReversingPostprocessor
 from core.ai.runtime.executor import AgentStepExecutor
-from core.utils.reversing.address import parse_address
+from core.utils.address import parse_address
 
 
 class ReversingToolExecutor(Protocol):

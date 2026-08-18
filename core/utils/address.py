@@ -17,6 +17,14 @@ def parse_address(value: Any) -> int | None:
     return _parse_address_value(normalized, 0)
 
 
+def format_address(value: Any) -> str | None:
+    address = parse_address(value)
+    if address is None:
+        return None
+
+    return hex(address)
+
+
 def _parse_address_value(value: str, base: int) -> int | None:
     if not value:
         return None

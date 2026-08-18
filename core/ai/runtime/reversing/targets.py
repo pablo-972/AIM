@@ -59,78 +59,6 @@ class ReversingTargetQueue:
     def visited_count(self) -> int:
         return self.queue.visited_count()
 
-    def fallback_targets(
-        self,
-        reconnaissance: dict[str, Any],
-    ) -> list[dict[str, Any]]:
-        suspicious_imports = self._get_reconnaissance_items(
-            reconnaissance,
-            "suspicious_imports",
-        )
-        large_functions = self._get_reconnaissance_items(
-            reconnaissance,
-            "large_functions",
-        )
-        interesting_strings = self._get_reconnaissance_items(
-            reconnaissance,
-            "interesting_strings",
-        )
-
-        targets = []
-
-        for item in suspicious_imports[:5]:
-            import_name = item.get("name")
-
-            if not import_name:
-                continue
-
-            target = {
-                "tool": "import_xrefs",
-                "parameters": {
-                    "import_name": import_name,
-                },
-                "priority": 90,
-                "reason": "Suspicious import discovered during reconnaissance.",
-            }
-
-            targets.append(target)
-
-        for item in large_functions[:3]:
-            address = item.get("address")
-
-            if not isinstance(address, int):
-                continue
-
-            target = {
-                "tool": "disassembly",
-                "parameters": {
-                    "address": hex(address),
-                },
-                "priority": 80,
-                "reason": "Large function discovered during reconnaissance.",
-            }
-
-            targets.append(target)
-
-        for item in interesting_strings[:3]:
-            string_value = item.get("value")
-
-            if not string_value:
-                continue
-
-            target = {
-                "tool": "string_xrefs",
-                "parameters": {
-                    "value": string_value,
-                },
-                "priority": 70,
-                "reason": "Interesting string discovered during reconnaissance.",
-            }
-
-            targets.append(target)
-
-        return targets
-
     def valid_targets(
         self,
         targets: Any,
@@ -147,21 +75,6 @@ class ReversingTargetQueue:
                 normalized_targets.append(normalized)
 
         return normalized_targets
-
-    def _get_reconnaissance_items(
-        self,
-        reconnaissance: dict[str, Any],
-        key: str,
-    ) -> list[dict[str, Any]]:
-        items = reconnaissance.get(key, [])
-        if not isinstance(items, list):
-            return []
-
-        return [
-            item
-            for item in items
-            if isinstance(item, dict)
-        ]
 
     def _normalize(self, target: Any, source: str | None) -> dict[str, Any] | None:
         if not isinstance(target, dict):

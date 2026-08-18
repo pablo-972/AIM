@@ -7,7 +7,7 @@ from core.ai.runtime.reversing.parameters import (
     DISCOVERY_TOOLS,
     normalize_reversing_tool_parameters,
 )
-from core.utils.reversing.address import parse_address
+from core.utils.address import parse_address
 
 
 KNOWN_SECTION_NAMES = {

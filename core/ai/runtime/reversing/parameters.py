@@ -1,6 +1,6 @@
 from typing import Any
 
-from core.utils.reversing.address import parse_address
+from core.utils.address import parse_address
 
 CODE_ADDRESS_TOOLS = {"disassembly", "callers", "callees"}
 DISCOVERY_TOOLS = {

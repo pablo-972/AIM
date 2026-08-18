@@ -11,10 +11,9 @@ from core.utils.artifacts.documents import (
 )
 from core.orchestrator.context import AnalysisContext
 from core.tools.reversing.analyzers.metadata import entrypoints
-from core.tools.reversing.analyzers.reconnaissance import collect_reconnaissance
 from core.ai.agents.reversing import ReversingAgent
 from core.ai.runtime.reversing.targets import ReversingTargetQueue
-from core.utils.reversing.address import parse_address
+from core.utils.address import parse_address
 
 
 ENTRY_POINT_BASE_PRIORITY = 55
@@ -60,27 +59,10 @@ class ReversingInvestigationInitializer:
 
     def initialize(self, agent: ReversingAgent) -> ReversingInitialization:
         enrichment = self._load_enrichment()
-        reconnaissance = {}
-        if not enrichment:
-            reconnaissance = collect_reconnaissance(str(self.context.sample))
-
         seed, targets, source, seed_error = self._create_targets(
             agent,
             enrichment,
-            reconnaissance,
         )
-
-        if not targets:
-            if not reconnaissance:
-                reconnaissance = collect_reconnaissance(str(self.context.sample))
-                
-            targets = self.targets.fallback_targets(reconnaissance)
-            if targets:
-                seed = {
-                    "reasoning": self._fallback_reason(seed_error),
-                    "targets": targets,
-                }
-                source = "fallback"
 
         baseline_targets = self._entrypoint_baseline_targets()
 
@@ -90,7 +72,7 @@ class ReversingInvestigationInitializer:
             targets=targets,
             source=source,
             seed_error=seed_error,
-            input_source="enrichment" if enrichment else "reconnaissance",
+            input_source="enrichment" if enrichment else "no_enrichment",
             baseline_targets=baseline_targets,
         )
 
@@ -108,13 +90,11 @@ class ReversingInvestigationInitializer:
         self,
         agent: ReversingAgent,
         enrichment: str,
-        reconnaissance: dict[str, Any],
     ) -> tuple[dict[str, Any], list[dict[str, Any]], str, str | None]:
         seed_error = None
         try:
             seed = agent.create_initial_targets(
                 enrichment=enrichment,
-                reconnaissance=reconnaissance,
                 available_tools=self.available_tools,
             )
         except Exception as exc:
@@ -136,13 +116,6 @@ class ReversingInvestigationInitializer:
         source = "seed"
 
         return seed, targets, source, seed_error
-
-    def _fallback_reason(self, seed_error: str | None) -> str:
-        reason = "Using deterministic reconnaissance fallback."
-        if seed_error:
-            return f"{reason} Seed error: {seed_error}"
-
-        return reason
 
     def _entrypoint_baseline_targets(self) -> list[dict[str, Any]]:
         try:

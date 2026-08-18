@@ -63,9 +63,9 @@ Rules:
   command, file target set, ransom note, mutex-like artifact, or malware-family
   artifact. Skip short fragments, boilerplate runtime text, and generic syntax
   unless stronger evidence makes them relevant.
-- If the investigation has insufficient concrete targets or is running out of
-  useful paths, use one focused discovery tool to inspect binary structure and
-  identify evidence-backed targets.
+- If the investigation has insufficient concrete targets or no enrichment is
+  available, use focused discovery tools to inspect binary structure before
+  guessing imports, strings, or addresses.
 - Use list_imports when available APIs are unknown, list_functions when internal
   code candidates are needed, list_sections for binary layout, and
   list_entrypoints for additional execution starts.
@@ -85,7 +85,6 @@ class ReversingAgent:
     def create_initial_targets(
         self,
         enrichment: str,
-        reconnaissance: dict[str, Any],
         available_tools: dict[str, Any],
     ) -> dict[str, Any]:
         prompt = f"""
@@ -94,22 +93,24 @@ class ReversingAgent:
         Enrichment context:
         {enrichment or "No enrichment is available."}
 
-        Bounded reconnaissance:
-        {json.dumps(reconnaissance, indent=2, ensure_ascii=False, default=str)}
-
         Prioritize targets that can lead to critical code regions:
         - suspicious imports with import_xrefs
         - behaviorally meaningful strings with string_xrefs
         - concrete internal code addresses with disassembly
-        - one focused discovery tool only when enrichment and reconnaissance do
-          not provide enough concrete targets
+        - focused discovery tools when enrichment does not provide enough
+          concrete targets
+
+        If no enrichment is available, start with compact discovery tool calls
+        instead of guessing targets. Prefer list_imports, list_sections, and
+        list_entrypoints first; use list_functions when internal code candidates
+        are needed. Discovery tools do not require parameters.
 
         Skip generic file extensions, wildcard patterns, short fragments, and
         boilerplate runtime strings unless they are unusual, grouped with many
         target extensions, or connected to stronger malware behavior evidence.
         Do not prioritize wallet, payment, contact, Session, or onion strings unless
         they are needed to locate ransom-note generation code. Do not invent addresses.
-        Make no more than six investigation tool calls. Do not call record_finding or
+        Keep the initial queue focused. Do not call record_finding or
         finish_investigation during initial target selection.
         """
 

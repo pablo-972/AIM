@@ -1,7 +1,7 @@
 import unicodedata
 from typing import Any
 
-from core.utils.reversing.address import parse_address
+from core.utils.address import parse_address
 
 
 def escape_invisible_unicode(value: str) -> str:
