@@ -22,11 +22,7 @@ class StaticInferenceMemory:
         self.data: dict[str, Any] = {
             "agent": agent_name,
             "status": "running",
-            "summary": {
-                "chunks_analyzed": 0,
-                "chunks_with_findings": 0,
-                "findings_count": 0,
-            },
+            "findings_count": 0,
             "steps": [],
             "findings": [],
             "errors": [],
@@ -56,8 +52,8 @@ class StaticInferenceMemory:
         if finding is not None:
             self.data["findings"].append(
                 {
-                    **finding,
                     "step": step_number,
+                    **finding,
                 }
             )
 
@@ -69,7 +65,7 @@ class StaticInferenceMemory:
                 }
             )
 
-        self._update_summary()
+        self._update_findings_count()
         self._mark_dirty()
 
     def fail(self, error: str) -> None:
@@ -80,12 +76,12 @@ class StaticInferenceMemory:
                 "message": error,
             }
         )
-        self._update_summary()
+        self._update_findings_count()
         self.flush(force=True)
 
     def close(self, status: str = "completed") -> None:
         self.data["status"] = status
-        self._update_summary()
+        self._update_findings_count()
         self.flush(force=True)
 
     def flush(self, force: bool = False) -> None:
@@ -109,20 +105,9 @@ class StaticInferenceMemory:
             "confidence": confidence,
         }
 
-    def _update_summary(self) -> None:
-        steps = self.data["steps"]
+    def _update_findings_count(self) -> None:
         findings = self.data["findings"]
-        chunks_with_findings = 0
-
-        for step in steps:
-            if isinstance(step, dict) and step.get("finding") is not None:
-                chunks_with_findings += 1
-
-        self.data["summary"] = {
-            "chunks_analyzed": len(steps),
-            "chunks_with_findings": chunks_with_findings,
-            "findings_count": len(findings),
-        }
+        self.data["findings_count"] = len(findings)
 
     def _mark_dirty(self) -> None:
         self._pending_events += 1
