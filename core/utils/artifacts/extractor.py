@@ -105,8 +105,8 @@ class JsonExtractor:
         threat_actor_messages = self.get_findings("threat_actor_message")
 
         for finding in threat_actor_messages:
-            text = finding.get("text")
-            if not text:
+            evidence = finding.get("evidence")
+            if not evidence:
                 continue
 
             findings.append(finding)

@@ -20,7 +20,8 @@ def prepare_static_inference_sources(
             f"static_inference.findings.{index}",
             {
                 "confidence": finding.get("confidence"),
-                "text": finding.get("text"),
+                "summary": finding.get("summary"),
+                "evidence": finding.get("evidence"),
                 "category": finding.get("category"),
                 "tone": finding.get("tone"),
             },
