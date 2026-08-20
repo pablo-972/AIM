@@ -3,7 +3,7 @@ from config import STATIC_INFERENCE_RESULT_FILENAME
 from core.utils.logger import Logger
 from core.utils.preprocessing.static.strings import prepare_static_string_chunks
 from core.ai.inferences.static import StaticInference
-from core.ai.runtime.static_inference_memory import StaticInferenceMemory
+from core.ai.runtime.inference.static_memory import StaticInferenceMemory
 from core.ai.runner.base import BaseAIRunner
 from core.ai.model_registry import ModelRegistry
 from core.orchestrator.context import AnalysisContext

@@ -4,7 +4,7 @@ from config import DYNAMIC_INFERENCE_RESULT_FILENAME
 from core.utils.logger import Logger
 from core.utils.preprocessing.dynamic.inference import prepare_dynamic_inference_inputs
 from core.ai.inferences.dynamic import DynamicInference
-from core.ai.runtime.dynamic_inference_memory import DynamicInferenceMemory
+from core.ai.runtime.inference.dynamic_memory import DynamicInferenceMemory
 from core.ai.runner.base import BaseAIRunner
 from core.ai.model_registry import ModelRegistry
 from core.orchestrator.context import AnalysisContext

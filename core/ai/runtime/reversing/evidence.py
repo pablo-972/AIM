@@ -4,7 +4,7 @@ from core.utils.logger import Logger
 from core.utils.postprocessing.reversing import ReversingPostprocessor
 from core.utils.preprocessing.reversing.assembly import chunk_reversing_evidence
 from core.ai.agents.reversing import ReversingAgent
-from core.ai.runtime.reversing_agent_memory import ReversingAgentMemory
+from core.ai.runtime.reversing.memory import ReversingAgentMemory
 from core.ai.runtime.reversing.fanout import deterministic_follow_ups
 from core.ai.runtime.reversing.targets import ReversingTargetQueue
 

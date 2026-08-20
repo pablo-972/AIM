@@ -6,7 +6,7 @@ from core.ai.runtime.reversing.target_validation import (
     TargetValidationStatus,
 )
 from core.ai.runtime.schema_validator import validate_tool_parameters
-from core.ai.runtime.reversing_agent_memory import ReversingAgentMemory
+from core.ai.runtime.reversing.memory import ReversingAgentMemory
 
 DEFAULT_TARGET_PRIORITY = 50
 MAX_TARGET_REASON_LENGTH = 500

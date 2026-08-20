@@ -10,7 +10,7 @@ from core.ai.agents.reversing import ReversingAgent
 from core.ai.model_registry import ModelRegistry
 from core.ai.runner.base import BaseAIRunner
 from core.ai.runtime.executor import AgentStepExecutor
-from core.ai.runtime.reversing_agent_memory import ReversingAgentMemory
+from core.ai.runtime.reversing.memory import ReversingAgentMemory
 from core.ai.runtime.reversing.evidence import ReversingEvidenceEvaluator
 from core.ai.runtime.reversing.exploration import ReversingExplorationLoop
 from core.ai.runtime.reversing.initialization import ReversingInvestigationInitializer
