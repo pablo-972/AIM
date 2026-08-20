@@ -6,7 +6,7 @@ from core.ai.runtime.reversing.target_validation import (
     TargetValidationStatus,
 )
 from core.ai.runtime.schema_validator import validate_tool_parameters
-from core.ai.runtime.memory import TraceMemory
+from core.ai.runtime.reversing_agent_memory import ReversingAgentMemory
 
 DEFAULT_TARGET_PRIORITY = 50
 MAX_TARGET_REASON_LENGTH = 500
@@ -16,7 +16,7 @@ class ReversingTargetQueue:
     def __init__(
         self,
         available_tools: dict[str, Any],
-        memory: "TraceMemory",
+        memory: ReversingAgentMemory,
         validator: ReversingTargetValidator | None = None,
     ) -> None:
         self.available_tools = available_tools

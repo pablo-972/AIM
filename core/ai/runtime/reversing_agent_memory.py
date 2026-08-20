@@ -3,7 +3,7 @@ from typing import Any
 
 from core.utils.io.files import save_json
 
-DEFAULT_TRACE_FLUSH_INTERVAL = 5
+DEFAULT_REVERSING_AGENT_FLUSH_INTERVAL = 5
 NO_TOOL_ACTIONS = {"none", "finish", "seed_queue"}
 COMPACT_OUTPUT_KEYS = {
     "success",
@@ -32,13 +32,13 @@ LARGE_OUTPUT_KEYS = {
 }
 
 
-class TraceMemory:
+class ReversingAgentMemory:
     def __init__(
         self,
         output_dir: str | Path,
         filename: str,
         name: str,
-        flush_interval: int = DEFAULT_TRACE_FLUSH_INTERVAL,
+        flush_interval: int = DEFAULT_REVERSING_AGENT_FLUSH_INTERVAL,
     ) -> None:
         self.output_dir = output_dir
         self.filename = filename

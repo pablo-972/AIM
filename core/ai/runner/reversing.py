@@ -10,7 +10,7 @@ from core.ai.agents.reversing import ReversingAgent
 from core.ai.model_registry import ModelRegistry
 from core.ai.runner.base import BaseAIRunner
 from core.ai.runtime.executor import AgentStepExecutor
-from core.ai.runtime.memory import TraceMemory
+from core.ai.runtime.reversing_agent_memory import ReversingAgentMemory
 from core.ai.runtime.reversing.evidence import ReversingEvidenceEvaluator
 from core.ai.runtime.reversing.exploration import ReversingExplorationLoop
 from core.ai.runtime.reversing.initialization import ReversingInvestigationInitializer
@@ -25,7 +25,7 @@ class ReversingAgentRunner(BaseAIRunner):
             REVERSING_AGENT_TOOLS_PATH.parent,
             REVERSING_AGENT_TOOLS_PATH.name,
         ) or {}
-        self.memory = TraceMemory(
+        self.memory = ReversingAgentMemory(
             output_dir=self.context.output,
             filename=REVERSING_AGENT_RESULT_FILENAME,
             name="reversing_agent",
