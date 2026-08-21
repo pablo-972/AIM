@@ -88,7 +88,7 @@ class DynamicInferenceRunner(BaseAIRunner):
         category = raw_finding.get("category")
         summary = raw_finding.get("summary")
         source = self._finding_source(input_ref)
-        evidence = self._selected_evidence(raw_finding, input_ref)
+        evidence = self._selected_evidence(raw_finding)
 
         if not (isinstance(category, str) and category):
             category = "unknown"
@@ -178,11 +178,7 @@ class DynamicInferenceRunner(BaseAIRunner):
 
         return source
 
-    def _selected_evidence(
-        self,
-        raw_finding: dict[str, Any],
-        input_ref: dict[str, Any],
-    ) -> list[str]:
+    def _selected_evidence(self, raw_finding: dict[str, Any]) -> list[str]:
         raw_evidence = raw_finding.get("evidence")
         if not isinstance(raw_evidence, list):
             return []

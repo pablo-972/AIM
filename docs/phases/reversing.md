@@ -15,11 +15,11 @@ The reversing agent starts from `enrichment.md` when that document exists and
 contains useful content. The enrichment document guides the first targets that
 the agent puts into its investigation queue.
 
-If enrichment is unavailable, the agent performs bounded reconnaissance and uses
-deterministic fallback targets such as suspicious imports, large functions, and
-interesting strings.
+If enrichment is unavailable or weak, the agent uses focused discovery tools
+such as `list_imports`, `list_sections`, `list_entrypoints`, and
+`list_functions` instead of guessing broad strings or addresses.
 
-When xrefs or reconnaissance identify an interesting code address, the agent
+When xrefs or discovery results identify an interesting code address, the agent
 uses `disassembly` directly to retrieve the containing function body. Imports
 are first explored with `import_xrefs`, so the agent follows callers in the
 sample rather than disassembling API thunks.
@@ -28,7 +28,7 @@ The agent is queue-driven:
 
 ```mermaid
 flowchart TD
-    Seed[Enrichment or reconnaissance] --> Queue[Priority queue]
+    Seed[Enrichment or discovery] --> Queue[Priority queue]
     Queue --> Target[Execute highest-priority target]
     Target --> Output[Evidence output]
     Output --> Chunks[Split large output into chunks]
@@ -47,10 +47,15 @@ agent can enqueue a follow-up target, but the current target's chunks continue
 until finished. After that, the exploration loop pops the next highest-priority
 unvisited target from the queue.
 
-Large disassembly output uses the same bounded evidence chunking as the rest of
-the reversing tools. The default chunk limit is 4500 JSON characters, so very
-large functions are analyzed progressively while still counting as one queued
-target.
+Large disassembly output is split into instruction chunks. The agent still sees
+the current function as one queued target, but each chunk becomes a separate
+step in `reversing_agent.json`. For disassembly steps, the input records the
+target address, chunk index, total chunks, and total instruction count.
+
+Findings generated from disassembly should include direct code evidence: at
+least one instruction address plus the instruction text. Static, dynamic, and
+enrichment context may support the interpretation, but it should not replace
+direct code evidence.
 
 `--max-targets` limits unique queued targets executed by the agent. It does not
 count evidence chunks as separate targets.
@@ -58,8 +63,67 @@ count evidence chunks as separate targets.
 Agent output is stored in:
 
 ```text
-reverse_agent.json
+reversing_agent.json
 ```
+
+The trace keeps `steps` as the primary analyst view:
+
+```json
+{
+  "agent": "reversing_agent",
+  "status": "completed",
+  "summary": {
+    "steps": 0,
+    "findings": 0,
+    "queue_events": 0,
+    "errors": 0
+  },
+  "steps": [],
+  "findings": [],
+  "queue": [],
+  "errors": []
+}
+```
+
+Each step separates the model decision from the executed action:
+
+```json
+{
+  "step": 4,
+  "input": {
+    "type": "code",
+    "target": "0x402068",
+    "chunk": 1,
+    "total_chunks": 2,
+    "total_instructions": 71
+  },
+  "decision": {
+    "thought": "The function contains API-resolution code worth recording.",
+    "confidence": "high"
+  },
+  "action": {
+    "tool": "disassembly",
+    "target": "0x402068",
+    "status": "ok"
+  },
+  "finding": {
+    "type": "critical_code_region",
+    "category": "api_resolution",
+    "confidence": "high",
+    "summary": "The function resolves Windows APIs dynamically.",
+    "evidence": [
+      "0x402090: call KERNEL32.dll_GetProcAddress"
+    ]
+  },
+  "follow_ups": [],
+  "error": null
+}
+```
+
+`decision` contains only the model's analyst note and confidence. `action`
+contains only the executed tool, its readable target, and execution status.
+Follow-up targets and queue events are stored separately so tool execution,
+model reasoning, and queue behavior are not duplicated.
 
 ## Related Tools
 

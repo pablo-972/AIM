@@ -51,23 +51,26 @@ class ReversingExplorationLoop:
             and self.targets.visited_count() < self.max_targets
         ):
             target = self.targets.pop()
+
             Logger.info(
                 f"Reversing agent target: {target['tool']} "
                 f"({self.targets.visited_count()}/{self.max_targets})"
             )
+
             tool_output = self.step_executor.execute_tool(
                 target["tool"],
                 target["parameters"],
                 self.tool_runner.execute,
             )
 
-            if tool_output.get("success") is True:
-                if self._already_analyzed_function(target, tool_output):
-                    continue
-
-                self.evaluator.evaluate(target, tool_output)
-            else:
+            if tool_output.get("success") is not True:
                 self._record_failure(target, tool_output)
+                continue
+
+            if self._already_analyzed_function(target, tool_output):
+                continue
+
+            self.evaluator.evaluate(target, tool_output)
 
     def _already_analyzed_function(
         self,
@@ -85,11 +88,14 @@ class ReversingExplorationLoop:
             self.analyzed_functions.add(function_key)
             return False
 
-        requested_address = target.get("parameters", {}).get("address")
+        parameters = target.get("parameters", {})
+        requested_address = parameters.get("address")
+
         Logger.info(
             "Skipping disassembly analysis for "
             f"{requested_address}: function {function_key} was already analyzed"
         )
+        
         return True
 
     def _resolved_function_key(self, tool_output: dict[str, Any]) -> str | None:
@@ -117,6 +123,7 @@ class ReversingExplorationLoop:
                 "parameters": target["parameters"],
             },
             tool_name=target["tool"],
+            tool_parameters=target["parameters"],
             tool_output=tool_output,
             input_ref=self.postprocessor.input_ref(target),
         )

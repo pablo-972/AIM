@@ -20,13 +20,13 @@ class StaticInferenceRunner(BaseAIRunner):
 
         self.model_registry = model_registry
         self.strings: list[str] = strings
-        
+
     def run(self) -> None:
         inference = self._create_inference_model()
         memory = StaticInferenceMemory(
             output_dir=self.context.output,
             filename=STATIC_INFERENCE_RESULT_FILENAME,
-            agent_name="static_strings_inference",
+            name="static_strings_inference",
         )
 
         string_chunks = prepare_static_string_chunks(self.strings)
@@ -101,7 +101,7 @@ class StaticInferenceRunner(BaseAIRunner):
             "thought": thought,
             "confidence": decision.get("confidence", "low"),
         }
-    
+
     def _finding(
         self,
         decision: dict[str, Any],

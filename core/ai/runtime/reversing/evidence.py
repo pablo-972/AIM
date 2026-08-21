@@ -26,19 +26,10 @@ class ReversingEvidenceEvaluator:
         self.memory = memory
         self.targets = targets
 
-    def evaluate(
-        self,
-        target: dict[str, Any],
-        tool_output: dict[str, Any],
-    ) -> None:
-        chunks = chunk_reversing_evidence(
-            target["tool"],
-            tool_output.get("data"),
-        )
-        observation = self.postprocessor.observation_summary(
-            target,
-            tool_output,
-        )
+    def evaluate(self, target: dict[str, Any], tool_output: dict[str, Any]) -> None:
+        chunks = chunk_reversing_evidence(target["tool"], tool_output.get("data"))
+        observation = self.postprocessor.observation_summary(target, tool_output)
+
         self._enqueue_deterministic_follow_ups(target, tool_output)
 
         for chunk_index, chunk in enumerate(chunks, start=1):
@@ -49,28 +40,39 @@ class ReversingEvidenceEvaluator:
                 chunk_index,
                 len(chunks),
             )
+
             finding = self.postprocessor.finding(
                 analysis.get("finding"),
                 target,
                 observation,
             )
+
             follow_up = self.postprocessor.follow_up_target(
                 analysis,
                 target,
                 observation,
             )
+
+            input_ref = self.postprocessor.input_ref(target, chunk_index)
+            input_ref["total_chunks"] = len(chunks)
+
+            decision = self.postprocessor.trace_decision(
+                analysis,
+                target,
+                observation,
+            )
+
             self.memory.record(
-                decision=self.postprocessor.trace_decision(
-                    analysis,
-                    target,
-                    observation,
-                ),
+                decision=decision,
                 tool_name=target["tool"],
+                tool_parameters=target["parameters"],
                 tool_output=tool_output,
-                input_ref=self.postprocessor.input_ref(target, chunk_index),
+                input_ref=input_ref,
                 finding=finding,
+                follow_ups=[follow_up] if follow_up is not None else [],
                 error=error,
             )
+            
             if follow_up is not None:
                 self.targets.enqueue([follow_up], source="follow_up")
 
@@ -85,6 +87,7 @@ class ReversingEvidenceEvaluator:
 
         added = self.targets.enqueue(follow_ups, source="follow_up")
         tool_name = target.get("tool")
+        
         Logger.info(
             f"Queued {added}/{len(follow_ups)} deterministic reversing follow-ups "
             f"from {tool_name}"

@@ -39,6 +39,6 @@ For the tool implementation pattern and the tools available in each phase, see
 | `static_inference.json` | Static inference |
 | `dynamic_inference.json` | Dynamic behavior inference |
 | `enrichment.md` | Enrichment phase |
-| `reverse_agent.json` | Agentic reverse engineering |
+| `reversing_agent.json` | Agentic reverse engineering |
 | `report.md` | Report phase |
 | `assessment.json` | Structured report assessment |

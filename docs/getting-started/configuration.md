@@ -64,6 +64,16 @@ LOCAL_REVERSING_NUM_CTX
 LOCAL_REPORT_NUM_CTX
 ```
 
+Default local profiles are defined in `core/ai/model_profiles.yaml`:
+
+| Profile | Default Model | Default Context | Output |
+| --- | --- | --- | --- |
+| `local-static` | `gemma4:e2b` | `8000` | JSON |
+| `local-dynamic` | `gemma4:e2b` | `8000` | JSON |
+| `local-enrichment` | `qwen3:4b` | `25000` | Markdown text |
+| `local-reversing` | `gemma4:e2b` | `8000` | JSON/tool calling |
+| `local-report` | `qwen3:4b` | `25000` | Markdown text |
+
 Cloud model variables are task-specific:
 
 ```text

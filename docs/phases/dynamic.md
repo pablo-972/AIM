@@ -33,6 +33,72 @@ activity that are useful for malware analysis:
 - network attempts or connections;
 - behavior that supports later enrichment and reverse engineering.
 
+The JSON trace mirrors static inference: each step is one prepared dynamic
+section or chunk, followed by model analysis and an optional finding. It does
+not store the complete Procmon/Autoruns/Registry chunk because those artifacts
+already exist in `analysis.json`.
+
+```json
+{
+  "name": "dynamic_inference",
+  "status": "completed",
+  "findings_count": 1,
+  "steps": [
+    {
+      "step": 1,
+      "input": {
+        "source": "procmon",
+        "section": "network.connections",
+        "index": 1,
+        "total_chunks": 1,
+        "total_items": 13,
+        "selected_count": 13
+      },
+      "analysis": {
+        "thought": "The sample contacted a remote HTTPS endpoint.",
+        "confidence": "high"
+      },
+      "finding": {
+        "type": "dynamic_behavior",
+        "category": "network_connection",
+        "confidence": "high",
+        "summary": "The sample communicated with a remote server over TLS.",
+        "evidence": [
+          "TCP connection to www.server-q01.com:443"
+        ],
+        "source": {
+          "provider": "procmon",
+          "section": "network.connections",
+          "chunk": 1
+        }
+      },
+      "error": null
+    }
+  ],
+  "findings": [
+    {
+      "step": 1,
+      "type": "dynamic_behavior",
+      "category": "network_connection",
+      "confidence": "high",
+      "summary": "The sample communicated with a remote server over TLS.",
+      "evidence": [
+        "TCP connection to www.server-q01.com:443"
+      ],
+      "source": {
+        "provider": "procmon",
+        "section": "network.connections",
+        "chunk": 1
+      }
+    }
+  ],
+  "errors": []
+}
+```
+
+Dynamic `evidence` is a list of short strings. Source metadata is stored in the
+finding's `source` field instead of being duplicated inside evidence.
+
 ## Related Tools
 
 See [Dynamic tools](../tools/dynamic.md).

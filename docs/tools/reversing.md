@@ -59,13 +59,32 @@ resource sections focus on metadata and string previews.
 | `disassembly` | Return structured disassembly instructions for one internal code address |
 | `callers` | Return incoming calls for one internal code address |
 | `callees` | Return outgoing calls for one internal code address |
+| `inspect_section` | Inspect one binary section without dumping it fully |
 | `string_xrefs` | Find strings and their code references |
 | `import_xrefs` | Find imports and their code references |
+| `list_imports` | List imports for focused discovery |
+| `list_functions` | List internal functions for focused discovery |
+| `list_sections` | List sections with addresses, sizes, and permissions |
+| `list_entrypoints` | List recognized entrypoints |
 
 The reversing agent uses these tools through a priority queue. The JSON contract
 limits what the model can ask for and validates parameters before execution.
 Imported APIs are investigated with `import_xrefs`; the agent then follows a
 returned caller address into the sample's code.
+
+Model-proposed targets are normalized before they enter the queue. Address-like
+values are routed to code-address tools, section names to `inspect_section`,
+imports and DLL names to `import_xrefs`, and arbitrary text to `string_xrefs`.
+Normal valid targets are recorded compactly as `validation: "VALID"` in
+`reversing_agent.json`; corrected or rejected targets keep a small validation
+object with the original and corrected target where applicable.
+
+Generic xrefs are intentionally split by use case:
+
+- `string_xrefs` pivots from specific strings into code.
+- `import_xrefs` pivots from imported APIs or DLL names into code.
+- `address-xrefs` is manual-only and is useful when an analyst needs references
+  to an exact address, for example jump targets or data references.
 
 ## Related Phase
 

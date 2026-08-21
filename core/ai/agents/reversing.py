@@ -2,7 +2,7 @@ import json
 from typing import Any
 
 from core.ai.providers.base import BaseLLMProvider
-from core.ai.agents.reversing_tools import (
+from core.ai.agents.reversing_tools_definition import (
     build_reversing_tool_definitions,
     tool_call_action,
     tool_call_finding,
@@ -33,6 +33,11 @@ Rules:
   are not configuration loading or C2 without code evidence.
 - Create critical_code_region findings only when xref, caller/callee,
   or disassembly evidence ties the behavior to code.
+- A reversing finding should contain at least one direct code evidence item
+  whenever the finding was generated from disassembly.
+- Direct code evidence must include the instruction address and instruction text.
+- Static, dynamic, and enrichment context may support the interpretation, but
+  must not replace direct code evidence in disassembly findings.
 - After string_xrefs or import_xrefs returns code references, inspect an actual
   returned internal code address with disassembly instead of continuing with broad
   artifact searches.

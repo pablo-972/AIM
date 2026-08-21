@@ -32,7 +32,7 @@ flowchart TD
 
     Provider --> Response[Model response]
     Response --> Parsing[Schema-local parser / document sanitizer]
-    Parsing --> Output[TraceMemory / markdown document / JSON artifact]
+    Parsing --> Output[Task memory / markdown document / JSON artifact]
 ```
 
 ## Directory Layout
@@ -55,7 +55,7 @@ core/ai/
 | `inferences/` | Task-specific prompt logic for static, dynamic, enrichment, and report |
 | `providers/` | Ollama, OpenAI-compatible, and Gemini HTTP clients |
 | `runner/` | Workflow orchestration for each AI task |
-| `runtime/` | Shared execution state, trace memory, agent validation, and reversing loop helpers |
+| `runtime/` | Tool execution helpers, inference memories, and reversing agent runtime |
 | `schemas/` | JSON schemas and response parsing helpers |
 
 ## Model Profiles
@@ -198,7 +198,7 @@ Important files:
 | --- | --- |
 | `static.py` | Static inference schema, parser, and fallback response |
 | `dynamic.py` | Dynamic behavior inference schema, parser, and fallback response |
-| `reversing.py` | Reversing seed, action, target, finding schemas, and parsers |
+| `reversing.py` | Reversing finding schema used by the model-callable finding tool |
 | `report.py` | Structured report schema and final assessment validation |
 
 Each schema file owns the parser for the response it describes. This keeps the
@@ -235,26 +235,51 @@ They are shared by AI runners and agents.
 
 | File | Purpose |
 | --- | --- |
-| `memory.py` | Stores trace steps, findings, queue events, errors, and compact tool outputs |
 | `executor.py` | Executes validated agent tool calls |
-| `validators.py` | Normalizes and validates model-requested tool parameters |
-| `reversing/` | Queue, initialization, exploration loop, evidence evaluation, and target logic |
+| `schema_validator.py` | Validates model-requested tool parameters against tool schemas |
+| `inference/` | Static and dynamic inference memory writers |
+| `reversing/` | Reversing agent memory, queue, initialization, exploration, target validation, and trace formatting |
 
-`TraceMemory` is used by inference and agent runners that need a structured JSON
-trace. It stores:
+Inference memories are intentionally small and task-specific:
 
-- steps;
-- findings;
-- artifacts;
-- queue events;
-- errors;
-- final status.
+- `runtime/inference/static_memory.py` writes `static_inference.json`;
+- `runtime/inference/dynamic_memory.py` writes `dynamic_inference.json`.
+
+Both store compact `steps`, global `findings`, `findings_count`, and `errors`.
+Each step contains:
+
+```json
+{
+  "step": 1,
+  "input": {},
+  "analysis": {
+    "thought": "...",
+    "confidence": "high"
+  },
+  "finding": null,
+  "error": null
+}
+```
+
+They do not store agent-style tool blocks or priority queues.
+
+The reversing agent has its own memory and formatter:
+
+```text
+core/ai/runtime/reversing/memory.py
+core/ai/runtime/reversing/trace_formatter.py
+```
+
+`ReversingAgentMemory` stores steps, findings, queue events, errors, final
+status, and a compact summary. `ReversingTraceFormatter` owns the JSON shape for
+step input, decision, action, findings, follow-ups, queue validation, and
+origin fields.
 
 The reversing runtime adds the bounded agent loop:
 
 ```mermaid
 flowchart TD
-    Context[enrichment.md / reconnaissance] --> Seed[Initial targets]
+    Context[enrichment.md / discovery] --> Seed[Initial targets]
     Seed --> Queue[Priority queue]
     Queue --> Tool[Execute reversing tool]
     Tool --> Chunking[Chunk large evidence]
@@ -265,13 +290,42 @@ flowchart TD
     Finding --> Memory[reversing_agent.json]
 ```
 
-1. initialize targets from enrichment or reconnaissance;
+1. initialize targets from enrichment or focused discovery;
 2. push targets into a priority queue;
 3. execute the highest-priority unvisited target;
 4. split large evidence into chunks;
 5. evaluate each chunk;
 6. record findings;
 7. enqueue follow-up targets when useful.
+
+The reversing trace is written to `reversing_agent.json`. Each step keeps the
+model decision separate from the executed action:
+
+```json
+{
+  "input": {
+    "type": "code",
+    "target": "0x402068",
+    "chunk": 1,
+    "total_chunks": 2,
+    "total_instructions": 71
+  },
+  "decision": {
+    "thought": "The code region resolves APIs dynamically.",
+    "confidence": "high"
+  },
+  "action": {
+    "tool": "disassembly",
+    "target": "0x402068",
+    "status": "ok"
+  },
+  "follow_ups": []
+}
+```
+
+Normal queue validations are serialized as `"VALID"`. Corrections and
+rejections keep compact details so analysts can see what the validator changed
+without reading the full internal target object.
 
 ## Inference Models
 
@@ -323,6 +377,8 @@ The reversing agent differs from simple inference:
 - it reads tool contracts;
 - it records queue events and tool decisions;
 - it must ground findings in executable-code evidence.
+- when a finding is generated from disassembly, evidence should include at
+  least one instruction address and instruction text.
 
 The model-callable reversing tools are defined outside the AI layer:
 
@@ -333,6 +389,10 @@ core/tools/reversing/agent_tools.json
 
 The AI runtime validates model actions against that JSON contract before any
 tool is executed.
+
+The agent uses native tool calling from the configured provider. The internal
+target queue receives normalized targets after validation; the provider-specific
+transport is kept inside the provider layer.
 
 ## Adding an AI Task
 
