@@ -1,4 +1,4 @@
-from typing import Any, Protocol
+from typing import Any
 
 from core.utils.logger import Logger
 from core.utils.postprocessing.reversing import ReversingPostprocessor
@@ -6,33 +6,14 @@ from core.ai.runtime.executor import AgentStepExecutor
 from core.utils.address import parse_address
 
 
-class ReversingToolExecutor(Protocol):
-    def execute(
-        self,
-        tool_name: str,
-        parameters: dict[str, Any] | None = None,
-        context: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
-        ...
-
-
-class EvidenceEvaluator(Protocol):
-    def evaluate(
-        self,
-        target: dict[str, Any],
-        tool_output: dict[str, Any],
-    ) -> None:
-        ...
-
-
 class ReversingExplorationLoop:
     def __init__(
         self,
         max_targets: int,
         targets: Any,
-        tool_runner: ReversingToolExecutor,
+        tool_runner: Any,
         step_executor: AgentStepExecutor,
-        evaluator: EvidenceEvaluator,
+        evaluator: Any,
         postprocessor: ReversingPostprocessor,
         memory: Any,
     ) -> None:
@@ -95,7 +76,7 @@ class ReversingExplorationLoop:
             "Skipping disassembly analysis for "
             f"{requested_address}: function {function_key} was already analyzed"
         )
-        
+
         return True
 
     def _resolved_function_key(self, tool_output: dict[str, Any]) -> str | None:

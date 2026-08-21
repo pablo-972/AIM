@@ -391,8 +391,8 @@ The AI runtime validates model actions against that JSON contract before any
 tool is executed.
 
 The agent uses native tool calling from the configured provider. The internal
-target queue receives normalized targets after validation; the provider-specific
-transport is kept inside the provider layer.
+target queue receives validated targets after target validation; the
+provider-specific transport is kept inside the provider layer.
 
 ## Adding an AI Task
 

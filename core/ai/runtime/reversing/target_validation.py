@@ -5,7 +5,7 @@ from typing import Any
 from core.ai.runtime.reversing.parameters import (
     CODE_ADDRESS_TOOLS,
     DISCOVERY_TOOLS,
-    normalize_reversing_tool_parameters,
+    prepare_reversing_tool_parameters,
 )
 from core.utils.address import parse_address
 
@@ -48,7 +48,7 @@ class TargetValidationResult:
     parameters: dict[str, Any]
     reason: str
 
-    def debug(self) -> dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         data: dict[str, Any] = {
             "status": self.status.value,
             "original_tool": self.original_tool,
@@ -93,13 +93,13 @@ class ReversingTargetValidator:
                 "No usable target argument was provided.",
             )
 
-        target_type, normalized_value = _resolve_for_tool(tool_name, value)
+        target_type, target_value = _resolve_for_tool(tool_name, value)
         if tool_name in _compatible_tools(target_type):
             return _accepted(
                 tool_name,
                 original_parameters,
                 target_type,
-                normalized_value,
+                target_value,
             )
 
         corrected_tool = _correction_tool(target_type)
@@ -124,7 +124,7 @@ class ReversingTargetValidator:
             original_parameters,
             target_type,
             corrected_tool,
-            normalized_value,
+            target_value,
         )
 
 
@@ -134,13 +134,13 @@ def _accepted(
     target_type: TargetType,
     value: str,
 ) -> TargetValidationResult:
-    normalized_parameters = _normalized_parameters(tool_name, value)
+    accepted_parameters = _parameters_for_validated_target(tool_name, value)
     status = TargetValidationStatus.VALID
     reason = "Tool is compatible with target type."
 
-    if normalized_parameters != original_parameters:
+    if accepted_parameters != original_parameters:
         status = TargetValidationStatus.CORRECTED
-        reason = "Tool parameters were normalized."
+        reason = "Tool parameters were adjusted."
 
     return TargetValidationResult(
         status=status,
@@ -148,7 +148,7 @@ def _accepted(
         original_parameters=original_parameters,
         target_type=target_type,
         tool=tool_name,
-        parameters=normalized_parameters,
+        parameters=accepted_parameters,
         reason=reason,
     )
 
@@ -157,16 +157,16 @@ def _accepted_discovery(
     tool_name: str,
     original_parameters: dict[str, Any],
 ) -> TargetValidationResult:
-    normalized_parameters = normalize_reversing_tool_parameters(
+    accepted_parameters = prepare_reversing_tool_parameters(
         tool_name,
         original_parameters,
     )
     status = TargetValidationStatus.VALID
     reason = "Discovery tool is compatible without a target argument."
 
-    if normalized_parameters != original_parameters:
+    if accepted_parameters != original_parameters:
         status = TargetValidationStatus.CORRECTED
-        reason = "Tool parameters were normalized."
+        reason = "Tool parameters were adjusted."
 
     return TargetValidationResult(
         status=status,
@@ -174,7 +174,7 @@ def _accepted_discovery(
         original_parameters=original_parameters,
         target_type=None,
         tool=tool_name,
-        parameters=normalized_parameters,
+        parameters=accepted_parameters,
         reason=reason,
     )
 
@@ -192,7 +192,7 @@ def _corrected(
         original_parameters=original_parameters,
         target_type=target_type,
         tool=corrected_tool,
-        parameters=_normalized_parameters(corrected_tool, value),
+        parameters=_parameters_for_validated_target(corrected_tool, value),
         reason=f"{target_type.value} target uses {corrected_tool}.",
     )
 
@@ -263,16 +263,16 @@ def _resolve_import_target(value: str) -> tuple[TargetType, str]:
 
 
 def _looks_like_import_function(value: str) -> bool:
-    normalized = value.strip()
-    if len(normalized) < 4 or not normalized.isidentifier():
+    name = value.strip()
+    if len(name) < 4 or not name.isidentifier():
         return False
 
-    has_lower = any(character.islower() for character in normalized)
-    has_upper = any(character.isupper() for character in normalized)
-    if has_lower and has_upper and normalized[0].isupper():
+    has_lower = any(character.islower() for character in name)
+    has_upper = any(character.isupper() for character in name)
+    if has_lower and has_upper and name[0].isupper():
         return True
 
-    return normalized.endswith(("A", "W", "Ex"))
+    return name.endswith(("A", "W", "Ex"))
 
 
 def _compatible_tools(target_type: TargetType) -> set[str]:
@@ -297,8 +297,8 @@ def _correction_tool(target_type: TargetType) -> str | None:
     return None
 
 
-def _normalized_parameters(tool_name: str, value: str) -> dict[str, Any]:
-    return normalize_reversing_tool_parameters(
+def _parameters_for_validated_target(tool_name: str, value: str) -> dict[str, Any]:
+    return prepare_reversing_tool_parameters(
         tool_name,
         _parameters_for(tool_name, value),
     )

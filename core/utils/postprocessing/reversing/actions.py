@@ -5,7 +5,7 @@ from core.utils.postprocessing.reversing.contracts import (
     NO_TOOL_ACTIONS,
     XREF_TOOLS,
 )
-from core.ai.runtime.reversing.parameters import normalize_reversing_tool_parameters
+from core.ai.runtime.reversing.parameters import prepare_reversing_tool_parameters
 from core.ai.runtime.schema_validator import validate_tool_parameters
 
 
@@ -24,7 +24,7 @@ class ReversingActionPolicy:
             return "none", {}
         if action in NO_TOOL_ACTIONS:
             return action, {}
-        
+
         parameters = analysis.get("parameters")
         if not isinstance(parameters, dict):
             parameters = {}
@@ -32,7 +32,7 @@ class ReversingActionPolicy:
         current_tool = target.get("tool")
         if not isinstance(current_tool, str):
             return "none", {}
-        
+
         code_targets = self._code_targets(observation)
         has_code_target = bool(code_targets)
 
@@ -53,13 +53,12 @@ class ReversingActionPolicy:
                     code_targets[0],
                 )
 
-        parameters = normalize_reversing_tool_parameters(action, parameters)
-        
+        parameters = prepare_reversing_tool_parameters(action, parameters)
+
         if not self._valid_tool_call(action, parameters):
             return "none", {}
 
         return action, parameters
-
 
     def _code_targets(self, observation: dict[str, Any]) -> list[str]:
         values = observation.get("code_targets")
@@ -79,11 +78,11 @@ class ReversingActionPolicy:
         action: str,
         code_target: str,
     ) -> dict[str, Any]:
-        normalized = {
+        parameters = {
             "address": code_target,
         }
-        
-        return normalize_reversing_tool_parameters(action, normalized)
+
+        return prepare_reversing_tool_parameters(action, parameters)
 
     def _valid_tool_call(
         self,

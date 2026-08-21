@@ -72,9 +72,10 @@ limits what the model can ask for and validates parameters before execution.
 Imported APIs are investigated with `import_xrefs`; the agent then follows a
 returned caller address into the sample's code.
 
-Model-proposed targets are normalized before they enter the queue. Address-like
-values are routed to code-address tools, section names to `inspect_section`,
-imports and DLL names to `import_xrefs`, and arbitrary text to `string_xrefs`.
+Model-proposed targets are validated and prepared before they enter the queue.
+Address-like values are routed to code-address tools, section names to
+`inspect_section`, imports and DLL names to `import_xrefs`, and arbitrary text
+to `string_xrefs`.
 Normal valid targets are recorded compactly as `validation: "VALID"` in
 `reversing_agent.json`; corrected or rejected targets keep a small validation
 object with the original and corrected target where applicable.

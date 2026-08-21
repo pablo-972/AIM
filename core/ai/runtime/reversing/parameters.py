@@ -11,12 +11,12 @@ DISCOVERY_TOOLS = {
 }
 
 
-def normalize_reversing_tool_parameters(
+def prepare_reversing_tool_parameters(
     tool_name: str,
     parameters: dict[str, Any],
 ) -> dict[str, Any]:
     if tool_name in CODE_ADDRESS_TOOLS:
-        return _normalize_code_address(parameters)
+        return _prepare_code_address(parameters)
 
     if tool_name == "inspect_section":
         return _keep_parameters(parameters, {"section"})
@@ -33,15 +33,15 @@ def normalize_reversing_tool_parameters(
     return dict(parameters)
 
 
-def _normalize_code_address(parameters: dict[str, Any]) -> dict[str, Any]:
-    normalized = _keep_parameters(parameters, {"address"})
-    address = normalized.get("address")
+def _prepare_code_address(parameters: dict[str, Any]) -> dict[str, Any]:
+    prepared = _keep_parameters(parameters, {"address"})
+    address = prepared.get("address")
     parsed_address = parse_address(address)
 
     if parsed_address is not None:
-        normalized["address"] = hex(parsed_address)
+        prepared["address"] = hex(parsed_address)
 
-    return normalized
+    return prepared
 
 
 def _keep_parameters(

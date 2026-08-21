@@ -165,10 +165,10 @@ def _inside_current_function(
 
 
 def _is_external_code_target(value: str) -> bool:
-    normalized = value.strip().lower()
+    target_name = value.strip().lower()
     return (
-        normalized.startswith(EXTERNAL_CODE_PREFIXES)
-        or ".dll" in normalized
+        target_name.startswith(EXTERNAL_CODE_PREFIXES)
+        or ".dll" in target_name
     )
 
 

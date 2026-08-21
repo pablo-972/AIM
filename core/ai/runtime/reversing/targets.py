@@ -21,8 +21,8 @@ class ReversingTargetQueue:
     ) -> None:
         self.available_tools = available_tools
         self.memory = memory
-        self.validator = validator or ReversingTargetValidator()
-        self.queue = TargetPriorityQueue()
+        self.target_validator = validator or ReversingTargetValidator()
+        self.priority_queue = TargetPriorityQueue()
 
     def enqueue(self, targets: Any, source: str) -> int:
         if not isinstance(targets, list):
@@ -30,36 +30,39 @@ class ReversingTargetQueue:
 
         added = 0
         for target in targets:
-            normalized = self._normalize(target, source)
-            if normalized is not None and self.queue.push(normalized):
+            prepared_target = self._prepare_target(target, source)
+            if (
+                prepared_target is not None
+                and self.priority_queue.push(prepared_target)
+            ):
                 added += 1
                 self.memory.record_queue_event(
                     action="added",
-                    target=normalized,
-                    queue_size=self.queue.size(),
+                    target=prepared_target,
+                    queue_size=self.priority_queue.size(),
                     source=source,
                 )
 
         return added
 
     def pop(self) -> dict[str, Any]:
-        target = self.queue.pop()
+        target = self.priority_queue.pop()
         self.memory.record_queue_event(
             action="removed",
             target=target,
-            queue_size=self.queue.size(),
+            queue_size=self.priority_queue.size(),
             source="execution",
         )
 
         return target
 
     def has_items(self) -> bool:
-        return self.queue.has_items()
+        return self.priority_queue.has_items()
 
     def visited_count(self) -> int:
-        return self.queue.visited_count()
+        return self.priority_queue.visited_count()
 
-    def valid_targets(
+    def prepare_targets(
         self,
         targets: Any,
         source: str | None = None,
@@ -67,16 +70,16 @@ class ReversingTargetQueue:
         if not isinstance(targets, list):
             return []
 
-        normalized_targets = []
+        prepared_targets = []
         for target in targets:
-            normalized = self._normalize(target, source=source)
+            prepared_target = self._prepare_target(target, source=source)
 
-            if normalized is not None:
-                normalized_targets.append(normalized)
+            if prepared_target is not None:
+                prepared_targets.append(prepared_target)
 
-        return normalized_targets
+        return prepared_targets
 
-    def _normalize(self, target: Any, source: str | None) -> dict[str, Any] | None:
+    def _prepare_target(self, target: Any, source: str | None) -> dict[str, Any] | None:
         if not isinstance(target, dict):
             return None
 
@@ -86,17 +89,17 @@ class ReversingTargetQueue:
         if not isinstance(tool_name, str) or not isinstance(parameters, dict):
             return None
 
-        validation = self.validator.validate(
+        validation = self.target_validator.validate(
             tool_name,
             parameters,
             self.available_tools,
         )
         if validation.status == TargetValidationStatus.REJECTED:
-            self._record_rejected(validation.debug(), source)
+            self._record_rejected(validation.to_dict(), source)
             return None
 
         if validation.tool is None:
-            self._record_rejected(validation.debug(), source)
+            self._record_rejected(validation.to_dict(), source)
             return None
 
         tool_name = validation.tool
@@ -104,10 +107,10 @@ class ReversingTargetQueue:
         tool_spec = self.available_tools.get(tool_name)
 
         if not isinstance(tool_spec, dict):
-            self._record_rejected(validation.debug(), source)
+            self._record_rejected(validation.to_dict(), source)
             return None
         if not validate_tool_parameters(parameters, tool_spec):
-            self._record_rejected(validation.debug(), source)
+            self._record_rejected(validation.to_dict(), source)
             return None
 
         try:
@@ -116,16 +119,18 @@ class ReversingTargetQueue:
             priority = DEFAULT_TARGET_PRIORITY
 
         reason = str(target.get("reason") or "").strip()[:MAX_TARGET_REASON_LENGTH]
-        normalized_priority = max(1, min(priority, 100))
+        priority = max(1, min(priority, 100))
 
-        return {
+        prepared_target = {
             "tool": tool_name,
             "parameters": parameters,
-            "priority": normalized_priority,
+            "priority": priority,
             "reason": reason,
-            "validation": validation.debug(),
-            **self._trace_metadata(target),
+            "validation": validation.to_dict(),
         }
+        prepared_target.update(self._trace_metadata(target))
+
+        return prepared_target
 
     def _trace_metadata(self, target: dict[str, Any]) -> dict[str, Any]:
         metadata = {}
@@ -154,6 +159,6 @@ class ReversingTargetQueue:
             target={
                 "validation": validation,
             },
-            queue_size=self.queue.size(),
+            queue_size=self.priority_queue.size(),
             source=source,
         )
