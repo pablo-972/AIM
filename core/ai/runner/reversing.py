@@ -55,7 +55,7 @@ class ReversingAgentRunner(BaseAIRunner):
                 },
                 error=initialization.seed_error,
             )
-            
+
             self.targets.enqueue(
                 initialization.targets,
                 source=initialization.source,
@@ -96,7 +96,6 @@ class ReversingAgentRunner(BaseAIRunner):
             self.memory.close()
 
         
-
     def _create_agent(self) -> ReversingAgent:
         llm = self.model_registry.create_agent_client(
             "reversing",
