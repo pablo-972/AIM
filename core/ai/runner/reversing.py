@@ -19,7 +19,11 @@ from core.ai.runtime.reversing.targets import ReversingTargetQueue
 
 
 class ReversingAgentRunner(BaseAIRunner):
-    def __init__(self, context: AnalysisContext, model_registry: ModelRegistry) -> None:
+    def __init__(
+        self, 
+        context: AnalysisContext, 
+        model_registry: ModelRegistry,
+    ) -> None:
         super().__init__(context)
         self.model_registry = model_registry
         self.available_tools: dict[str, Any] = load_json(
