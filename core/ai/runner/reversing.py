@@ -55,6 +55,7 @@ class ReversingAgentRunner(BaseAIRunner):
                 },
                 error=initialization.seed_error,
             )
+            
             self.targets.enqueue(
                 initialization.targets,
                 source=initialization.source,
@@ -74,6 +75,7 @@ class ReversingAgentRunner(BaseAIRunner):
                 memory=self.memory,
                 targets=self.targets,
             )
+
             ReversingExplorationLoop(
                 max_targets=self.context.reversing_max_targets,
                 targets=self.targets,
@@ -83,6 +85,7 @@ class ReversingAgentRunner(BaseAIRunner):
                 postprocessor=self.postprocessor,
                 memory=self.memory,
             ).run()
+
         except KeyboardInterrupt:
             self.memory.close(status="interrupted")
             raise
