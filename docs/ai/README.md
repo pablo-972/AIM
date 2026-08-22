@@ -303,6 +303,13 @@ plain local jumps inside the same function are filtered. These deterministic
 follow-ups coexist with model-selected follow-ups. The queue and target
 deduplication decide what is actually executed.
 
+Rejected model-selected follow-ups can be sent back to the model once as
+generic recovery context. The validator does not guess a replacement tool for
+ambiguous targets. Instead, the rejected tool, parameters, and validator message
+are shown to the model so it can choose a discovery/reference tool, try another
+valid target, or abandon that path. If the recovery action is also invalid, the
+second rejection is recorded and the runtime does not loop.
+
 The reversing runtime adds the bounded agent loop:
 
 ```mermaid
@@ -326,7 +333,8 @@ flowchart TD
 4. split large evidence into chunks;
 5. evaluate each chunk;
 6. clean model output and validate findings;
-7. enqueue deterministic and model-selected follow-up targets when useful.
+7. recover one rejected model-selected follow-up when possible;
+8. enqueue deterministic and model-selected follow-up targets when useful.
 
 The reversing trace is written to `reversing_agent.json`. Each step keeps the
 model decision separate from the executed action:

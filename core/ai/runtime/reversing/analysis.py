@@ -5,6 +5,7 @@ from core.utils.logger import Logger
 
 
 FALLBACK_ANALYSIS_ATTEMPTS = 2
+REJECTED_ACTION_RECOVERY_ATTEMPTS = 1
 
 
 class ReversingEvidenceAnalyzer:
@@ -54,6 +55,38 @@ class ReversingEvidenceAnalyzer:
             f"chunk {chunk_index}: {error}"
         )
         
+        return self._failed_analysis(), error
+
+    def recover_rejected_action(
+        self,
+        target: dict[str, Any],
+        observation: dict[str, Any],
+        chunk: Any,
+        chunk_index: int,
+        total_chunks: int,
+        rejection_context: dict[str, Any],
+    ) -> tuple[dict[str, Any], str | None]:
+        error = "Rejected action recovery was not attempted."
+
+        for attempt in range(1, REJECTED_ACTION_RECOVERY_ATTEMPTS + 1):
+            try:
+                return self.agent.analyze_evidence(
+                    enrichment=self.enrichment,
+                    target=target,
+                    observation=observation,
+                    chunk=chunk,
+                    chunk_index=chunk_index,
+                    total_chunks=total_chunks,
+                    available_tools=self.available_tools,
+                    rejection_context=rejection_context,
+                ), None
+            except Exception as exc:
+                error = (
+                    "Rejected action recovery failed "
+                    f"({attempt}/{REJECTED_ACTION_RECOVERY_ATTEMPTS}): {exc}"
+                )
+
+        Logger.error(error)
         return self._failed_analysis(), error
 
     def _attempts(self) -> list[tuple[str, str, int, int]]:

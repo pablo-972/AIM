@@ -58,6 +58,19 @@ class ReversingDecisionEvaluator:
                 target,
                 observation,
             )
+            decision_analysis = analysis
+            follow_up, recovery_analysis, recovery_error = self._recover_follow_up(
+                follow_up,
+                target,
+                observation,
+                chunk,
+                chunk_index,
+                len(chunks),
+            )
+            if recovery_analysis is not None:
+                decision_analysis = recovery_analysis
+            error = self._merge_errors(error, recovery_error)
+
             follow_ups = list(deterministic_follow_ups_for_chunk)
             if follow_up is not None:
                 follow_ups.append(follow_up)
@@ -66,7 +79,7 @@ class ReversingDecisionEvaluator:
             input_ref["total_chunks"] = len(chunks)
 
             decision = self.postprocessor.trace_decision(
-                analysis,
+                decision_analysis,
                 target,
                 observation,
             )
@@ -84,6 +97,73 @@ class ReversingDecisionEvaluator:
 
             if follow_ups:
                 self.targets.enqueue(follow_ups, source="follow_up")
+
+    def _recover_follow_up(
+        self,
+        follow_up: dict[str, Any] | None,
+        target: dict[str, Any],
+        observation: dict[str, Any],
+        chunk: Any,
+        chunk_index: int,
+        total_chunks: int,
+    ) -> tuple[dict[str, Any] | None, dict[str, Any] | None, str | None]:
+        if follow_up is None:
+            return None, None, None
+
+        rejection = self.targets.rejection_context(follow_up)
+        if rejection is None:
+            return follow_up, None, None
+
+        self.targets.enqueue([follow_up], source="rejected_follow_up")
+        recovery_context = self._recovery_context(follow_up, rejection)
+        analysis, error = self.analyzer.recover_rejected_action(
+            target,
+            observation,
+            chunk,
+            chunk_index,
+            total_chunks,
+            recovery_context,
+        )
+        analysis = self.postprocessor.clean_analysis(analysis)
+
+        recovered_follow_up = self.postprocessor.follow_up_target(
+            analysis,
+            target,
+            observation,
+        )
+        if recovered_follow_up is None:
+            return None, analysis, error
+
+        recovered_rejection = self.targets.rejection_context(recovered_follow_up)
+        if recovered_rejection is None:
+            return recovered_follow_up, analysis, error
+
+        self.targets.enqueue([recovered_follow_up], source="rejected_follow_up")
+        return None, analysis, error
+
+    def _recovery_context(
+        self,
+        follow_up: dict[str, Any],
+        rejection: dict[str, Any],
+    ) -> dict[str, Any]:
+        return {
+            "message": (
+                "The requested target is not valid or could not be resolved "
+                "unambiguously for the selected tool."
+            ),
+            "rejected_tool": follow_up.get("tool"),
+            "rejected_parameters": follow_up.get("parameters"),
+            "validator": rejection,
+        }
+
+    def _merge_errors(
+        self,
+        first: str | None,
+        second: str | None,
+    ) -> str | None:
+        if first and second:
+            return f"{first}; {second}"
+        return first or second
 
     def _enqueue_deterministic_follow_ups(
         self,

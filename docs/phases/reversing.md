@@ -60,6 +60,14 @@ External imports are skipped, and direct local jumps inside the current function
 are filtered unless radare identifies the operand as an explicit function
 symbol. The priority queue and deduplication still decide which targets execute.
 
+When the model selects a follow-up that the target validator rejects, AIM records
+the rejected queue event and gives the model one recovery attempt with generic
+context about the rejected tool, parameters, and validator message. The
+validator still only performs deterministic corrections when the mapping is
+unambiguous; it does not convert rejected actions into discovery tools by
+itself. If the recovery action is rejected too, AIM records that rejection and
+continues without looping.
+
 Model decision retries are handled inside the reversing runtime. If a chunk
 cannot be analyzed with `enrichment.md` included, AIM retries the same chunk
 without enrichment context before recording a failed decision. Transport-level

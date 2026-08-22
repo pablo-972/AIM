@@ -154,9 +154,11 @@ class ReversingAgent:
         chunk_index: int,
         total_chunks: int,
         available_tools: dict[str, Any],
+        rejection_context: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         compact_target = self._compact_target(target)
         chunk_text = self._format_chunk_for_prompt(chunk)
+        recovery_prompt = self._format_rejection_context(rejection_context)
 
         prompt = f"""
         Analyze this evidence chunk.
@@ -172,6 +174,8 @@ class ReversingAgent:
 
         Enrichment context:
         {enrichment or "No enrichment is available."}
+
+        {recovery_prompt}
 
         Call record_finding only for evidence-backed malicious behaviour.
         Call at most one investigation tool when a follow-up is justified.
@@ -251,3 +255,20 @@ class ReversingAgent:
             return "No evidence-backed follow-up was selected."
 
         return f"Selected {action} from the current evidence."
+
+    def _format_rejection_context(
+        self,
+        rejection_context: dict[str, Any] | None,
+    ) -> str:
+        if not isinstance(rejection_context, dict):
+            return ""
+
+        return f"""
+        Previous requested action was rejected:
+        {json.dumps(rejection_context, ensure_ascii=False, default=str)}
+
+        The requested target is not valid or could not be resolved
+        unambiguously for the selected tool. Use the available discovery or
+        reference tools to resolve the target before retrying, choose another
+        investigation path, or make no tool call if the path is not useful.
+        """

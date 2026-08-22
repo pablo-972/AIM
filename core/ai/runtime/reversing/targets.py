@@ -78,6 +78,45 @@ class ReversingTargetQueue:
 
         return prepared_targets
 
+    def rejection_context(self, target: Any) -> dict[str, Any] | None:
+        if not isinstance(target, dict):
+            return {
+                "message": "Target is not a valid object.",
+            }
+
+        tool_name = target.get("tool")
+        parameters = target.get("parameters")
+
+        if not isinstance(tool_name, str) or not isinstance(parameters, dict):
+            return {
+                "message": "Target does not contain a valid tool and parameters.",
+            }
+
+        validation = self.target_validator.validate(
+            tool_name,
+            parameters,
+            self.available_tools,
+        )
+
+        if validation.status == TargetValidationStatus.REJECTED:
+            return validation.to_dict()
+
+        if validation.tool is None:
+            return validation.to_dict()
+
+        tool_spec = self.available_tools.get(validation.tool)
+        if not isinstance(tool_spec, dict):
+            context = validation.to_dict()
+            context["message"] = "Validated tool is not available."
+            return context
+
+        if not validate_tool_parameters(validation.parameters, tool_spec):
+            context = validation.to_dict()
+            context["message"] = "Validated tool parameters do not match the schema."
+            return context
+
+        return None
+
     def _prepare_target(self, target: Any, source: str | None) -> dict[str, Any] | None:
         if not isinstance(target, dict):
             return None
