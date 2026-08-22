@@ -270,7 +270,9 @@ The reversing agent has its own memory and formatter:
 core/ai/runtime/reversing/memory.py
 core/ai/runtime/reversing/analysis.py
 core/ai/runtime/reversing/decision.py
+core/ai/runtime/reversing/fanout.py
 core/ai/runtime/reversing/trace_formatter.py
+core/utils/postprocessing/reversing/model_output.py
 ```
 
 `ReversingAgentMemory` stores steps, findings, queue events, errors, final
@@ -288,6 +290,19 @@ retries only repeat equivalent HTTP/model requests.
 the output, asks the analyzer for a model decision, postprocesses findings, and
 queues follow-up targets.
 
+`ReversingModelOutputCleaner` is a conservative repair step for local models
+that sometimes write a finding JSON object inside `thought` instead of emitting
+the native `record_finding` tool call. It only recovers parseable JSON findings
+and replaces the noisy thought with a short fallback note. Non-JSON pseudo tool
+calls are not interpreted.
+
+`fanout.py` adds deterministic follow-ups for mechanical code navigation. Xref
+tools can enqueue returned code references. Disassembly chunks can enqueue
+internal `call` and `jump` targets such as `fcn.00401230`; external imports and
+plain local jumps inside the same function are filtered. These deterministic
+follow-ups coexist with model-selected follow-ups. The queue and target
+deduplication decide what is actually executed.
+
 The reversing runtime adds the bounded agent loop:
 
 ```mermaid
@@ -297,8 +312,10 @@ flowchart TD
     Queue --> Tool[Execute reversing tool]
     Tool --> Decision[Chunk and decision evaluation]
     Decision --> Agent[Reversing agent]
+    Decision --> Fanout[Deterministic fan-out]
     Agent --> Finding[Finding]
-    Agent --> FollowUp[Follow-up target]
+    Agent --> FollowUp[Model follow-up target]
+    Fanout --> FollowUp
     FollowUp --> Queue
     Finding --> Memory[reversing_agent.json]
 ```
@@ -308,8 +325,8 @@ flowchart TD
 3. execute the highest-priority unvisited target;
 4. split large evidence into chunks;
 5. evaluate each chunk;
-6. record findings;
-7. enqueue follow-up targets when useful.
+6. clean model output and validate findings;
+7. enqueue deterministic and model-selected follow-up targets when useful.
 
 The reversing trace is written to `reversing_agent.json`. Each step keeps the
 model decision separate from the executed action:
@@ -339,6 +356,20 @@ model decision separate from the executed action:
 Normal queue validations are serialized as `"VALID"`. Corrections and
 rejections keep compact details so analysts can see what the validator changed
 without reading the full internal target object.
+
+Follow-ups are compact targets:
+
+```json
+{
+  "tool": "disassembly",
+  "target": "0x4068d0",
+  "priority": 75
+}
+```
+
+The full queue event keeps validation and origin metadata separately. For
+deterministic code navigation, `origin.relation` records whether the target came
+from a `call`, `jump`, or xref-like relation.
 
 ## Inference Models
 
@@ -392,6 +423,8 @@ The reversing agent differs from simple inference:
 - it must ground findings in executable-code evidence.
 - when a finding is generated from disassembly, evidence should include at
   least one instruction address and instruction text.
+- it can use deterministic fan-out for obvious code references while leaving
+  semantic pivots to the model.
 
 The model-callable reversing tools are defined outside the AI layer:
 

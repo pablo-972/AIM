@@ -24,6 +24,10 @@ uses `disassembly` directly to retrieve the containing function body. Imports
 are first explored with `import_xrefs`, so the agent follows callers in the
 sample rather than disassembling API thunks.
 
+When disassembly exposes an internal function target, the agent can inspect it
+with `disassembly` or ask `callers` when the useful question is who else reaches
+that function. Imported APIs and thunks are still handled through import xrefs.
+
 The agent is queue-driven:
 
 ```mermaid
@@ -33,8 +37,10 @@ flowchart TD
     Target --> Output[Evidence output]
     Output --> Chunks[Split large output into chunks]
     Chunks --> Evaluate[Evaluate each chunk]
+    Evaluate --> Fanout[Deterministic fan-out]
     Evaluate --> Finding[Record finding when grounded]
-    Evaluate --> FollowUp[Queue follow-up target when useful]
+    Evaluate --> FollowUp[Queue model follow-up when useful]
+    Fanout --> FollowUp
     FollowUp --> Queue
     Evaluate --> Next[Continue until target chunks are done]
     Next --> Queue
@@ -46,6 +52,13 @@ chunks for the current target. If a chunk contains something interesting, the
 agent can enqueue a follow-up target, but the current target's chunks continue
 until finished. After that, the exploration loop pops the next highest-priority
 unvisited target from the queue.
+
+Some follow-ups are deterministic rather than model-selected. Xref tools can
+enqueue returned code references. Disassembly chunks can enqueue internal
+`call` and `jump` targets such as `call fcn.004068d0` or `jmp fcn.004067d0`.
+External imports are skipped, and direct local jumps inside the current function
+are filtered unless radare identifies the operand as an explicit function
+symbol. The priority queue and deduplication still decide which targets execute.
 
 Model decision retries are handled inside the reversing runtime. If a chunk
 cannot be analyzed with `enrichment.md` included, AIM retries the same chunk
@@ -61,6 +74,12 @@ Findings generated from disassembly should include direct code evidence: at
 least one instruction address plus the instruction text. Static, dynamic, and
 enrichment context may support the interpretation, but it should not replace
 direct code evidence.
+
+Local models may occasionally write a finding object inside `decision.thought`
+instead of emitting the native finding tool call. The reversing postprocessor
+performs a narrow cleanup pass: if the text contains a parseable finding JSON
+object, it moves that object into `finding` and replaces `thought` with a short
+fallback note. It does not try to parse malformed pseudo tool-call syntax.
 
 `--max-targets` limits unique queued targets executed by the agent. It does not
 count evidence chunks as separate targets.
@@ -129,6 +148,17 @@ Each step separates the model decision from the executed action:
 contains only the executed tool, its readable target, and execution status.
 Follow-up targets and queue events are stored separately so tool execution,
 model reasoning, and queue behavior are not duplicated.
+
+When a step contains deterministic code-navigation follow-ups, they appear in
+the same `follow_ups` list as model-selected follow-ups:
+
+```json
+{
+  "tool": "disassembly",
+  "target": "0x4068d0",
+  "priority": 75
+}
+```
 
 ## Related Tools
 
