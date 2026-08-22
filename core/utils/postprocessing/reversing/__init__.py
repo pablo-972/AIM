@@ -2,6 +2,7 @@ from typing import Any
 
 from core.utils.postprocessing.reversing.actions import ReversingActionPolicy
 from core.utils.postprocessing.reversing.findings import ReversingFindingValidator
+from core.utils.postprocessing.reversing.model_output import ReversingModelOutputCleaner
 from core.utils.postprocessing.reversing.observations import ReversingObservationBuilder
 from core.utils.postprocessing.reversing.traces import ReversingTraceBuilder
 
@@ -11,7 +12,11 @@ class ReversingPostprocessor:
         self._observations = ReversingObservationBuilder()
         self._actions = ReversingActionPolicy(available_tools)
         self._findings = ReversingFindingValidator()
+        self._model_output = ReversingModelOutputCleaner()
         self._traces = ReversingTraceBuilder(self._actions)
+
+    def clean_analysis(self, analysis: Any) -> dict[str, Any]:
+        return self._model_output.clean(analysis)
 
     def input_ref(
         self,

@@ -236,12 +236,13 @@ They are shared by AI runners and agents.
 | File | Purpose |
 | --- | --- |
 | `executor.py` | Executes validated agent tool calls |
-| `schema_validator.py` | Validates model-requested tool parameters against tool schemas |
+| `tool_validator.py` | Validates model-requested tool parameters against tool schemas |
 | `inference/` | Static and dynamic inference memory writers |
-| `reversing/` | Reversing agent memory, queue, initialization, exploration, target validation, and trace formatting |
+| `reversing/` | Reversing agent analysis, memory, queue, initialization, exploration, target validation, and trace formatting |
 
 Inference memories are intentionally small and task-specific:
 
+- `runtime/inference/memory.py` contains the shared inference trace writer;
 - `runtime/inference/static_memory.py` writes `static_inference.json`;
 - `runtime/inference/dynamic_memory.py` writes `dynamic_inference.json`.
 
@@ -267,6 +268,8 @@ The reversing agent has its own memory and formatter:
 
 ```text
 core/ai/runtime/reversing/memory.py
+core/ai/runtime/reversing/analysis.py
+core/ai/runtime/reversing/decision.py
 core/ai/runtime/reversing/trace_formatter.py
 ```
 
@@ -275,6 +278,16 @@ status, and a compact summary. `ReversingTraceFormatter` owns the JSON shape for
 step input, decision, action, findings, follow-ups, queue validation, and
 origin fields.
 
+`ReversingEvidenceAnalyzer` owns model-call policy for one reversing evidence
+chunk. If a chunk fails with enrichment context, it retries with the enrichment
+removed before returning a failed decision. This retry is intentionally in the
+reversing runtime because it changes the model input; provider transport
+retries only repeat equivalent HTTP/model requests.
+
+`ReversingDecisionEvaluator` coordinates the executed tool output: it chunks
+the output, asks the analyzer for a model decision, postprocesses findings, and
+queues follow-up targets.
+
 The reversing runtime adds the bounded agent loop:
 
 ```mermaid
@@ -282,8 +295,8 @@ flowchart TD
     Context[enrichment.md / discovery] --> Seed[Initial targets]
     Seed --> Queue[Priority queue]
     Queue --> Tool[Execute reversing tool]
-    Tool --> Chunking[Chunk large evidence]
-    Chunking --> Agent[Reversing agent]
+    Tool --> Decision[Chunk and decision evaluation]
+    Decision --> Agent[Reversing agent]
     Agent --> Finding[Finding]
     Agent --> FollowUp[Follow-up target]
     FollowUp --> Queue

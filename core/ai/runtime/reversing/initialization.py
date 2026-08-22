@@ -35,7 +35,7 @@ class ReversingInitialization:
             first_target = self.targets[0]
 
         confidence = "medium" if first_target else "low"
-        thought = str(self.seed.get("reasoning") or "")
+        thought = str(self.seed.get("thought") or "")
 
         return {
             "thought": thought,
@@ -101,7 +101,7 @@ class ReversingInvestigationInitializer:
             seed_error = str(exc)
             Logger.error(f"Reversing seed decision failed: {exc}")
             seed = {
-                "reasoning": "LLM decision failed.",
+                "thought": "LLM decision failed.",
                 "targets": [],
             }
 
@@ -139,7 +139,6 @@ class ReversingInvestigationInitializer:
                         "address": hex(address),
                     },
                     "priority": ENTRY_POINT_BASE_PRIORITY,
-                    "reason": "Baseline entry point disassembly.",
                 }
             ]
 

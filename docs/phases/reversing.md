@@ -47,6 +47,11 @@ agent can enqueue a follow-up target, but the current target's chunks continue
 until finished. After that, the exploration loop pops the next highest-priority
 unvisited target from the queue.
 
+Model decision retries are handled inside the reversing runtime. If a chunk
+cannot be analyzed with `enrichment.md` included, AIM retries the same chunk
+without enrichment context before recording a failed decision. Transport-level
+retries remain separate and only repeat equivalent provider requests.
+
 Large disassembly output is split into instruction chunks. The agent still sees
 the current function as one queued target, but each chunk becomes a separate
 step in `reversing_agent.json`. For disassembly steps, the input records the

@@ -1,5 +1,6 @@
 from typing import Any
 
+from core.ai.runtime.reversing.parameters import display_target_value
 from core.utils.address import format_address, parse_address
 
 
@@ -24,6 +25,32 @@ def deterministic_follow_ups(
     return []
 
 
+def deterministic_chunk_follow_ups(
+    target: dict[str, Any],
+    tool_output: dict[str, Any],
+    chunk: Any,
+) -> list[dict[str, Any]]:
+    if target.get("tool") != "disassembly":
+        return []
+
+    full_data = tool_output.get("data")
+    if not isinstance(full_data, dict):
+        return []
+
+    instructions = _chunk_instructions(chunk)
+    if not instructions:
+        return []
+
+    return _disassembly_follow_ups(
+        target,
+        {
+            "instructions": instructions,
+            "start_address": full_data.get("start_address"),
+            "end_address": full_data.get("end_address"),
+        },
+    )
+
+
 def _xref_follow_ups(
     target: dict[str, Any],
     data: dict[str, Any],
@@ -41,7 +68,6 @@ def _xref_follow_ups(
                     target,
                     address,
                     str(xref.get("type") or "xref"),
-                    "Code reference discovered by xref search.",
                 )
             )
 
@@ -62,6 +88,7 @@ def _disassembly_follow_ups(
     data: dict[str, Any],
 ) -> list[dict[str, Any]]:
     follow_ups = []
+    seen_addresses = set()
     current_start = parse_address(data.get("start_address"))
     current_end = parse_address(data.get("end_address"))
 
@@ -75,15 +102,20 @@ def _disassembly_follow_ups(
         address = format_address(raw_target)
         if address is None:
             continue
-        if _inside_current_function(address, current_start, current_end):
+        if address in seen_addresses:
+            continue
+        if (
+            not _is_function_symbol(raw_target)
+            and _inside_current_function(address, current_start, current_end)
+        ):
             continue
 
+        seen_addresses.add(address)
         follow_ups.append(
             _follow_up_target(
                 target,
                 address,
                 relation,
-                "Direct internal code reference discovered in disassembly.",
             )
         )
 
@@ -94,7 +126,6 @@ def _follow_up_target(
     origin: dict[str, Any],
     address: str,
     relation: str,
-    reason: str,
 ) -> dict[str, Any]:
     return {
         "tool": "disassembly",
@@ -102,7 +133,6 @@ def _follow_up_target(
             "address": address,
         },
         "priority": _follow_up_priority(origin),
-        "reason": reason,
         "origin_tool": origin.get("tool"),
         "origin_target": _origin_target(origin),
         "discovered_target": address,
@@ -124,10 +154,9 @@ def _origin_target(target: dict[str, Any]) -> str | None:
     if not isinstance(parameters, dict):
         return None
 
-    for key in ("address", "import_name", "value", "section"):
-        value = parameters.get(key)
-        if isinstance(value, str) and value:
-            return value
+    value = display_target_value(target.get("tool"), parameters)
+    if isinstance(value, str) and value:
+        return value
 
     return None
 
@@ -148,6 +177,20 @@ def _direct_code_reference(line: str) -> tuple[str | None, str | None]:
         return "jump", parts[1].rstrip(",")
 
     return None, None
+
+
+def _chunk_instructions(chunk: Any) -> list[str]:
+    if not isinstance(chunk, dict):
+        return []
+
+    section = chunk.get("section")
+    data = chunk.get("data")
+    if not isinstance(section, str):
+        return []
+    if not section.startswith("disassembly.instructions."):
+        return []
+
+    return _instruction_lines(data)
 
 
 def _inside_current_function(
@@ -172,7 +215,18 @@ def _is_external_code_target(value: str) -> bool:
     )
 
 
+def _is_function_symbol(value: str) -> bool:
+    return value.strip().lower().startswith("fcn.")
+
+
 def _instruction_lines(value: Any) -> list[str]:
+    if isinstance(value, str):
+        return [
+            line.strip()
+            for line in value.splitlines()
+            if line.strip()
+        ]
+
     if not isinstance(value, list):
         return []
 

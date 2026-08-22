@@ -5,11 +5,10 @@ from core.ai.runtime.reversing.target_validation import (
     ReversingTargetValidator,
     TargetValidationStatus,
 )
-from core.ai.runtime.schema_validator import validate_tool_parameters
+from core.ai.runtime.tool_validator import validate_tool_parameters
 from core.ai.runtime.reversing.memory import ReversingAgentMemory
 
 DEFAULT_TARGET_PRIORITY = 50
-MAX_TARGET_REASON_LENGTH = 500
 
 
 class ReversingTargetQueue:
@@ -118,14 +117,12 @@ class ReversingTargetQueue:
         except (TypeError, ValueError):
             priority = DEFAULT_TARGET_PRIORITY
 
-        reason = str(target.get("reason") or "").strip()[:MAX_TARGET_REASON_LENGTH]
         priority = max(1, min(priority, 100))
 
         prepared_target = {
             "tool": tool_name,
             "parameters": parameters,
             "priority": priority,
-            "reason": reason,
             "validation": validation.to_dict(),
         }
         prepared_target.update(self._trace_metadata(target))

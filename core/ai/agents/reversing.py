@@ -46,11 +46,15 @@ Rules:
 - When disassembly shows a direct jump or call to another concrete internal code
   address, prefer a disassembly follow-up for that jump/call target
   to understand the next code path.
+- When disassembly shows a direct call or jump to a concrete internal function
+  such as fcn.00401230, you may request disassembly for that function to inspect
+  its implementation, or callers for that function to understand who else reaches
+  it. Choose the one that best answers the current investigation question.
 - disassembly, callers, and callees accept only internal code addresses. Do not
   request them for imported APIs, Windows functions, or import thunks. Use
   import_xrefs for imports, then inspect a returned caller address when useful.
-- Do not use callers merely because the current function jumps or calls another
-  function. Callers answers the inverse question: who invokes this function.
+- Use callers when the inverse question is useful: who invokes this function, or
+  whether the discovered function is reused by other code paths.
 - Disassembly returns the complete selected function. Large disassembly output
   may be split into multiple chunks by the runtime; analyze each supplied chunk
   without requesting the same disassembly again just to continue reading it.
@@ -130,15 +134,14 @@ class ReversingAgent:
             reversing_tool_definitions,
         )
 
-        reason = response.content.strip() or "Initial target selected by the model."
+        thought = response.content.strip() or "Initial target selected by the model."
         targets = tool_calls_to_targets(
             response.tool_calls,
             priority=70,
-            reason=reason,
         )
 
         return {
-            "reasoning": reason,
+            "thought": thought,
             "targets": targets,
         }
 
@@ -175,6 +178,10 @@ class ReversingAgent:
         For xref observations with code_targets, choose disassembly using one of
         those exact addresses. For a disassembly jump or call to another concrete,
         behaviorally relevant internal address, choose disassembly for that target.
+        For a disassembly call or jump to a concrete internal function such as
+        fcn.00401230, choose either disassembly for that function or callers for
+        that function. Use disassembly to inspect the implementation. Use callers
+        to learn who else reaches it. Choose one.
         If this investigation line lacks concrete targets, use the single most
         useful discovery tool instead of speculative string/import guesses.
         Do not request the same disassembly merely to continue reading
@@ -217,7 +224,6 @@ class ReversingAgent:
             "tool": target["tool"],
             "parameters": target["parameters"],
             "priority": target.get("priority"),
-            "reason": str(target.get("reason") or ""),
         }
 
     def _format_chunk_for_prompt(

@@ -98,7 +98,7 @@ class ReversingExplorationLoop:
     ) -> None:
         self.memory.record(
             decision={
-                "thought": target["reason"],
+                "thought": "Tool execution failed for the selected reversing target.",
                 "confidence": "low",
                 "action": target["tool"],
                 "parameters": target["parameters"],

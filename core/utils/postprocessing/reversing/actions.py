@@ -6,7 +6,7 @@ from core.utils.postprocessing.reversing.contracts import (
     XREF_TOOLS,
 )
 from core.ai.runtime.reversing.parameters import prepare_reversing_tool_parameters
-from core.ai.runtime.schema_validator import validate_tool_parameters
+from core.ai.runtime.tool_validator import validate_tool_parameters
 
 
 class ReversingActionPolicy:

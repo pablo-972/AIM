@@ -6,6 +6,8 @@ from core.ai.runtime.reversing.parameters import (
     CODE_ADDRESS_TOOLS,
     DISCOVERY_TOOLS,
     prepare_reversing_tool_parameters,
+    target_parameter_key,
+    target_text,
 )
 from core.utils.address import parse_address
 
@@ -38,6 +40,20 @@ class TargetType(str, Enum):
     STRING = "string"
 
 
+COMPATIBLE_TOOLS_BY_TARGET_TYPE = {
+    TargetType.ADDRESS: CODE_ADDRESS_TOOLS,
+    TargetType.SECTION: {"inspect_section"},
+    TargetType.IMPORT_FUNCTION: {"import_xrefs"},
+    TargetType.IMPORT_DLL: {"import_xrefs"},
+    TargetType.STRING: {"string_xrefs"},
+}
+CORRECTION_TOOL_BY_TARGET_TYPE = {
+    TargetType.SECTION: "inspect_section",
+    TargetType.IMPORT_FUNCTION: "import_xrefs",
+    TargetType.IMPORT_DLL: "import_xrefs",
+}
+
+
 @dataclass(frozen=True)
 class TargetValidationResult:
     status: TargetValidationStatus
@@ -46,7 +62,7 @@ class TargetValidationResult:
     target_type: TargetType | None
     tool: str | None
     parameters: dict[str, Any]
-    reason: str
+    message: str
 
     def to_dict(self) -> dict[str, Any]:
         data: dict[str, Any] = {
@@ -54,7 +70,7 @@ class TargetValidationResult:
             "original_tool": self.original_tool,
             "original_parameters": self.original_parameters,
             "target_type": self.target_type.value if self.target_type else None,
-            "reason": self.reason,
+            "message": self.message,
         }
 
         if self.status == TargetValidationStatus.CORRECTED:
@@ -84,7 +100,7 @@ class ReversingTargetValidator:
         if tool_name in DISCOVERY_TOOLS:
             return _accepted_discovery(tool_name, original_parameters)
 
-        value = _target_value(tool_name, parameters)
+        value = target_text(tool_name, parameters)
         if value is None:
             return _rejected(
                 tool_name,
@@ -136,11 +152,11 @@ def _accepted(
 ) -> TargetValidationResult:
     accepted_parameters = _parameters_for_validated_target(tool_name, value)
     status = TargetValidationStatus.VALID
-    reason = "Tool is compatible with target type."
+    message = "Tool is compatible with target type."
 
     if accepted_parameters != original_parameters:
         status = TargetValidationStatus.CORRECTED
-        reason = "Tool parameters were adjusted."
+        message = "Tool parameters were adjusted."
 
     return TargetValidationResult(
         status=status,
@@ -149,7 +165,7 @@ def _accepted(
         target_type=target_type,
         tool=tool_name,
         parameters=accepted_parameters,
-        reason=reason,
+        message=message,
     )
 
 
@@ -162,11 +178,11 @@ def _accepted_discovery(
         original_parameters,
     )
     status = TargetValidationStatus.VALID
-    reason = "Discovery tool is compatible without a target argument."
+    message = "Discovery tool is compatible without a target argument."
 
     if accepted_parameters != original_parameters:
         status = TargetValidationStatus.CORRECTED
-        reason = "Tool parameters were adjusted."
+        message = "Tool parameters were adjusted."
 
     return TargetValidationResult(
         status=status,
@@ -175,7 +191,7 @@ def _accepted_discovery(
         target_type=None,
         tool=tool_name,
         parameters=accepted_parameters,
-        reason=reason,
+        message=message,
     )
 
 
@@ -193,7 +209,7 @@ def _corrected(
         target_type=target_type,
         tool=corrected_tool,
         parameters=_parameters_for_validated_target(corrected_tool, value),
-        reason=f"{target_type.value} target uses {corrected_tool}.",
+        message=f"{target_type.value} target uses {corrected_tool}.",
     )
 
 
@@ -201,7 +217,7 @@ def _rejected(
     tool_name: str,
     original_parameters: dict[str, Any],
     target_type: TargetType | None,
-    reason: str,
+    message: str,
 ) -> TargetValidationResult:
     return TargetValidationResult(
         status=TargetValidationStatus.REJECTED,
@@ -210,24 +226,8 @@ def _rejected(
         target_type=target_type,
         tool=None,
         parameters={},
-        reason=reason,
+        message=message,
     )
-
-
-def _target_value(tool_name: str, parameters: dict[str, Any]) -> str | None:
-    value = parameters.get(_tool_parameter_key(tool_name))
-    if isinstance(value, str) and value.strip():
-        return value.strip()
-
-    string_values = [
-        value.strip()
-        for value in parameters.values()
-        if isinstance(value, str) and value.strip()
-    ]
-    if len(string_values) == 1:
-        return string_values[0]
-
-    return None
 
 
 def _resolve_for_tool(tool_name: str, value: str) -> tuple[TargetType, str]:
@@ -276,25 +276,11 @@ def _looks_like_import_function(value: str) -> bool:
 
 
 def _compatible_tools(target_type: TargetType) -> set[str]:
-    if target_type == TargetType.ADDRESS:
-        return CODE_ADDRESS_TOOLS
-    if target_type == TargetType.SECTION:
-        return {"inspect_section"}
-    if target_type in {TargetType.IMPORT_FUNCTION, TargetType.IMPORT_DLL}:
-        return {"import_xrefs"}
-    if target_type == TargetType.STRING:
-        return {"string_xrefs"}
-
-    return set()
+    return COMPATIBLE_TOOLS_BY_TARGET_TYPE.get(target_type, set())
 
 
 def _correction_tool(target_type: TargetType) -> str | None:
-    if target_type == TargetType.SECTION:
-        return "inspect_section"
-    if target_type in {TargetType.IMPORT_FUNCTION, TargetType.IMPORT_DLL}:
-        return "import_xrefs"
-
-    return None
+    return CORRECTION_TOOL_BY_TARGET_TYPE.get(target_type)
 
 
 def _parameters_for_validated_target(tool_name: str, value: str) -> dict[str, Any]:
@@ -305,26 +291,13 @@ def _parameters_for_validated_target(tool_name: str, value: str) -> dict[str, An
 
 
 def _parameters_for(tool_name: str, value: str) -> dict[str, Any]:
-    if tool_name in CODE_ADDRESS_TOOLS:
-        return {"address": value}
-    if tool_name == "inspect_section":
-        return {"section": value}
-    if tool_name == "import_xrefs":
-        return {"import_name": value}
-    if tool_name == "string_xrefs":
-        return {"value": value}
+    if tool_name in CODE_ADDRESS_TOOLS or tool_name in {
+        "inspect_section",
+        "import_xrefs",
+        "string_xrefs",
+    }:
+        return {
+            target_parameter_key(tool_name): value,
+        }
 
     return {}
-
-
-def _tool_parameter_key(tool_name: str) -> str:
-    if tool_name in CODE_ADDRESS_TOOLS:
-        return "address"
-    if tool_name == "inspect_section":
-        return "section"
-    if tool_name == "import_xrefs":
-        return "import_name"
-    if tool_name == "string_xrefs":
-        return "value"
-
-    return "value"

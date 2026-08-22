@@ -91,7 +91,7 @@ class AnalysisContext:
             section=getattr(args, "section", None),
             address=getattr(args, "address", None),
             reversing_agent=getattr(args, "reversing_agent", False),
-            reversing_max_targets=getattr(args, "reversing_max_targets", 12),
+            reversing_max_targets=getattr(args, "reversing_max_targets", 20),
             
             full_static_profile=getattr(args, "static_profile", None),
             full_dynamic_profile=getattr(args, "dynamic_profile", None),

@@ -32,7 +32,6 @@ def build_reversing_tool_definitions(
 def tool_calls_to_targets(
     tool_calls: Any,
     priority: int,
-    reason: str,
 ) -> list[dict[str, Any]]:
     targets = []
 
@@ -48,7 +47,6 @@ def tool_calls_to_targets(
                 "tool": name,
                 "parameters": arguments,
                 "priority": priority,
-                "reason": reason,
             }
         )
 

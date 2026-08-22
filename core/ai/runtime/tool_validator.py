@@ -1,31 +1,6 @@
 from typing import Any
 
 
-NO_TOOL_ACTIONS = {"none", "finish"}
-
-
-def validate_agent_step(
-    step: dict[str, Any],
-    available_tools: dict[str, Any],
-) -> bool:
-    if not isinstance(step, dict):
-        return False
-
-    action = step.get("action")
-    parameters = step.get("parameters")
-
-    if not isinstance(action, str):
-        return False
-    if not isinstance(parameters, dict):
-        return False
-    if action in NO_TOOL_ACTIONS:
-        return True
-    if action not in available_tools:
-        return False
-
-    return validate_tool_parameters(parameters, available_tools[action])
-
-
 def validate_tool_parameters(
     parameters: dict[str, Any],
     tool_spec: dict[str, Any],

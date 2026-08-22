@@ -57,7 +57,6 @@ REVERSING_FINDING_SCHEMA = {
             "type": "array",
             "items": {"type": "string"},
         },
-        "reason": {"type": "string"},
     },
     "required": [
         "type",
@@ -67,7 +66,6 @@ REVERSING_FINDING_SCHEMA = {
         "function",
         "address_range",
         "evidence",
-        "reason",
     ],
     "additionalProperties": False,
 }

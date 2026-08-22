@@ -1,5 +1,7 @@
 from typing import Any
 
+from core.ai.runtime.reversing.parameters import display_target_value
+
 NO_TOOL_ACTIONS = {"none", "finish", "seed_queue"}
 
 
@@ -56,7 +58,7 @@ class ReversingTraceFormatter:
         if isinstance(tool, str):
             event["tool"] = tool
         if isinstance(parameters, dict):
-            target_value = self._target_value(tool, parameters)
+            target_value = display_target_value(tool, parameters)
             if target_value is not None:
                 event["target"] = target_value
 
@@ -64,12 +66,12 @@ class ReversingTraceFormatter:
         if isinstance(priority, int):
             event["priority"] = priority
 
-        validation = self._validation(target.get("validation"))
+        validation = self._compact_validation(target.get("validation"))
         if validation is not None:
             event["validation"] = validation
             self._fill_event_target_from_validation(event, validation)
 
-        origin = self._origin(target)
+        origin = self._compact_origin(target)
         if origin:
             event["origin"] = origin
 
@@ -93,7 +95,7 @@ class ReversingTraceFormatter:
             }
 
         parameters = self._parameters(tool_parameters)
-        target = self._target_value(tool_name, parameters)
+        target = display_target_value(tool_name, parameters)
         compact: dict[str, Any] = {
             "type": self._input_type(tool_name, input_type),
         }
@@ -158,7 +160,7 @@ class ReversingTraceFormatter:
             "tool": tool_name,
         }
 
-        target = self._target_value(tool_name, parameters)
+        target = display_target_value(tool_name, parameters)
         if target is not None:
             action_data["target"] = target
 
@@ -236,7 +238,7 @@ class ReversingTraceFormatter:
 
         compact = []
         for follow_up in follow_ups:
-            item = self._target(follow_up)
+            item = self._compact_target(follow_up)
             if item is not None:
                 compact.append(item)
 
@@ -248,7 +250,7 @@ class ReversingTraceFormatter:
         if tool_output.get("success") is not False:
             return None
 
-        error = tool_output.get("error") or tool_output.get("reason")
+        error = tool_output.get("error") or tool_output.get("message")
         return str(error) if error else "Tool execution failed."
 
     def _input_type(self, tool_name: str | None, input_type: Any) -> str:
@@ -267,7 +269,7 @@ class ReversingTraceFormatter:
 
         return "unknown"
 
-    def _target(self, target: dict[str, Any]) -> dict[str, Any] | None:
+    def _compact_target(self, target: dict[str, Any]) -> dict[str, Any] | None:
         tool = target.get("tool")
         parameters = target.get("parameters")
         if not isinstance(tool, str):
@@ -278,7 +280,7 @@ class ReversingTraceFormatter:
         compact: dict[str, Any] = {
             "tool": tool,
         }
-        target_value = self._target_value(tool, parameters)
+        target_value = display_target_value(tool, parameters)
         if target_value is not None:
             compact["target"] = target_value
 
@@ -288,7 +290,7 @@ class ReversingTraceFormatter:
 
         return compact
 
-    def _validation(self, validation: Any) -> str | dict[str, Any] | None:
+    def _compact_validation(self, validation: Any) -> str | dict[str, Any] | None:
         if not isinstance(validation, dict):
             return None
 
@@ -299,11 +301,11 @@ class ReversingTraceFormatter:
         if status == "CORRECTED":
             return {
                 "status": "CORRECTED",
-                "original": self._validation_target(
+                "original": self._compact_validation_target(
                     validation.get("original_tool"),
                     validation.get("original_parameters"),
                 ),
-                "corrected": self._validation_target(
+                "corrected": self._compact_validation_target(
                     validation.get("corrected_tool"),
                     validation.get("corrected_parameters"),
                 ),
@@ -312,16 +314,16 @@ class ReversingTraceFormatter:
         if status == "REJECTED":
             return {
                 "status": "REJECTED",
-                "original": self._validation_target(
+                "original": self._compact_validation_target(
                     validation.get("original_tool"),
                     validation.get("original_parameters"),
                 ),
-                "reason": validation.get("reason"),
+                "message": validation.get("message"),
             }
 
         return None
 
-    def _validation_target(
+    def _compact_validation_target(
         self,
         tool: Any,
         parameters: Any,
@@ -330,7 +332,7 @@ class ReversingTraceFormatter:
         if isinstance(tool, str):
             result["tool"] = tool
         if isinstance(parameters, dict):
-            target = self._target_value(tool, parameters)
+            target = display_target_value(tool, parameters)
             if target is not None:
                 result["target"] = target
 
@@ -357,7 +359,7 @@ class ReversingTraceFormatter:
         if "target" not in event and target is not None:
             event["target"] = target
 
-    def _origin(self, target: dict[str, Any]) -> dict[str, Any]:
+    def _compact_origin(self, target: dict[str, Any]) -> dict[str, Any]:
         origin: dict[str, Any] = {}
 
         origin_tool = target.get("origin_tool")
@@ -371,41 +373,6 @@ class ReversingTraceFormatter:
             origin["relation"] = relation
 
         return origin
-
-    def _target_value(
-        self,
-        tool_name: Any,
-        parameters: dict[str, Any],
-    ) -> Any:
-        if not isinstance(parameters, dict):
-            return None
-
-        key_order = (
-            "address",
-            "function",
-            "name",
-            "import_name",
-            "value",
-            "section",
-            "query",
-        )
-        for key in key_order:
-            value = parameters.get(key)
-            if isinstance(value, (str, int, float)) and str(value):
-                return value
-
-        scalar_values = [
-            value
-            for value in parameters.values()
-            if isinstance(value, (str, int, float)) and str(value)
-        ]
-        if len(scalar_values) == 1:
-            return scalar_values[0]
-
-        if isinstance(tool_name, str) and tool_name.startswith("list_"):
-            return tool_name
-
-        return None
 
     def _parameters(self, parameters: dict[str, Any] | None) -> dict[str, Any]:
         return parameters if isinstance(parameters, dict) else {}

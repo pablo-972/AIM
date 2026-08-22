@@ -121,7 +121,7 @@ def add_reversing_module(
         "--max-targets",
         dest="reversing_max_targets",
         type=int,
-        default=12,
+        default=20,
         help="Maximum number of unique targets executed by the reversing agent",
     )
 

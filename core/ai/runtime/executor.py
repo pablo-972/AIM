@@ -1,11 +1,7 @@
 from typing import Any
 from collections.abc import Callable
 
-from core.ai.runtime.schema_validator import (
-    NO_TOOL_ACTIONS,
-    validate_agent_step,
-    validate_tool_parameters,
-)
+from core.ai.runtime.tool_validator import validate_tool_parameters
 
 ToolExecutor = Callable[[str, dict[str, Any]], dict[str, Any]]
 
@@ -13,31 +9,6 @@ ToolExecutor = Callable[[str, dict[str, Any]], dict[str, Any]]
 class AgentStepExecutor:
     def __init__(self, available_tools: dict[str, Any]) -> None:
         self.available_tools: dict[str, Any] = available_tools
-
-    def execute(
-        self,
-        decision: dict[str, Any],
-        tool_executor: ToolExecutor,
-    ) -> tuple[str | None, dict[str, Any] | None]:
-        if not validate_agent_step(decision, self.available_tools):
-            return None, self._error("Invalid agent step")
-            
-        action = decision.get("action")
-        if not isinstance(action, str):
-            return None, self._error("Agent action must be a string")
-
-        if action in NO_TOOL_ACTIONS:
-            return action, None
-
-        parameters = decision.get("parameters")
-        if not isinstance(parameters, dict):
-            return action, self._error("Agent step parameters must be an object")
-
-        return action, self.execute_tool(
-            action,
-            parameters,
-            tool_executor,
-        )
 
     def execute_tool(
         self,
@@ -59,7 +30,7 @@ class AgentStepExecutor:
 
         if not isinstance(result, dict):
             return self._error("Agent tool returned a non-object result")
-        
+
         return result
 
     def _error(self, message: str) -> dict[str, Any]:

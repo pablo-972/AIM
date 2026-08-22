@@ -3,7 +3,7 @@ from typing import Any
 from core.utils.chunks import json_size, make_report_chunk
 
 MAX_REVERSING_EVIDENCE_SIZE = 4500
-MAX_DISASSEMBLY_INSTRUCTIONS_PER_CHUNK = 24
+MAX_DISASSEMBLY_INSTRUCTIONS_PER_CHUNK = 30
 
 
 def chunk_reversing_evidence(

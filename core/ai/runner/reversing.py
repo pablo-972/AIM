@@ -10,8 +10,9 @@ from core.ai.agents.reversing import ReversingAgent
 from core.ai.model_registry import ModelRegistry
 from core.ai.runner.base import BaseAIRunner
 from core.ai.runtime.executor import AgentStepExecutor
+from core.ai.runtime.reversing.analysis import ReversingEvidenceAnalyzer
 from core.ai.runtime.reversing.memory import ReversingAgentMemory
-from core.ai.runtime.reversing.evidence import ReversingEvidenceEvaluator
+from core.ai.runtime.reversing.decision import ReversingDecisionEvaluator
 from core.ai.runtime.reversing.exploration import ReversingExplorationLoop
 from core.ai.runtime.reversing.initialization import ReversingInvestigationInitializer
 from core.ai.runtime.reversing.targets import ReversingTargetQueue
@@ -63,10 +64,12 @@ class ReversingAgentRunner(BaseAIRunner):
                 source="baseline_entrypoint",
             )
 
-            evaluator = ReversingEvidenceEvaluator(
-                agent=agent,
-                enrichment=initialization.enrichment,
-                available_tools=self.available_tools,
+            evaluator = ReversingDecisionEvaluator(
+                analyzer=ReversingEvidenceAnalyzer(
+                    agent=agent,
+                    enrichment=initialization.enrichment,
+                    available_tools=self.available_tools,
+                ),
                 postprocessor=self.postprocessor,
                 memory=self.memory,
                 targets=self.targets,
