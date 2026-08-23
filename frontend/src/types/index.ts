@@ -13,9 +13,10 @@ export type {
 
 export type {
   AgentTrace,
+  TraceActionExecution,
   TraceDecision,
+  TraceFollowUp,
   TraceStep,
-  TraceToolExecution,
 } from "./traces";
 
 export type { 
@@ -29,6 +30,5 @@ export type {
 export { 
   analysisTabs 
 } from "./navigation";
-
 
 

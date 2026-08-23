@@ -5,18 +5,25 @@ export type TraceDecision = {
   parameters?: Record<string, unknown>;
 };
 
-export type TraceToolExecution = {
-  name?: string;
+export type TraceActionExecution = {
+  tool?: string;
+  target?: string;
   status?: string;
-  output?: unknown;
+};
+
+export type TraceFollowUp = {
+  tool?: string;
+  target?: string;
+  priority?: number;
 };
 
 export type TraceStep = {
   step: number;
   input?: unknown;
   decision?: TraceDecision;
-  tool?: TraceToolExecution;
+  action?: TraceActionExecution | null;
   finding?: unknown;
+  follow_ups?: TraceFollowUp[];
   error?: string | null;
 };
 
