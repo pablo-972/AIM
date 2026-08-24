@@ -64,6 +64,26 @@ def target_text(tool_name: str, parameters: dict[str, Any]) -> str | None:
     return None
 
 
+def target_dedup_key(tool_name: str, parameters: dict[str, Any]) -> str:
+    target = display_target_value(tool_name, parameters)
+
+    if tool_name in CODE_ADDRESS_TOOLS:
+        address = parse_address(target)
+        if address is not None:
+            return f"{tool_name}:0x{address:x}"
+
+    if tool_name == "import_xrefs":
+        return f"{tool_name}:{_normalize_import_target(target)}"
+
+    if tool_name == "string_xrefs":
+        return f"{tool_name}:{_normalize_string_target(target)}"
+
+    if isinstance(tool_name, str) and tool_name in DISCOVERY_TOOLS:
+        return tool_name
+
+    return f"{tool_name}:{target!r}"
+
+
 def display_target_value(tool_name: Any, parameters: dict[str, Any]) -> Any:
     if not isinstance(parameters, dict):
         return None
@@ -85,6 +105,71 @@ def display_target_value(tool_name: Any, parameters: dict[str, Any]) -> Any:
         return tool_name
 
     return None
+
+
+def _normalize_import_target(value: Any) -> str:
+    if isinstance(value, str):
+        return value.strip()
+
+    return str(value)
+
+
+def _normalize_string_target(value: Any) -> str:
+    if not isinstance(value, str):
+        return str(value)
+
+    normalized = _strip_outer_quotes(value.strip())
+    windows_candidate = _normalize_backslashes(normalized)
+
+    if _is_windows_or_registry_target(windows_candidate):
+        return windows_candidate.lower()
+
+    return normalized
+
+
+def _strip_outer_quotes(value: str) -> str:
+    if len(value) < 2:
+        return value
+
+    first = value[0]
+    last = value[-1]
+    if first == last and first in {"'", '"'}:
+        return value[1:-1].strip()
+
+    return value
+
+
+def _normalize_backslashes(value: str) -> str:
+    while "\\\\" in value:
+        value = value.replace("\\\\", "\\")
+
+    return value
+
+
+def _is_windows_or_registry_target(value: str) -> bool:
+    if len(value) >= 3 and value[1] == ":" and value[2] == "\\":
+        return value[0].isalpha()
+
+    return _looks_like_registry_path(value)
+
+
+def _looks_like_registry_path(value: str) -> bool:
+    if value.startswith("\\"):
+        return False
+
+    parts = [
+        part
+        for part in value.split("\\")
+        if part
+    ]
+    if len(parts) < 3:
+        return False
+
+    root = parts[0]
+    if len(root) == 2 and root[1] == ":":
+        return False
+
+    return root.isidentifier()
 
 
 def _prepare_code_address(parameters: dict[str, Any]) -> dict[str, Any]:

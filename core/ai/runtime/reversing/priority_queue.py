@@ -1,7 +1,8 @@
 import heapq
-import json
 from itertools import count
 from typing import Any
+
+from core.ai.runtime.reversing.parameters import target_dedup_key
 
 
 class TargetPriorityQueue:
@@ -40,18 +41,6 @@ class TargetPriorityQueue:
         return bool(self._queue)
 
     def _key(self, target: dict[str, Any]) -> str:
-        parameters = target["parameters"]
-        if target["tool"] == "disassembly":
-            parameters = {
-                "address": parameters.get("address"),
-            }
-
-        return json.dumps(
-            {
-                "tool": target["tool"],
-                "parameters": parameters,
-            },
-            sort_keys=True,
-            ensure_ascii=False,
-            default=str,
-        )
+        tool = target.get("tool")
+        parameters = target.get("parameters")
+        return target_dedup_key(tool, parameters)
