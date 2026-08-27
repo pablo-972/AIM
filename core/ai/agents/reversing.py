@@ -61,6 +61,31 @@ Rules:
 - Do not request disassembly for every function or for a simple import thunk,
   one-jump wrapper, or function with no meaningful instructions.
 - Avoid repeated related-string searches unless code evidence requires one.
+- Prefer one strong investigation path over several weak or speculative paths.
+- Only propose follow-ups that are likely to reveal meaningful behavior or
+  important code.
+- Follow-ups should normally be derived from new evidence contained in the
+  current tool result.
+- Do not generate a follow-up only because a target appears in enrichment,
+  investigation state, or previous context.
+- Historical context should rank or interpret new evidence, not create
+  unrelated follow-ups.
+- Treat weak hypotheses as hints, not investigation objectives.
+- If current hypotheses are weak or speculative and there is no concrete
+  productive code path to verify them, prefer discovering new evidence rather
+  than repeatedly trying to confirm them.
+- Prefer actions that can produce genuinely new information about the sample.
+- If a behavior is already sufficiently established, avoid repeatedly
+  investigating the same evidence unless a new branch can materially expand
+  understanding.
+- When a promising code region is producing relevant internal calls or findings,
+  prefer exploiting that branch before returning to generic discovery or
+  repeated string searches.
+- Do not use a function name by itself as behavior evidence. Use interesting
+  names only as leads to inspect and verify the underlying code.
+- Give priority to code related to encryption, file traversal, anti-analysis,
+  persistence, payload loading, credential access, network/C2, and process
+  execution.
 - Use string_xrefs selectively. Do not investigate generic file extensions or
   common filename patterns in isolation, such as *.ini, *.txt, *.tmp, *.dll,
   *.exe, .ini, .txt, .tmp, .dll, or .exe. Follow extension strings only when
@@ -78,6 +103,23 @@ Rules:
 - Use list_imports when available APIs are unknown, list_functions when internal
   code candidates are needed, list_sections for binary layout, and
   list_entrypoints for additional execution starts.
+- Discovery is a model decision. Choose one discovery tool only when it is the
+  best next step; do not call every discovery tool mechanically.
+- When processing discovery output, prioritize candidates contained in the
+  current discovery result.
+- Use previous findings, hypotheses, and enrichment only to rank or interpret
+  candidates from the current discovery result.
+- Do not ignore the current discovery result to repeat previously explored
+  strings, imports, or targets unless the discovery output provides new
+  evidence that justifies revisiting them.
+- For list_functions, evaluate functions from the current chunk and decide
+  whether one deserves disassembly, callers, callees, or another related action.
+- For list_sections, evaluate returned sections and use inspect_section for an
+  interesting section before pivoting to code, strings, or data.
+- For list_imports, select relevant imports from the current result and use
+  import_xrefs when that import is worth following.
+- For list_entrypoints, evaluate returned entrypoints and use disassembly when
+  one is worth inspecting.
 - Do not call every discovery tool automatically. Do not repeat the same
   discovery tool without new evidence. Discovery results are context for
   selecting concrete follow-up targets, not instructions to inspect everything.
@@ -177,8 +219,20 @@ class ReversingAgent:
 
         {recovery_prompt}
 
+        Give the current tool output more weight than historical context.
+        Generate candidates from the current tool output first, then use
+        enrichment to prioritize or interpret them.
+        Follow-ups should normally be derived from new evidence contained in the
+        current tool result. Do not generate a follow-up only because a target
+        appears in enrichment or previous context.
+        Prefer one strong investigation path over several weak or speculative
+        paths. Choose no follow-up when the current result does not provide a
+        useful next step.
         Call record_finding only for evidence-backed malicious behaviour.
         Call at most one investigation tool when a follow-up is justified.
+        If the current target is a discovery tool, choose the next action from
+        candidates present in this discovery result unless there is a concrete
+        new reason to revisit an older target.
         For xref observations with code_targets, choose disassembly using one of
         those exact addresses. For a disassembly jump or call to another concrete,
         behaviorally relevant internal address, choose disassembly for that target.

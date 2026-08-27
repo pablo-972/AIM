@@ -1,13 +1,8 @@
 from typing import Any
 
 from core.ai.runtime.reversing.analysis import ReversingEvidenceAnalyzer
-from core.ai.runtime.reversing.fanout import (
-    deterministic_chunk_follow_ups,
-    deterministic_follow_ups,
-)
 from core.ai.runtime.reversing.memory import ReversingAgentMemory
 from core.ai.runtime.reversing.targets import ReversingTargetQueue
-from core.utils.logger import Logger
 from core.utils.postprocessing.reversing import ReversingPostprocessor
 from core.utils.preprocessing.reversing.assembly import chunk_reversing_evidence
 
@@ -29,15 +24,7 @@ class ReversingDecisionEvaluator:
         chunks = chunk_reversing_evidence(target["tool"], tool_output.get("data"))
         observation = self.postprocessor.observation_summary(target, tool_output)
 
-        if target["tool"] != "disassembly":
-            self._enqueue_deterministic_follow_ups(target, tool_output)
-
         for chunk_index, chunk in enumerate(chunks, start=1):
-            deterministic_follow_ups_for_chunk = deterministic_chunk_follow_ups(
-                target,
-                tool_output,
-                chunk,
-            )
             analysis, error = self.analyzer.analyze_chunk(
                 target,
                 observation,
@@ -71,7 +58,7 @@ class ReversingDecisionEvaluator:
                 decision_analysis = recovery_analysis
             error = self._merge_errors(error, recovery_error)
 
-            follow_ups = list(deterministic_follow_ups_for_chunk)
+            follow_ups = []
             if follow_up is not None:
                 follow_ups.append(follow_up)
 
@@ -164,20 +151,3 @@ class ReversingDecisionEvaluator:
         if first and second:
             return f"{first}; {second}"
         return first or second
-
-    def _enqueue_deterministic_follow_ups(
-        self,
-        target: dict[str, Any],
-        tool_output: dict[str, Any],
-    ) -> None:
-        follow_ups = deterministic_follow_ups(target, tool_output)
-        if not follow_ups:
-            return
-
-        added = self.targets.enqueue(follow_ups, source="follow_up")
-        tool_name = target.get("tool")
-
-        Logger.info(
-            f"Queued {added}/{len(follow_ups)} deterministic reversing follow-ups "
-            f"from {tool_name}"
-        )

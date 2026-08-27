@@ -37,10 +37,8 @@ flowchart TD
     Target --> Output[Evidence output]
     Output --> Chunks[Split large output into chunks]
     Chunks --> Evaluate[Evaluate each chunk]
-    Evaluate --> Fanout[Deterministic fan-out]
     Evaluate --> Finding[Record finding when grounded]
     Evaluate --> FollowUp[Queue model follow-up when useful]
-    Fanout --> FollowUp
     FollowUp --> Queue
     Evaluate --> Next[Continue until target chunks are done]
     Next --> Queue
@@ -53,12 +51,9 @@ agent can enqueue a follow-up target, but the current target's chunks continue
 until finished. After that, the exploration loop pops the next highest-priority
 unvisited target from the queue.
 
-Some follow-ups are deterministic rather than model-selected. Xref tools can
-enqueue returned code references. Disassembly chunks can enqueue internal
-`call` and `jump` targets such as `call fcn.004068d0` or `jmp fcn.004067d0`.
-External imports are skipped, and direct local jumps inside the current function
-are filtered unless radare identifies the operand as an explicit function
-symbol. The priority queue and deduplication still decide which targets execute.
+Follow-ups are selected by the model through native tool calling. Xref outputs,
+discovery results, and disassembly chunks are evidence for the model to choose
+the next target; the runtime does not add automatic follow-ups by itself.
 
 When the model selects a follow-up that the target validator rejects, AIM records
 the rejected queue event and gives the model one recovery attempt with generic
@@ -157,8 +152,7 @@ contains only the executed tool, its readable target, and execution status.
 Follow-up targets and queue events are stored separately so tool execution,
 model reasoning, and queue behavior are not duplicated.
 
-When a step contains deterministic code-navigation follow-ups, they appear in
-the same `follow_ups` list as model-selected follow-ups:
+Model-selected follow-ups are compact targets:
 
 ```json
 {

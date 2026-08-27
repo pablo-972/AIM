@@ -1,10 +1,6 @@
 from typing import Any
 
-from core.utils.postprocessing.reversing.contracts import (
-    CODE_FOLLOW_UP_TOOLS,
-    NO_TOOL_ACTIONS,
-    XREF_TOOLS,
-)
+from core.utils.postprocessing.reversing.contracts import NO_TOOL_ACTIONS
 from core.ai.runtime.reversing.parameters import prepare_reversing_tool_parameters
 from core.ai.runtime.tool_validator import validate_tool_parameters
 
@@ -29,60 +25,12 @@ class ReversingActionPolicy:
         if not isinstance(parameters, dict):
             parameters = {}
 
-        current_tool = target.get("tool")
-        if not isinstance(current_tool, str):
-            return "none", {}
-
-        code_targets = self._code_targets(observation)
-        has_code_target = bool(code_targets)
-
-        if (
-            current_tool in XREF_TOOLS
-            and not has_code_target
-            and action in CODE_FOLLOW_UP_TOOLS
-        ):
-            return "none", {}
-
-        if current_tool in XREF_TOOLS and has_code_target:
-            return "disassembly", {"address": code_targets[0]}
-
-        if action in CODE_FOLLOW_UP_TOOLS and not parameters.get("address"):
-            if has_code_target:
-                return action, self._parameters_for_code_target(
-                    action,
-                    code_targets[0],
-                )
-
         parameters = prepare_reversing_tool_parameters(action, parameters)
 
         if not self._valid_tool_call(action, parameters):
             return "none", {}
 
         return action, parameters
-
-    def _code_targets(self, observation: dict[str, Any]) -> list[str]:
-        values = observation.get("code_targets")
-
-        if not isinstance(values, list):
-            return []
-
-        targets = []
-        for value in values:
-            if isinstance(value, str):
-                targets.append(value)
-
-        return targets
-
-    def _parameters_for_code_target(
-        self,
-        action: str,
-        code_target: str,
-    ) -> dict[str, Any]:
-        parameters = {
-            "address": code_target,
-        }
-
-        return prepare_reversing_tool_parameters(action, parameters)
 
     def _valid_tool_call(
         self,
