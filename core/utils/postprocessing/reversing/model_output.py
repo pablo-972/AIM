@@ -7,8 +7,8 @@ FINDING_TEXT_PREFIXES = (
     "record_finding",
     "finding",
 )
-FALLBACK_THOUGHT = "The model emitted a finding as text; it was normalized."
-UNPARSED_FALLBACK_THOUGHT = (
+FALLBACK_SUMMARY = "The model emitted a finding as text; it was normalized."
+UNPARSED_FALLBACK_SUMMARY = (
     "The model emitted a finding as text, but it could not be normalized."
 )
 
@@ -20,28 +20,28 @@ class ReversingModelOutputCleaner:
 
         cleaned = dict(analysis)
 
-        thought = cleaned.get("thought")
-        if not isinstance(thought, str):
+        summary = cleaned.get("summary")
+        if not isinstance(summary, str):
             return cleaned
 
-        finding_text = thought.strip()
+        finding_text = summary.strip()
 
         if not self._looks_like_finding_text(finding_text):
             return cleaned
 
         existing_finding = cleaned.get("finding")
         if isinstance(existing_finding, dict):
-            cleaned["thought"] = UNPARSED_FALLBACK_THOUGHT
+            cleaned["summary"] = UNPARSED_FALLBACK_SUMMARY
             return cleaned
 
         recovered_finding = self._extract_finding(finding_text)
 
         if recovered_finding is None:
-            cleaned["thought"] = UNPARSED_FALLBACK_THOUGHT
+            cleaned["summary"] = UNPARSED_FALLBACK_SUMMARY
             return cleaned
 
         cleaned["finding"] = recovered_finding
-        cleaned["thought"] = FALLBACK_THOUGHT
+        cleaned["summary"] = FALLBACK_SUMMARY
 
         return cleaned
 

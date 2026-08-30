@@ -1,11 +1,16 @@
 {
     "disassembly": {
-        "description": "Inspect disassembled code starting from the supplied address. If the address belongs to a recognized internal function, the complete containing function is returned. If no containing function is recognized, a configurable forward code region is returned instead. The result includes the requested address, the resolved function when available, and readable instruction lines formatted as hexadecimal address followed by instruction.",
+        "description": "Inspect disassembled code starting from one internal code address or one recognized internal function name. Provide exactly one of address or function. If the address belongs to a recognized internal function, the complete containing function is returned. If no containing function is recognized, a configurable forward code region is returned instead. The result includes the requested address or function, the resolved function when available, and readable instruction lines formatted as hexadecimal address followed by instruction.",
         "parameters": {
             "address": {
-                "description": "Internal code address, for example 0x401000, 4427076, or fcn.00401000.",
+                "description": "Internal code address, for example 0x401000, 4427076, or fcn.00401000. Do not combine with function.",
                 "type": "string",
-                "required": true
+                "required": false
+            },
+            "function": {
+                "description": "Recognized internal function name, for example method.Main.Tools.Locker.EncryptFiles. Do not combine with address.",
+                "type": "string",
+                "required": false
             }
         }
     },

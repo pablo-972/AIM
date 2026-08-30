@@ -34,6 +34,8 @@ def tool_calls_to_targets(
     priority: int,
 ) -> list[dict[str, Any]]:
     targets = []
+    if not isinstance(tool_calls, (list, tuple)):
+        return targets
 
     for tool_call in tool_calls:
         name = getattr(tool_call, "name", None)
@@ -42,11 +44,12 @@ def tool_calls_to_targets(
         if name not in REVERSING_AGENT_TOOL_NAMES or not isinstance(arguments, dict):
             continue
 
+        target_priority, target_arguments = _target_priority(arguments, priority)
         targets.append(
             {
                 "tool": name,
-                "parameters": arguments,
-                "priority": priority,
+                "parameters": target_arguments,
+                "priority": target_priority,
             }
         )
 
@@ -54,6 +57,9 @@ def tool_calls_to_targets(
 
 
 def tool_call_finding(tool_calls: Any) -> dict[str, Any] | None:
+    if not isinstance(tool_calls, (list, tuple)):
+        return None
+
     for tool_call in tool_calls:
         if getattr(tool_call, "name", None) != RECORD_FINDING_TOOL:
             continue
@@ -69,19 +75,15 @@ def tool_call_finding(tool_calls: Any) -> dict[str, Any] | None:
     return None
 
 
-def tool_call_action(tool_calls: Any) -> tuple[str, dict[str, Any]]:
-    for tool_call in tool_calls:
-        name = getattr(tool_call, "name", None)
-        arguments = getattr(tool_call, "arguments", None)
-        
-        if name in REVERSING_AGENT_TOOL_NAMES and isinstance(arguments, dict):
-            return name, arguments
+def tool_call_finish(tool_calls: Any) -> bool:
+    if not isinstance(tool_calls, (list, tuple)):
+        return False
 
     for tool_call in tool_calls:
         if getattr(tool_call, "name", None) == FINISH_INVESTIGATION_TOOL:
-            return "finish", {}
+            return True
 
-    return "none", {}
+    return False
 
 
 def _tool_definition(
@@ -110,6 +112,16 @@ def _tool_definition(
         if parameter.get("required") is True:
             required.append(parameter_name)
 
+    properties["priority"] = {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 100,
+        "description": (
+            "Optional scheduling priority for this investigation target. "
+            "Use higher values for stronger concrete leads."
+        ),
+    }
+
     return {
         "name": name,
         "description": description,
@@ -119,6 +131,21 @@ def _tool_definition(
             "required": required,
         },
     }
+
+
+def _target_priority(
+    arguments: dict[str, Any],
+    default_priority: int,
+) -> tuple[int, dict[str, Any]]:
+    target_arguments = dict(arguments)
+    value = target_arguments.pop("priority", default_priority)
+
+    try:
+        priority = int(value)
+    except (TypeError, ValueError):
+        priority = default_priority
+
+    return max(1, min(priority, 100)), target_arguments
 
 
 def _finding_tool_definitions() -> list[dict[str, Any]]:

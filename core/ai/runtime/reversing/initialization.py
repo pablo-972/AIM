@@ -35,13 +35,20 @@ class ReversingInitialization:
             first_target = self.targets[0]
 
         confidence = "medium" if first_target else "low"
-        thought = str(self.seed.get("thought") or "")
+        raw_summary = self.seed.get("summary")
+        summary = (
+            raw_summary
+            if isinstance(raw_summary, str)
+            else "Initial reversing queue was prepared."
+        )
+        thinking = self.seed.get("thinking")
+        if not isinstance(thinking, list):
+            thinking = []
 
         return {
-            "thought": thought,
+            "thinking": thinking,
+            "summary": summary,
             "confidence": confidence,
-            "action": "seed_queue",
-            "parameters": {},
         }
 
 
@@ -101,7 +108,8 @@ class ReversingInvestigationInitializer:
             seed_error = str(exc)
             Logger.error(f"Reversing seed decision failed: {exc}")
             seed = {
-                "thought": "LLM decision failed.",
+                "summary": "LLM decision failed.",
+                "thinking": [],
                 "targets": [],
             }
 

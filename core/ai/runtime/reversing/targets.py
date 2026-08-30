@@ -24,17 +24,20 @@ class ReversingTargetQueue:
         self.priority_queue = TargetPriorityQueue()
 
     def enqueue(self, targets: Any, source: str) -> int:
-        if not isinstance(targets, list):
-            return 0
+        return len(self.enqueue_targets(targets, source))
 
-        added = 0
+    def enqueue_targets(self, targets: Any, source: str) -> list[dict[str, Any]]:
+        if not isinstance(targets, list):
+            return []
+
+        added = []
         for target in targets:
             prepared_target = self._prepare_target(target, source)
             if (
                 prepared_target is not None
                 and self.priority_queue.push(prepared_target)
             ):
-                added += 1
+                added.append(prepared_target)
                 self.memory.record_queue_event(
                     action="added",
                     target=prepared_target,
@@ -43,6 +46,21 @@ class ReversingTargetQueue:
                 )
 
         return added
+
+    def enqueue_resume(self, target: dict[str, Any], source: str) -> bool:
+        if target.get("_resume") is not True:
+            return False
+
+        if not self.priority_queue.push(target):
+            return False
+
+        self.memory.record_queue_event(
+            action="added",
+            target=target,
+            queue_size=self.priority_queue.size(),
+            source=source,
+        )
+        return True
 
     def pop(self) -> dict[str, Any]:
         target = self.priority_queue.pop()
@@ -55,8 +73,27 @@ class ReversingTargetQueue:
 
         return target
 
+    def pop_resume(self) -> dict[str, Any] | None:
+        target = self.priority_queue.pop_resume()
+        if target is None:
+            return None
+
+        self.memory.record_queue_event(
+            action="removed",
+            target=target,
+            queue_size=self.priority_queue.size(),
+            source="pending_chunk",
+        )
+        return target
+
     def has_items(self) -> bool:
         return self.priority_queue.has_items()
+
+    def next_is_resume(self) -> bool:
+        return self.priority_queue.next_is_resume()
+
+    def has_resume(self) -> bool:
+        return self.priority_queue.has_resume()
 
     def visited_count(self) -> int:
         return self.priority_queue.visited_count()
@@ -77,45 +114,6 @@ class ReversingTargetQueue:
                 prepared_targets.append(prepared_target)
 
         return prepared_targets
-
-    def rejection_context(self, target: Any) -> dict[str, Any] | None:
-        if not isinstance(target, dict):
-            return {
-                "message": "Target is not a valid object.",
-            }
-
-        tool_name = target.get("tool")
-        parameters = target.get("parameters")
-
-        if not isinstance(tool_name, str) or not isinstance(parameters, dict):
-            return {
-                "message": "Target does not contain a valid tool and parameters.",
-            }
-
-        validation = self.target_validator.validate(
-            tool_name,
-            parameters,
-            self.available_tools,
-        )
-
-        if validation.status == TargetValidationStatus.REJECTED:
-            return validation.to_dict()
-
-        if validation.tool is None:
-            return validation.to_dict()
-
-        tool_spec = self.available_tools.get(validation.tool)
-        if not isinstance(tool_spec, dict):
-            context = validation.to_dict()
-            context["message"] = "Validated tool is not available."
-            return context
-
-        if not validate_tool_parameters(validation.parameters, tool_spec):
-            context = validation.to_dict()
-            context["message"] = "Validated tool parameters do not match the schema."
-            return context
-
-        return None
 
     def _prepare_target(self, target: Any, source: str | None) -> dict[str, Any] | None:
         if not isinstance(target, dict):
@@ -164,6 +162,8 @@ class ReversingTargetQueue:
             "priority": priority,
             "validation": validation.to_dict(),
         }
+        if validation.canonical_target is not None:
+            prepared_target["canonical_target"] = validation.canonical_target
         prepared_target.update(self._trace_metadata(target))
 
         return prepared_target

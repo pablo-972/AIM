@@ -27,11 +27,20 @@ class ReversingExplorationLoop:
         self.analyzed_functions: set[str] = set()
 
     def run(self) -> None:
-        while (
-            self.targets.has_items()
-            and self.targets.visited_count() < self.max_targets
-        ):
-            target = self.targets.pop()
+        while self.targets.has_items():
+            if self.targets.visited_count() >= self.max_targets:
+                if not self.targets.has_resume():
+                    break
+
+                target = self.targets.pop_resume()
+                if target is None:
+                    break
+            else:
+                target = self.targets.pop()
+
+            if target.get("_resume") is True:
+                self.evaluator.resume(target)
+                continue
 
             Logger.info(
                 f"Reversing agent target: {target['tool']} "
@@ -98,10 +107,9 @@ class ReversingExplorationLoop:
     ) -> None:
         self.memory.record(
             decision={
-                "thought": "Tool execution failed for the selected reversing target.",
+                "summary": "Tool execution failed for the selected reversing target.",
+                "thinking": [],
                 "confidence": "low",
-                "action": target["tool"],
-                "parameters": target["parameters"],
             },
             tool_name=target["tool"],
             tool_parameters=target["parameters"],

@@ -23,11 +23,23 @@ class ReversingAgentMemory:
         self.data: dict[str, Any] = {
             "agent": name,
             "status": "running",
-            "summary": {
+            "state": {
                 "steps": 0,
                 "findings": 0,
-                "queue_events": 0,
                 "errors": 0,
+                "hypothesis": {
+                    "type": "unknown",
+                    "confidence": "low",
+                },
+                "coverage": {
+                    "entrypoint": "unexplored",
+                    "functions": "unexplored",
+                    "imports": "unexplored",
+                    "sections": "unexplored",
+                },
+                "queue": {
+                    "pending": 0,
+                },
             },
             "steps": [],
             "findings": [],
@@ -115,7 +127,7 @@ class ReversingAgentMemory:
         if not force and self._pending_events < self.flush_interval:
             return
 
-        self._update_summary()
+        self._update_state()
         save_json(self.output_dir, self.filename, self.data)
         self._pending_events = 0
 
@@ -123,18 +135,130 @@ class ReversingAgentMemory:
         self._pending_events += 1
         self.flush()
 
-    def _update_summary(self) -> None:
-        self.data["summary"] = self._summary()
+    def _update_state(self) -> None:
+        self.data["state"] = self.state()
 
-    def _summary(self) -> dict[str, int]:
+    def state(self, pending_queue: int | None = None) -> dict[str, Any]:
         steps = self.data.get("steps", [])
         findings = self.data.get("findings", [])
         queue = self.data.get("queue", [])
         errors = self.data.get("errors", [])
 
+        pending = self._pending_queue_size(queue, pending_queue)
         return {
             "steps": len(steps),
             "findings": len(findings),
-            "queue_events": len(queue),
             "errors": len(errors),
+            "hypothesis": self._hypothesis(findings),
+            "coverage": self._coverage(steps, queue),
+            "queue": {
+                "pending": pending,
+            },
         }
+
+    def _pending_queue_size(
+        self,
+        queue: Any,
+        pending_queue: int | None,
+    ) -> int:
+        if isinstance(pending_queue, int):
+            return max(0, pending_queue)
+
+        if not isinstance(queue, list) or not queue:
+            return 0
+
+        last_event = queue[-1]
+        if not isinstance(last_event, dict):
+            return 0
+
+        queue_size = last_event.get("queue_size")
+        return queue_size if isinstance(queue_size, int) and queue_size >= 0 else 0
+
+    def _hypothesis(self, findings: Any) -> dict[str, str]:
+        if not isinstance(findings, list) or not findings:
+            return {
+                "type": "unknown",
+                "confidence": "low",
+            }
+
+        categories = {
+            finding.get("category")
+            for finding in findings
+            if isinstance(finding, dict)
+        }
+        if categories.intersection({"file_encryption", "crypto"}):
+            return {
+                "type": "ransomware",
+                "confidence": "medium",
+            }
+        if "network" in categories:
+            return {
+                "type": "network-capable malware",
+                "confidence": "low",
+            }
+
+        return {
+            "type": "malware behavior",
+            "confidence": "low",
+        }
+
+    def _coverage(self, steps: Any, queue: Any) -> dict[str, str]:
+        tools = self._executed_tools(steps)
+        sources = self._queue_sources(queue)
+
+        return {
+            "entrypoint": (
+                "explored"
+                if "baseline_entrypoint" in sources or "disassembly" in tools
+                else "unexplored"
+            ),
+            "functions": self._partial_if_any(
+                tools,
+                {"list_functions", "disassembly", "callers", "callees"},
+            ),
+            "imports": self._partial_if_any(
+                tools,
+                {"list_imports", "import_xrefs"},
+            ),
+            "sections": self._partial_if_any(
+                tools,
+                {"list_sections", "inspect_section"},
+            ),
+        }
+
+    def _executed_tools(self, steps: Any) -> set[str]:
+        if not isinstance(steps, list):
+            return set()
+
+        tools = set()
+        for step in steps:
+            if not isinstance(step, dict):
+                continue
+
+            input_data = step.get("input")
+            if not isinstance(input_data, dict):
+                continue
+
+            tool = input_data.get("tool")
+            if isinstance(tool, str):
+                tools.add(tool)
+
+        return tools
+
+    def _queue_sources(self, queue: Any) -> set[str]:
+        if not isinstance(queue, list):
+            return set()
+
+        sources = set()
+        for event in queue:
+            if not isinstance(event, dict):
+                continue
+
+            source = event.get("source")
+            if isinstance(source, str):
+                sources.add(source)
+
+        return sources
+
+    def _partial_if_any(self, tools: set[str], relevant: set[str]) -> str:
+        return "partial" if tools.intersection(relevant) else "unexplored"

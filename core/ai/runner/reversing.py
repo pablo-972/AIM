@@ -16,6 +16,9 @@ from core.ai.runtime.reversing.decision import ReversingDecisionEvaluator
 from core.ai.runtime.reversing.exploration import ReversingExplorationLoop
 from core.ai.runtime.reversing.initialization import ReversingInvestigationInitializer
 from core.ai.runtime.reversing.targets import ReversingTargetQueue
+from core.ai.runtime.reversing.target_validation import ReversingTargetValidator
+from core.tools.reversing.analyzers.metadata import functions
+from core.tools.reversing.analyzers.sections import sections
 
 
 class ReversingAgentRunner(BaseAIRunner):
@@ -38,6 +41,10 @@ class ReversingAgentRunner(BaseAIRunner):
         self.targets = ReversingTargetQueue(
             available_tools=self.available_tools,
             memory=self.memory,
+            validator=ReversingTargetValidator(
+                functions=self._function_inventory(),
+                section_names=self._section_names(),
+            ),
         )
         self.postprocessor = ReversingPostprocessor(self.available_tools)
 
@@ -106,3 +113,21 @@ class ReversingAgentRunner(BaseAIRunner):
             profile_override=self.context.profile,
         )
         return ReversingAgent(llm)
+
+    def _function_inventory(self) -> list[dict[str, Any]]:
+        try:
+            return functions(str(self.context.sample))
+        except Exception as exc:
+            Logger.warning(f"Failed to collect reversing function inventory: {exc}")
+            return []
+
+    def _section_names(self) -> list[str]:
+        try:
+            return [
+                item["name"]
+                for item in sections(str(self.context.sample))
+                if isinstance(item, dict) and isinstance(item.get("name"), str)
+            ]
+        except Exception as exc:
+            Logger.warning(f"Failed to collect reversing section inventory: {exc}")
+            return []

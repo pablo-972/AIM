@@ -2,8 +2,6 @@ from typing import Any
 
 from core.ai.runtime.reversing.parameters import display_target_value
 
-NO_TOOL_ACTIONS = {"none", "finish", "seed_queue"}
-
 
 class ReversingTraceFormatter:
     def step(
@@ -27,12 +25,6 @@ class ReversingTraceFormatter:
                 tool_output,
             ),
             "decision": self.decision(decision),
-            "action": self.action(
-                decision,
-                tool_name,
-                tool_parameters,
-                tool_output,
-            ),
             "finding": self.finding(finding),
             "follow_ups": self.follow_ups(follow_ups),
             "error": error or self.tool_error(tool_output),
@@ -96,9 +88,12 @@ class ReversingTraceFormatter:
 
         parameters = self._parameters(tool_parameters)
         target = display_target_value(tool_name, parameters)
-        compact: dict[str, Any] = {
-            "type": self._input_type(tool_name, input_type),
-        }
+        compact: dict[str, Any] = {}
+
+        if isinstance(tool_name, str):
+            compact["tool"] = tool_name
+        else:
+            compact["type"] = self._input_type(tool_name, input_type)
 
         if target is not None:
             compact["target"] = target
@@ -116,6 +111,9 @@ class ReversingTraceFormatter:
             total_instructions = self._total_instructions(tool_output)
             if total_instructions is not None:
                 compact["total_instructions"] = total_instructions
+        status = self._tool_status(tool_output)
+        if status is not None:
+            compact["status"] = status
 
         return compact
 
@@ -124,49 +122,26 @@ class ReversingTraceFormatter:
         if confidence not in {"low", "medium", "high"}:
             confidence = "unknown"
 
-        thought = decision.get("thought")
-        if not isinstance(thought, str):
-            thought = ""
+        summary = decision.get("summary")
+        if not isinstance(summary, str) or not summary.strip():
+            summary = "No decision summary was recorded."
+        else:
+            summary = summary.strip()
 
+        thinking = decision.get("thinking")
+        if not isinstance(thinking, list):
+            thinking = []
+
+        clean_thinking = [
+            line.strip()
+            for line in thinking
+            if isinstance(line, str) and line.strip()
+        ]
         return {
-            "thought": thought,
+            "thinking": clean_thinking,
+            "summary": summary,
             "confidence": confidence,
         }
-
-    def action(
-        self,
-        decision: dict[str, Any],
-        tool_name: str | None,
-        tool_parameters: dict[str, Any] | None,
-        tool_output: dict[str, Any] | None,
-    ) -> dict[str, Any] | None:
-        action = decision.get("action")
-        if (
-            tool_name is None
-            and tool_output is not None
-            and action not in NO_TOOL_ACTIONS
-        ):
-            tool_name = action
-
-        if tool_name is None or tool_name in NO_TOOL_ACTIONS:
-            return None
-
-        success = False
-        if isinstance(tool_output, dict):
-            success = tool_output.get("success")
-
-        parameters = self._parameters(tool_parameters)
-        action_data = {
-            "tool": tool_name,
-        }
-
-        target = display_target_value(tool_name, parameters)
-        if target is not None:
-            action_data["target"] = target
-
-        action_data["status"] = "ok" if success else "error"
-
-        return action_data
 
     def _total_instructions(
         self,
@@ -193,6 +168,18 @@ class ReversingTraceFormatter:
                 for line in instructions.splitlines()
                 if line.strip()
             ])
+
+        return None
+
+    def _tool_status(self, tool_output: dict[str, Any] | None) -> str | None:
+        if not isinstance(tool_output, dict):
+            return None
+
+        success = tool_output.get("success")
+        if success is True:
+            return "ok"
+        if success is False:
+            return "error"
 
         return None
 

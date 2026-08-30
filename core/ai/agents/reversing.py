@@ -4,129 +4,44 @@ from typing import Any
 from core.ai.providers.base import BaseLLMProvider
 from core.ai.agents.reversing_tools_definition import (
     build_reversing_tool_definitions,
-    tool_call_action,
+    tool_call_finish,
     tool_call_finding,
     tool_calls_to_targets,
 )
 
 
 SYSTEM_PROMPT = """
-You are a malware reverse-engineering agent.
+You are a malware reverse-engineering analyst.
 
-Main objective:
-Identify critical assembly and code regions associated with malicious behavior.
-Assembly evidence is the primary source of truth. Enrichment, strings, and
-imports are only pivots used to reach executable code.
+Analyze the current reversing evidence conservatively using symbols, assembly,
+control flow and data flow.
 
-Critical regions include code related to ransom-note generation, file traversal,
-file encryption, extension modification, cryptographic routines, process
-execution, defense evasion, shadow-copy deletion, privilege escalation,
-persistence, network communication, API resolution, and anti-analysis.
+Base follow-up investigation primarily on the current tool output and accumulated
+reversing findings. Initialization context is guidance, not a reason to repeatedly
+revisit the same artifacts.
 
-Rules:
-- Stay grounded in the supplied tool observation.
-- Never invent functions, addresses, instructions, imports, xrefs, or behavior.
-- Never contradict numeric observation fields.
-- If matches_count is greater than zero, do not claim there were no matches.
-- If returned_instructions is zero, do not claim code was analyzed.
-- Plain wallet, payment, contact, Session, or onion strings are artifacts. They
-  are not configuration loading or C2 without code evidence.
-- Create critical_code_region findings only when xref, caller/callee,
-  or disassembly evidence ties the behavior to code.
-- A reversing finding should contain at least one direct code evidence item
-  whenever the finding was generated from disassembly.
-- Direct code evidence must include the instruction address and instruction text.
-- Static, dynamic, and enrichment context may support the interpretation, but
-  must not replace direct code evidence in disassembly findings.
-- After string_xrefs or import_xrefs returns code references, inspect an actual
-  returned internal code address with disassembly instead of continuing with broad
-  artifact searches.
-- Request disassembly when target context, xrefs, imports, strings, callers,
-  callees, or size make deeper assembly inspection useful.
-- When disassembly shows a direct jump or call to another concrete internal code
-  address, prefer a disassembly follow-up for that jump/call target
-  to understand the next code path.
-- When disassembly shows a direct call or jump to a concrete internal function
-  such as fcn.00401230, you may request disassembly for that function to inspect
-  its implementation, or callers for that function to understand who else reaches
-  it. Choose the one that best answers the current investigation question.
-- disassembly, callers, and callees accept only internal code addresses. Do not
-  request them for imported APIs, Windows functions, or import thunks. Use
-  import_xrefs for imports, then inspect a returned caller address when useful.
-- Use callers when the inverse question is useful: who invokes this function, or
-  whether the discovered function is reused by other code paths.
-- Disassembly returns the complete selected function. Large disassembly output
-  may be split into multiple chunks by the runtime; analyze each supplied chunk
-  without requesting the same disassembly again just to continue reading it.
-- Do not request disassembly for every function or for a simple import thunk,
-  one-jump wrapper, or function with no meaningful instructions.
-- Avoid repeated related-string searches unless code evidence requires one.
-- Prefer one strong investigation path over several weak or speculative paths.
-- Only propose follow-ups that are likely to reveal meaningful behavior or
-  important code.
-- Follow-ups should normally be derived from new evidence contained in the
-  current tool result.
-- Do not generate a follow-up only because a target appears in enrichment,
-  investigation state, or previous context.
-- Historical context should rank or interpret new evidence, not create
-  unrelated follow-ups.
-- Treat weak hypotheses as hints, not investigation objectives.
-- If current hypotheses are weak or speculative and there is no concrete
-  productive code path to verify them, prefer discovering new evidence rather
-  than repeatedly trying to confirm them.
-- Prefer actions that can produce genuinely new information about the sample.
-- If a behavior is already sufficiently established, avoid repeatedly
-  investigating the same evidence unless a new branch can materially expand
-  understanding.
-- When a promising code region is producing relevant internal calls or findings,
-  prefer exploiting that branch before returning to generic discovery or
-  repeated string searches.
-- Do not use a function name by itself as behavior evidence. Use interesting
-  names only as leads to inspect and verify the underlying code.
-- Give priority to code related to encryption, file traversal, anti-analysis,
-  persistence, payload loading, credential access, network/C2, and process
-  execution.
-- Use string_xrefs selectively. Do not investigate generic file extensions or
-  common filename patterns in isolation, such as *.ini, *.txt, *.tmp, *.dll,
-  *.exe, .ini, .txt, .tmp, .dll, or .exe. Follow extension strings only when
-  they are unusual, campaign-specific, grouped with many target extensions, or
-  tied to file enumeration, encryption, deletion, persistence, or configuration
-  behavior.
-- Before calling string_xrefs, prefer strings that can identify a specific
-  behavior, configuration source, network endpoint, persistence mechanism,
-  command, file target set, ransom note, mutex-like artifact, or malware-family
-  artifact. Skip short fragments, boilerplate runtime text, and generic syntax
-  unless stronger evidence makes them relevant.
-- If the investigation has insufficient concrete targets or no enrichment is
-  available, use focused discovery tools to inspect binary structure before
-  guessing imports, strings, or addresses.
-- Use list_imports when available APIs are unknown, list_functions when internal
-  code candidates are needed, list_sections for binary layout, and
-  list_entrypoints for additional execution starts.
-- Discovery is a model decision. Choose one discovery tool only when it is the
-  best next step; do not call every discovery tool mechanically.
-- When processing discovery output, prioritize candidates contained in the
-  current discovery result.
-- Use previous findings, hypotheses, and enrichment only to rank or interpret
-  candidates from the current discovery result.
-- Do not ignore the current discovery result to repeat previously explored
-  strings, imports, or targets unless the discovery output provides new
-  evidence that justifies revisiting them.
-- For list_functions, evaluate functions from the current chunk and decide
-  whether one deserves disassembly, callers, callees, or another related action.
-- For list_sections, evaluate returned sections and use inspect_section for an
-  interesting section before pivoting to code, strings, or data.
-- For list_imports, select relevant imports from the current result and use
-  import_xrefs when that import is worth following.
-- For list_entrypoints, evaluate returned entrypoints and use disassembly when
-  one is worth inspecting.
-- Do not call every discovery tool automatically. Do not repeat the same
-  discovery tool without new evidence. Discovery results are context for
-  selecting concrete follow-up targets, not instructions to inspect everything.
-- Use tool calls for findings and next actions.
-- You may record one concise finding and request one next investigation tool.
-- Use short analyst notes, not chain-of-thought.
-- Do not invent tool arguments.
+Record findings when direct reversing evidence supports meaningful behavior.
+Prefer exact address: instruction evidence.
+A finding must represent meaningful behavior. Generic UI code, register setup,
+stack manipulation or an unresolved call is normally context, not a finding.
+
+Use native tools when additional evidence would materially improve the analysis.
+Use the global investigation state to judge whether additional reversing is
+likely to materially improve the result. Do not continue merely because tools
+remain available. Do not stop merely because the current branch is exhausted if
+the global investigation is still poorly covered.
+
+Prefer following a strong concrete lead before continuing unrelated broad output.
+Pending work is preserved and may be resumed later.
+
+Discovery is candidate collection, not winner selection. Preserve multiple clearly
+promising independent targets when useful and express preference through priority.
+
+Do not call tools merely to keep the investigation moving.
+Avoid work that has already been executed or is already pending.
+
+When semantics remain unclear, prefer further evidence or a structural
+interpretation over unsupported conclusions.
 """
 
 class ReversingAgent:
@@ -163,6 +78,7 @@ class ReversingAgent:
         they are needed to locate ransom-note generation code. Do not invent addresses.
         Keep the initial queue focused. Do not call record_finding or
         finish_investigation during initial target selection.
+        Put a short decision summary in message.content.
         """
 
         reversing_tool_definitions = build_reversing_tool_definitions(
@@ -176,14 +92,15 @@ class ReversingAgent:
             reversing_tool_definitions,
         )
 
-        thought = response.content.strip() or "Initial target selected by the model."
+        summary = self._response_summary(response.content, response.tool_calls)
         targets = tool_calls_to_targets(
             response.tool_calls,
             priority=70,
         )
 
         return {
-            "thought": thought,
+            "summary": summary,
+            "thinking": list(response.thinking),
             "targets": targets,
         }
 
@@ -196,11 +113,11 @@ class ReversingAgent:
         chunk_index: int,
         total_chunks: int,
         available_tools: dict[str, Any],
-        rejection_context: dict[str, Any] | None = None,
+        analysis_context: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         compact_target = self._compact_target(target)
         chunk_text = self._format_chunk_for_prompt(chunk)
-        recovery_prompt = self._format_rejection_context(rejection_context)
+        context_text = self._format_analysis_context(analysis_context)
 
         prompt = f"""
         Analyze this evidence chunk.
@@ -214,37 +131,16 @@ class ReversingAgent:
         Bounded raw tool chunk {chunk_index} of {total_chunks}:
         {chunk_text}
 
+        Global reversing context:
+        {context_text}
+
         Enrichment context:
         {enrichment or "No enrichment is available."}
 
-        {recovery_prompt}
-
-        Give the current tool output more weight than historical context.
-        Generate candidates from the current tool output first, then use
-        enrichment to prioritize or interpret them.
-        Follow-ups should normally be derived from new evidence contained in the
-        current tool result. Do not generate a follow-up only because a target
-        appears in enrichment or previous context.
-        Prefer one strong investigation path over several weak or speculative
-        paths. Choose no follow-up when the current result does not provide a
-        useful next step.
-        Call record_finding only for evidence-backed malicious behaviour.
-        Call at most one investigation tool when a follow-up is justified.
-        If the current target is a discovery tool, choose the next action from
-        candidates present in this discovery result unless there is a concrete
-        new reason to revisit an older target.
-        For xref observations with code_targets, choose disassembly using one of
-        those exact addresses. For a disassembly jump or call to another concrete,
-        behaviorally relevant internal address, choose disassembly for that target.
-        For a disassembly call or jump to a concrete internal function such as
-        fcn.00401230, choose either disassembly for that function or callers for
-        that function. Use disassembly to inspect the implementation. Use callers
-        to learn who else reaches it. Choose one.
-        If this investigation line lacks concrete targets, use the single most
-        useful discovery tool instead of speculative string/import guesses.
-        Do not request the same disassembly merely to continue reading
-        its chunks. Call finish_investigation when this line of investigation is
-        sufficient. Make no tool call when the observation is not useful.
+        Use native tool calls only. You may call record_finding when the evidence
+        supports it and may call one or more investigation tools when useful.
+        Use finish_investigation when no further local action is useful.
+        Put a short decision summary in message.content.
         """
 
         reversing_tool_definitions = build_reversing_tool_definitions(
@@ -258,9 +154,16 @@ class ReversingAgent:
             reversing_tool_definitions,
         )
 
-        action, parameters = tool_call_action(response.tool_calls)
-        thought = response.content.strip() or self._native_thought(action)
         finding = tool_call_finding(response.tool_calls)
+        tool_calls = tool_calls_to_targets(
+            response.tool_calls,
+            priority=self._default_follow_up_priority(target),
+        )
+        summary = self._response_summary(
+            response.content,
+            response.tool_calls,
+            finding,
+        )
         confidence = "medium"
         if isinstance(finding, dict) and finding.get("confidence") in {
             "low",
@@ -270,10 +173,11 @@ class ReversingAgent:
             confidence = finding["confidence"]
 
         return {
-            "thought": thought,
+            "summary": summary,
+            "thinking": list(response.thinking),
             "confidence": confidence,
-            "action": action,
-            "parameters": parameters,
+            "tool_calls": tool_calls,
+            "finished": tool_call_finish(response.tool_calls),
             "finding": finding,
         }
 
@@ -299,30 +203,49 @@ class ReversingAgent:
 
         return json.dumps(chunk, ensure_ascii=False, default=str)
 
-    def _native_thought(
+    def _response_summary(
         self,
-        action: str,
+        content: str,
+        tool_calls: Any,
+        finding: dict[str, Any] | None = None,
     ) -> str:
-        if action == "finish":
-            return "The current investigation line is sufficient."
-        if action == "none":
-            return "No evidence-backed follow-up was selected."
+        summary = content.strip()
+        if summary:
+            return summary
 
-        return f"Selected {action} from the current evidence."
+        if isinstance(finding, dict):
+            finding_summary = finding.get("summary")
+            if isinstance(finding_summary, str) and finding_summary.strip():
+                return finding_summary.strip()
 
-    def _format_rejection_context(
+        targets = tool_calls_to_targets(tool_calls, priority=50)
+        if targets:
+            tool_names = [
+                target["tool"]
+                for target in targets[:3]
+                if isinstance(target.get("tool"), str)
+            ]
+            if tool_names:
+                return "Model requested further evidence with " + ", ".join(tool_names)
+
+        if tool_call_finish(tool_calls):
+            return "Model found no useful further local investigation for this branch."
+
+        return "Model did not request additional reversing work for this chunk."
+
+    def _default_follow_up_priority(self, target: dict[str, Any]) -> int:
+        try:
+            priority = int(target.get("priority", 50))
+        except (TypeError, ValueError):
+            priority = 50
+
+        return min(100, priority + 10)
+
+    def _format_analysis_context(
         self,
-        rejection_context: dict[str, Any] | None,
+        analysis_context: dict[str, Any] | None,
     ) -> str:
-        if not isinstance(rejection_context, dict):
-            return ""
+        if not isinstance(analysis_context, dict):
+            analysis_context = {}
 
-        return f"""
-        Previous requested action was rejected:
-        {json.dumps(rejection_context, ensure_ascii=False, default=str)}
-
-        The requested target is not valid or could not be resolved
-        unambiguously for the selected tool. Use the available discovery or
-        reference tools to resolve the target before retrying, choose another
-        investigation path, or make no tool call if the path is not useful.
-        """
+        return json.dumps(analysis_context, ensure_ascii=False, default=str)

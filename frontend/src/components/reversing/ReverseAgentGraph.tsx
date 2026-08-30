@@ -83,7 +83,6 @@ function ReverseAgentGraph({ trace }: ReverseAgentGraphProps) {
           <div className="grid gap-3">
             <JsonExpandable data={selected.input ?? null} label="Input" defaultOpen />
             <JsonExpandable data={selected.decision ?? null} label="Decision" defaultOpen />
-            <JsonExpandable data={selected.action ?? null} label="Action" />
             <JsonExpandable data={selected.follow_ups ?? []} label="Follow-ups" />
             <JsonExpandable data={selected.finding ?? null} label="Finding" />
             {selected.error && (
@@ -125,11 +124,11 @@ function NodeButton({
         <div className="min-w-0 overflow-hidden">
           <p className="break-words font-semibold">Step {step.step}</p>
           <p className="break-all text-sm text-muted">
-            {step.action?.tool ?? "none"}
+            {step.input?.tool ?? step.input?.type ?? "none"}
           </p>
         </div>
         <span className="max-w-[8rem] shrink-0 break-all rounded border border-line px-2 py-1 text-xs uppercase text-muted">
-          {step.action?.status ?? "unknown"}
+          {step.input?.status ?? "unknown"}
         </span>
       </button>
       {hasNext && (

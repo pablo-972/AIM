@@ -29,6 +29,9 @@ def prepare_reversing_tool_parameters(
     tool_name: str,
     parameters: dict[str, Any],
 ) -> dict[str, Any]:
+    if tool_name == "disassembly":
+        return _prepare_disassembly_parameters(parameters)
+
     if tool_name in CODE_ADDRESS_TOOLS:
         return _prepare_code_address(parameters)
 
@@ -65,7 +68,15 @@ def target_text(tool_name: str, parameters: dict[str, Any]) -> str | None:
 
 
 def target_dedup_key(tool_name: str, parameters: dict[str, Any]) -> str:
+    if not isinstance(parameters, dict):
+        parameters = {}
+
     target = display_target_value(tool_name, parameters)
+
+    if tool_name == "disassembly":
+        function = parameters.get("function")
+        if isinstance(function, str) and function.strip():
+            return f"{tool_name}:function:{function.strip().casefold()}"
 
     if tool_name in CODE_ADDRESS_TOOLS:
         address = parse_address(target)
@@ -179,6 +190,30 @@ def _prepare_code_address(parameters: dict[str, Any]) -> dict[str, Any]:
 
     if parsed_address is not None:
         prepared["address"] = hex(parsed_address)
+
+    return prepared
+
+
+def _prepare_disassembly_parameters(parameters: dict[str, Any]) -> dict[str, Any]:
+    prepared = _keep_parameters(parameters, {"address", "function"})
+    address = prepared.get("address")
+    function = prepared.get("function")
+
+    if isinstance(address, str) and address.strip():
+        parsed_address = parse_address(address)
+        if parsed_address is not None:
+            return {
+                "address": hex(parsed_address),
+            }
+
+        return {
+            "address": address,
+        }
+
+    if isinstance(function, str) and function.strip():
+        return {
+            "function": function.strip(),
+        }
 
     return prepared
 

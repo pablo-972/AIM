@@ -1,6 +1,5 @@
 from typing import Any
 
-from core.utils.postprocessing.reversing.actions import ReversingActionPolicy
 from core.utils.postprocessing.reversing.findings import ReversingFindingValidator
 from core.utils.postprocessing.reversing.model_output import ReversingModelOutputCleaner
 from core.utils.postprocessing.reversing.observations import ReversingObservationBuilder
@@ -10,10 +9,9 @@ from core.utils.postprocessing.reversing.traces import ReversingTraceBuilder
 class ReversingPostprocessor:
     def __init__(self, available_tools: dict[str, Any]) -> None:
         self._observations = ReversingObservationBuilder()
-        self._actions = ReversingActionPolicy(available_tools)
         self._findings = ReversingFindingValidator()
         self._model_output = ReversingModelOutputCleaner()
-        self._traces = ReversingTraceBuilder(self._actions)
+        self._traces = ReversingTraceBuilder()
 
     def clean_analysis(self, analysis: Any) -> dict[str, Any]:
         return self._model_output.clean(analysis)
@@ -48,21 +46,13 @@ class ReversingPostprocessor:
     ) -> dict[str, Any]:
         return self._traces.build_decision(analysis, target, observation)
 
-    def follow_up_target(
+    def follow_up_targets(
         self,
         analysis: dict[str, Any],
         target: dict[str, Any],
         observation: dict[str, Any],
-    ) -> dict[str, Any] | None:
-        return self._traces.build_follow_up(analysis, target, observation)
-
-    def next_action(
-        self,
-        analysis: dict[str, Any],
-        target: dict[str, Any],
-        observation: dict[str, Any],
-    ) -> tuple[str, dict[str, Any]]:
-        return self._actions.next_action(analysis, target, observation)
+    ) -> list[dict[str, Any]]:
+        return self._traces.build_follow_ups(analysis, target, observation)
 
 
 __all__ = ["ReversingPostprocessor"]

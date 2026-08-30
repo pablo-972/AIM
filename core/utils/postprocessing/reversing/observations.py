@@ -32,7 +32,7 @@ class ReversingObservationBuilder:
 
         if tool_name in CODE_FOLLOW_UP_TOOLS:
             input_type = "code_address"
-            value = parameters.get("address")
+            value = parameters.get("address") or parameters.get("function")
         elif tool_name == "string_xrefs":
             input_type = "string_xref"
             value = parameters.get("value")
