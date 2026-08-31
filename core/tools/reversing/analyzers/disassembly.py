@@ -15,6 +15,7 @@ from core.tools.reversing.analyzers.common import (
     target_reference,
 )
 from core.tools.reversing.analyzers.session import R2Session
+from core.utils.address import parse_address
 
 
 PD_INSTRUCTION_WINDOW = 80
@@ -28,7 +29,7 @@ def disassembly(
     details = _code_analysis(sample, address, function)
     target = target_reference(address, function)
 
-    return {
+    result = {
         **target,
         "resolved_function": details["resolved_function"],
         "function_info": details["info"],
@@ -39,6 +40,13 @@ def disassembly(
         "truncated": details["truncated"],
         "instructions": details["instructions"],
     }
+    function_name = details.get("function")
+    if isinstance(function_name, str) and function_name:
+        result["function"] = function_name
+    elif "function" in result:
+        del result["function"]
+
+    return result
 
 
 def _code_analysis(
@@ -153,6 +161,7 @@ def _build_analysis(
 
     return {
         "mode": mode,
+        "function": _function_name(info),
         "resolved_function": resolved_function,
         "info": info,
         "instructions_count": len(instructions),
@@ -161,6 +170,44 @@ def _build_analysis(
         "end_address": end_address,
         "truncated": truncated,
     }
+
+
+def _function_name(info: dict[str, Any] | None) -> str | None:
+    if not isinstance(info, dict):
+        return None
+
+    name = info.get("name")
+    if not isinstance(name, str) or not name.strip():
+        return None
+
+    name = name.strip()
+    if _looks_like_generated_address_label(name):
+        return None
+
+    return name
+
+
+def _looks_like_generated_address_label(name: str) -> bool:
+    if parse_address(name) is not None:
+        return True
+
+    lowered = name.lower()
+    for prefix in ("fcn.", "sub."):
+        if lowered.startswith(prefix) and _is_hex_text(name[len(prefix):]):
+            return True
+
+    return False
+
+
+def _is_hex_text(value: str) -> bool:
+    normalized = value.strip().lower()
+    if normalized.startswith("0x"):
+        normalized = normalized[2:]
+
+    return bool(normalized) and all(
+        character in "0123456789abcdef"
+        for character in normalized
+    )
 
 
 def format_instruction(address: int, instruction: str, bits: int) -> str:

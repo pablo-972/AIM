@@ -31,16 +31,25 @@ epilogue, stack/register manipulation, arithmetic, generic control flow, and
 unresolved calls are not findings by themselves.
 
 Use native tools when additional evidence would materially improve the analysis.
-Use the global investigation state to judge whether additional reversing is
-likely to materially improve the result. Do not continue merely because tools
-remain available. Do not stop merely because the current branch is exhausted if
-the global investigation is still poorly covered.
+Do not continue merely because tools remain available.
 
 Prefer following a strong concrete lead before continuing unrelated broad output.
 Pending work is preserved and may be resumed later.
 
 Discovery is candidate collection, not winner selection. Preserve multiple clearly
 promising independent targets when useful.
+Treat discovery outputs (list_functions, list_imports, list_sections,
+list_entrypoints) as candidate sources, not as evidence that must produce a
+finding. Evaluate each discovery chunk independently; do not wait for all
+chunks before acting. If the current discovery chunk contains concrete promising
+targets, emit the corresponding native tool calls immediately. For
+list_functions, inspect promising functions with disassembly(function=...). For
+imports, use import_xrefs(...) when useful. Do not return no tool calls merely
+because a discovery output does not support a finding.
+If your reasoning says that a concrete function, address, import, section or
+entrypoint should be inspected next, you MUST issue the corresponding native
+tool call in the same response. Do not describe a next investigation without
+performing it.
 
 Do not call tools merely to keep the investigation moving.
 Avoid work that has already been executed or is already pending.
@@ -146,7 +155,7 @@ class ReversingAgent:
         Bounded raw tool chunk {chunk_index} of {total_chunks}:
         {chunk_text}
 
-        Global reversing context:
+        Local reversing context:
         {context_text}
 
         Use native tool calls only for additional investigation tools. Do not use
@@ -193,6 +202,51 @@ class ReversingAgent:
             "confidence": confidence,
             "tool_calls": tool_calls,
             "finding": finding,
+        }
+
+    def review_global_state(
+        self,
+        state: dict[str, Any],
+        hypothesis: dict[str, Any],
+        available_tools: dict[str, Any],
+    ) -> dict[str, Any]:
+        prompt = f"""
+        Review the global reversing investigation after the local queue became
+        empty.
+
+        Factual global state:
+        {json.dumps(state, ensure_ascii=False, default=str)}
+
+        Current model hypothesis:
+        {json.dumps(hypothesis, ensure_ascii=False, default=str)}
+
+        Decide whether there is still a reasonable path to materially improve
+        the analysis. If yes, emit native investigation tool calls. Consider
+        list_functions, list_imports, list_sections, or list_entrypoints when
+        structural areas remain undiscovered and they are likely to add useful
+        evidence. Do not force discovery tools mechanically. If no further local
+        action is useful, emit no tool calls. Message content must start with a
+        short decision summary.
+
+        Update the global hypothesis from the investigation evidence during this
+        review. Append one final line beginning with hypothesis: followed by a
+        JSON object with malware, type, and confidence. malware must be true,
+        false, or null. type may be null.
+        """
+
+        response = self.llm.chat_tools(
+            SYSTEM_PROMPT,
+            prompt,
+            build_reversing_tool_definitions(available_tools),
+        )
+        tool_calls = tool_calls_to_targets(response.tool_calls, priority=50)
+
+        return {
+            "summary": self._response_summary(response.content, response.tool_calls),
+            "thinking": list(response.thinking),
+            "confidence": "medium",
+            "tool_calls": tool_calls,
+            "hypothesis": self._response_hypothesis(response.content),
         }
 
     def _compact_target(self, target: dict[str, Any]) -> dict[str, Any]:
@@ -269,6 +323,13 @@ class ReversingAgent:
             if position > 0:
                 cleaned = cleaned[:position].rstrip()
 
+        for marker in self._hypothesis_markers():
+            position = cleaned.lower().find(marker)
+            if position == 0:
+                return ""
+            if position > 0:
+                cleaned = cleaned[:position].rstrip()
+
         return cleaned
 
     def _content_is_only_finding(self, content: str) -> bool:
@@ -321,6 +382,29 @@ class ReversingAgent:
             "\nfinding =",
             "finding:",
             "finding =",
+        )
+
+    def _response_hypothesis(self, content: str) -> dict[str, Any] | None:
+        if not isinstance(content, str):
+            return None
+
+        lowered = content.lower()
+        for marker in self._hypothesis_markers():
+            position = lowered.find(marker)
+            if position < 0:
+                continue
+
+            decoded = self._decode_first_json_value(content[position + len(marker):])
+            return decoded if isinstance(decoded, dict) else None
+
+        return None
+
+    def _hypothesis_markers(self) -> tuple[str, ...]:
+        return (
+            "\nhypothesis:",
+            "\nhypothesis =",
+            "hypothesis:",
+            "hypothesis =",
         )
 
     def _decode_first_json_value(self, text: str) -> Any:

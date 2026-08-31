@@ -27,8 +27,20 @@ class ReversingExplorationLoop:
         self.analyzed_functions: set[str] = set()
 
     def run(self) -> None:
-        while self.targets.has_items():
-            if self.targets.visited_count() >= self.max_targets:
+        global_review_targets = 0
+
+        while True:
+            if not self.targets.has_items():
+                added_targets = self.evaluator.review_global_state()
+                if added_targets:
+                    global_review_targets += added_targets
+                    continue
+                break
+
+            if (
+                self.targets.visited_count() >= self.max_targets
+                and global_review_targets <= 0
+            ):
                 if not self.targets.has_resume():
                     break
 
@@ -37,6 +49,8 @@ class ReversingExplorationLoop:
                     break
             else:
                 target = self.targets.pop()
+                if global_review_targets > 0:
+                    global_review_targets -= 1
 
             if target.get("_resume") is True:
                 self.evaluator.resume(target)

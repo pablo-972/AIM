@@ -4,6 +4,7 @@ from core.utils.postprocessing.reversing.contracts import (
     CODE_FOLLOW_UP_TOOLS,
     is_empty_code_observation,
 )
+from core.utils.address import parse_address
 
 
 class ReversingFindingValidator:
@@ -84,7 +85,8 @@ class ReversingFindingValidator:
         if finding.get("type") == "critical_code_region":
             self._set_default_function(finding, code_targets)
 
-        self._set_resolved_function(finding, observation)
+        self._set_function_name(finding, observation)
+        self._remove_address_like_function(finding)
         self._set_address_range(finding, observation)
 
     def _set_default_function(
@@ -98,15 +100,26 @@ class ReversingFindingValidator:
         if isinstance(code_targets, list) and code_targets:
             finding["function"] = code_targets[0]
 
-    def _set_resolved_function(
+    def _set_function_name(
         self,
         finding: dict[str, Any],
         observation: dict[str, Any],
     ) -> None:
-        resolved_function = observation.get("resolved_function")
+        function = observation.get("function")
 
-        if isinstance(resolved_function, str) and resolved_function:
-            finding["function"] = resolved_function
+        if isinstance(function, str) and function:
+            finding["function"] = function
+
+    def _remove_address_like_function(self, finding: dict[str, Any]) -> None:
+        function = finding.get("function")
+        if not isinstance(function, str):
+            return
+
+        if (
+            parse_address(function) is not None
+            or _looks_like_generated_address_label(function)
+        ):
+            finding.pop("function", None)
 
     def _set_address_range(
         self,
@@ -123,3 +136,23 @@ class ReversingFindingValidator:
             }
         elif "address_range" not in finding:
             finding["address_range"] = None
+
+
+def _looks_like_generated_address_label(name: str) -> bool:
+    lowered = name.strip().lower()
+    for prefix in ("fcn.", "sub."):
+        if lowered.startswith(prefix) and _is_hex_text(lowered[len(prefix):]):
+            return True
+
+    return False
+
+
+def _is_hex_text(value: str) -> bool:
+    normalized = value.strip().lower()
+    if normalized.startswith("0x"):
+        normalized = normalized[2:]
+
+    return bool(normalized) and all(
+        character in "0123456789abcdef"
+        for character in normalized
+    )

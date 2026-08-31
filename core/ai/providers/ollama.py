@@ -115,7 +115,7 @@ class OllamaProvider(BaseLLMProvider):
 
         print(content)
         print(tool_calls)
-        
+
         return LLMResponse(
             content=content,
             tool_calls=tool_calls,

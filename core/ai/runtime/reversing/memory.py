@@ -23,19 +23,25 @@ class ReversingAgentMemory:
         self.data: dict[str, Any] = {
             "agent": name,
             "status": "running",
+            "hypothesis": {
+                "malware": None,
+                "type": None,
+                "confidence": "low",
+            },
             "state": {
                 "steps": 0,
                 "findings": 0,
                 "errors": 0,
-                "hypothesis": {
-                    "type": "unknown",
-                    "confidence": "low",
+                "discovery": {
+                    "entrypoints": False,
+                    "functions": False,
+                    "imports": False,
+                    "sections": False,
                 },
-                "coverage": {
-                    "entrypoint": "unexplored",
-                    "functions": "unexplored",
-                    "imports": "unexplored",
-                    "sections": "unexplored",
+                "explored": {
+                    "functions": 0,
+                    "imports": 0,
+                    "sections": 0,
                 },
                 "queue": {
                     "pending": 0,
@@ -109,6 +115,21 @@ class ReversingAgentMemory:
         ))
         self._mark_dirty()
 
+    def hypothesis(self) -> dict[str, Any]:
+        value = self.data.get("hypothesis")
+        return self._normalized_hypothesis(value) or {
+            "malware": None,
+            "type": None,
+            "confidence": "low",
+        }
+
+    def update_hypothesis(self, hypothesis: Any) -> None:
+        normalized = self._normalized_hypothesis(hypothesis)
+        if normalized is None:
+            return
+
+        self.data["hypothesis"] = normalized
+
     def fail(self, error: str) -> None:
         self.data["status"] = "error"
         self.data["errors"].append(
@@ -149,11 +170,21 @@ class ReversingAgentMemory:
             "steps": len(steps),
             "findings": len(findings),
             "errors": len(errors),
-            "hypothesis": self._hypothesis(findings),
-            "coverage": self._coverage(steps, queue),
+            "discovery": self._discovery(steps),
+            "explored": self._explored(steps),
             "queue": {
                 "pending": pending,
             },
+        }
+
+    def global_review_state(self) -> dict[str, Any]:
+        state = self.state(pending_queue=0)
+        return {
+            "steps": state["steps"],
+            "findings": state["findings"],
+            "errors": state["errors"],
+            "discovery": state["discovery"],
+            "explored": state["explored"],
         }
 
     def _pending_queue_size(
@@ -174,63 +205,80 @@ class ReversingAgentMemory:
         queue_size = last_event.get("queue_size")
         return queue_size if isinstance(queue_size, int) and queue_size >= 0 else 0
 
-    def _hypothesis(self, findings: Any) -> dict[str, str]:
-        if not isinstance(findings, list) or not findings:
-            return {
-                "type": "unknown",
-                "confidence": "low",
-            }
+    def _normalized_hypothesis(self, value: Any) -> dict[str, Any] | None:
+        if not isinstance(value, dict):
+            return None
 
-        categories = {
-            finding.get("category")
-            for finding in findings
-            if isinstance(finding, dict)
-        }
-        if categories.intersection({"file_encryption", "crypto"}):
-            return {
-                "type": "ransomware",
-                "confidence": "medium",
-            }
-        if "network" in categories:
-            return {
-                "type": "network-capable malware",
-                "confidence": "low",
-            }
+        malware = value.get("malware")
+        if malware is not True and malware is not False and malware is not None:
+            malware = None
+
+        hypothesis_type = value.get("type")
+        if hypothesis_type is not None:
+            if isinstance(hypothesis_type, str) and hypothesis_type.strip():
+                hypothesis_type = hypothesis_type.strip()
+            else:
+                hypothesis_type = None
+
+        confidence = value.get("confidence")
+        if confidence not in {"low", "medium", "high"}:
+            confidence = "low"
 
         return {
-            "type": "malware behavior",
-            "confidence": "low",
+            "malware": malware,
+            "type": hypothesis_type,
+            "confidence": confidence,
         }
 
-    def _coverage(self, steps: Any, queue: Any) -> dict[str, str]:
+
+    def _discovery(self, steps: Any) -> dict[str, bool]:
         tools = self._executed_tools(steps)
-        sources = self._queue_sources(queue)
-
         return {
-            "entrypoint": (
-                "explored"
-                if "baseline_entrypoint" in sources or "disassembly" in tools
-                else "unexplored"
-            ),
-            "functions": self._partial_if_any(
-                tools,
-                {"list_functions", "disassembly", "callers", "callees"},
-            ),
-            "imports": self._partial_if_any(
-                tools,
-                {"list_imports", "import_xrefs"},
-            ),
-            "sections": self._partial_if_any(
-                tools,
-                {"list_sections", "inspect_section"},
-            ),
+            "entrypoints": "list_entrypoints" in tools,
+            "functions": "list_functions" in tools,
+            "imports": "list_imports" in tools,
+            "sections": "list_sections" in tools,
         }
+
+    def _explored(self, steps: Any) -> dict[str, int]:
+        return {
+            "functions": len(self._explored_targets(
+                steps,
+                {"disassembly", "callers", "callees"},
+            )),
+            "imports": len(self._explored_targets(steps, {"import_xrefs"})),
+            "sections": len(self._explored_targets(steps, {"inspect_section"})),
+        }
+
+    def _explored_targets(self, steps: Any, tools: set[str]) -> set[str]:
+        targets = set()
+        for input_data in self._step_inputs(steps):
+            tool = input_data.get("tool")
+            if tool not in tools:
+                continue
+
+            status = input_data.get("status")
+            if status == "error":
+                continue
+
+            target = input_data.get("target")
+            targets.add(str(target) if target is not None else str(input_data))
+
+        return targets
 
     def _executed_tools(self, steps: Any) -> set[str]:
-        if not isinstance(steps, list):
-            return set()
+        return {
+            tool
+            for input_data in self._step_inputs(steps)
+            for tool in (input_data.get("tool"),)
+            if isinstance(tool, str)
+        }
 
-        tools = set()
+    def _step_inputs(self, steps: Any) -> list[dict[str, Any]]:
+        if not isinstance(steps, list):
+            return []
+
+        inputs = []
         for step in steps:
             if not isinstance(step, dict):
                 continue
@@ -239,26 +287,6 @@ class ReversingAgentMemory:
             if not isinstance(input_data, dict):
                 continue
 
-            tool = input_data.get("tool")
-            if isinstance(tool, str):
-                tools.add(tool)
+            inputs.append(input_data)
 
-        return tools
-
-    def _queue_sources(self, queue: Any) -> set[str]:
-        if not isinstance(queue, list):
-            return set()
-
-        sources = set()
-        for event in queue:
-            if not isinstance(event, dict):
-                continue
-
-            source = event.get("source")
-            if isinstance(source, str):
-                sources.add(source)
-
-        return sources
-
-    def _partial_if_any(self, tools: set[str], relevant: set[str]) -> str:
-        return "partial" if tools.intersection(relevant) else "unexplored"
+        return inputs

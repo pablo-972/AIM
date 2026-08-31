@@ -187,6 +187,18 @@ class ReversingTargetValidator:
                 canonical_target,
             )
 
+        parsed_function_address = _parse_address_like_code_label(function)
+        if parsed_function_address is not None:
+            value = hex(parsed_function_address)
+            canonical_target = self._canonical_code_address(parsed_function_address)
+            return _accepted(
+                tool_name,
+                original_parameters,
+                TargetType.ADDRESS,
+                value,
+                canonical_target,
+            )
+
         resolved = self._resolve_function_name(function or "")
         if resolved is None:
             return _rejected(
@@ -518,6 +530,27 @@ def _resolve_name(value: str, candidates: list[str]) -> str | None:
 def _non_empty_string(value: Any) -> str | None:
     if isinstance(value, str) and value.strip():
         return value.strip()
+
+    return None
+
+
+def _parse_address_like_code_label(value: Any) -> int | None:
+    parsed_address = parse_address(value)
+    if parsed_address is not None:
+        return parsed_address
+    if not isinstance(value, str):
+        return None
+
+    normalized = value.strip().lower()
+    for prefix in ("sub.",):
+        if not normalized.startswith(prefix):
+            continue
+
+        suffix = normalized[len(prefix):]
+        if suffix.startswith("0x"):
+            suffix = suffix[2:]
+        if suffix and all(character in "0123456789abcdef" for character in suffix):
+            return int(suffix, 16)
 
     return None
 

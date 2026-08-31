@@ -75,8 +75,7 @@ class ReversingObservationBuilder:
         code_targets.extend(self._summarize_callees(data, summary))
 
         if tool_name == "disassembly":
-            function = data.get("resolved_function") or data.get("function")
-            candidate = format_address(function)
+            candidate = format_address(data.get("resolved_function"))
 
             if candidate:
                 code_targets.append(candidate)

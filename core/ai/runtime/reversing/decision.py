@@ -55,6 +55,29 @@ class ReversingDecisionEvaluator:
             start_index=start_index,
         )
 
+    def review_global_state(self) -> int:
+        analysis = self.analyzer.review_global_state(
+            state=self.memory.global_review_state(),
+            hypothesis=self.memory.hypothesis(),
+        )
+        analysis = self.postprocessor.clean_analysis(analysis)
+        self.memory.update_hypothesis(analysis.get("hypothesis"))
+        tool_calls = self.postprocessor.tool_call_targets(analysis, {}, {})
+        added_tool_calls = self.targets.enqueue_targets(
+            tool_calls,
+            source="global_review",
+        )
+        decision = self.postprocessor.trace_decision(analysis, {}, {})
+        self.memory.record(
+            decision=decision,
+            input_ref={
+                "type": "global_review",
+                "value": "queue_empty",
+            },
+            tool_calls=tool_calls,
+        )
+        return len(added_tool_calls)
+
     def _evaluate_chunks(
         self,
         target: dict[str, Any],
@@ -166,12 +189,8 @@ class ReversingDecisionEvaluator:
         chunk_index: int,
         total_chunks: int,
     ) -> dict[str, Any]:
-        state = self.memory.state(
-            pending_queue=self.targets.priority_queue.size(),
-        )
         return {
             "findings": self.memory.data.get("findings", [])[-8:],
-            "state": state,
             "current_chunk": {
                 "tool": target.get("tool"),
                 "index": chunk_index,

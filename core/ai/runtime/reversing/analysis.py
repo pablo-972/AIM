@@ -108,6 +108,17 @@ class ReversingEvidenceAnalyzer:
             analysis_context=analysis_context,
         )
 
+    def review_global_state(
+        self,
+        state: dict[str, Any],
+        hypothesis: dict[str, Any],
+    ) -> dict[str, Any]:
+        return self.agent.review_global_state(
+            state=state,
+            hypothesis=hypothesis,
+            available_tools=self.available_tools,
+        )
+
     def _failed_analysis(self) -> dict[str, Any]:
         return {
             "summary": "LLM decision failed.",
