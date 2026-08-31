@@ -30,7 +30,9 @@ REVERSING_AGENT_TOOLS_PATH = REVERSING_TOOLS_PATH / "agent_tools.json"
 MODEL_PROFILES_PATH = AI_PATH / "model_profiles.yaml"
 
 VICTIM_WORKING_PATH = "C:\\AIM"
-VBOXMANAGE_PATH = get_optional_env("AIM_VBOXMANAGE_PATH", default_vboxmanage_path())
+VBOXMANAGE_PATH = get_optional_env("AIM_VBOXMANAGE_PATH")
+if VBOXMANAGE_PATH is None:
+    VBOXMANAGE_PATH = default_vboxmanage_path()
 
 # Filenames
 RESULT_FILENAME = "analysis.json"

@@ -1,11 +1,11 @@
 import argparse
 
-from cli.full_parser import add_full_module
 from cli.static_parser import add_static_module
 from cli.dynamic_parser import add_dynamic_module
 from cli.enrichment_parser import add_enrichment_module
 from cli.reversing_parser import add_reversing_module
 from cli.report_parser import add_report_module
+from cli.full_parser import add_full_module
 
 
 def create_common_parser() -> argparse.ArgumentParser:
