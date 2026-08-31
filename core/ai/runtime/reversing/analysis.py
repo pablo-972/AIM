@@ -111,10 +111,12 @@ class ReversingEvidenceAnalyzer:
     def review_global_state(
         self,
         state: dict[str, Any],
+        findings: list[dict[str, Any]],
         hypothesis: dict[str, Any],
     ) -> dict[str, Any]:
         return self.agent.review_global_state(
             state=state,
+            findings=findings,
             hypothesis=hypothesis,
             available_tools=self.available_tools,
         )

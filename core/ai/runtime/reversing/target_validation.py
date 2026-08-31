@@ -272,6 +272,15 @@ class ReversingTargetValidator:
             item = normalized_matches[0]
             return item["name"], item["address"], True
 
+        contains_matches = [
+            item
+            for item in self.functions
+            if normalized in _normalize_name(item["name"])
+        ]
+        if len(contains_matches) == 1:
+            item = contains_matches[0]
+            return item["name"], item["address"], True
+
         return None
 
     def _canonical_code_address(self, address: int) -> str:

@@ -64,7 +64,7 @@ class ReversingAgentRunner(BaseAIRunner):
                     "type": "initialization",
                     "value": initialization.input_source,
                 },
-                tool_calls=initialization.targets,
+                tool_calls=initialization.requested_targets,
                 error=initialization.seed_error,
             )
 

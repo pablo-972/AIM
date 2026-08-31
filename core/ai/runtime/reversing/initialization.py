@@ -23,6 +23,7 @@ ENTRY_POINT_BASE_PRIORITY = 55
 class ReversingInitialization:
     enrichment: str
     seed: dict[str, Any]
+    requested_targets: list[dict[str, Any]]
     targets: list[dict[str, Any]]
     source: str
     seed_error: str | None
@@ -66,7 +67,7 @@ class ReversingInvestigationInitializer:
 
     def initialize(self, agent: ReversingAgent) -> ReversingInitialization:
         enrichment = self._load_enrichment()
-        seed, targets, source, seed_error = self._create_targets(
+        seed, requested_targets, targets, source, seed_error = self._create_targets(
             agent,
             enrichment,
         )
@@ -76,6 +77,7 @@ class ReversingInvestigationInitializer:
         return ReversingInitialization(
             enrichment=enrichment,
             seed=seed,
+            requested_targets=requested_targets,
             targets=targets,
             source=source,
             seed_error=seed_error,
@@ -97,7 +99,13 @@ class ReversingInvestigationInitializer:
         self,
         agent: ReversingAgent,
         enrichment: str,
-    ) -> tuple[dict[str, Any], list[dict[str, Any]], str, str | None]:
+    ) -> tuple[
+        dict[str, Any],
+        list[dict[str, Any]],
+        list[dict[str, Any]],
+        str,
+        str | None,
+    ]:
         seed_error = None
         try:
             seed = agent.create_initial_targets(
@@ -114,6 +122,7 @@ class ReversingInvestigationInitializer:
             }
 
         raw_targets = seed.get("targets")
+        requested_targets = raw_targets if isinstance(raw_targets, list) else []
         targets = self.targets.prepare_targets(raw_targets, source="seed")
         if isinstance(raw_targets, list) and raw_targets and not targets:
             seed_error = self._append_error(
@@ -123,7 +132,7 @@ class ReversingInvestigationInitializer:
 
         source = "seed"
 
-        return seed, targets, source, seed_error
+        return seed, requested_targets, targets, source, seed_error
 
     def _entrypoint_baseline_targets(self) -> list[dict[str, Any]]:
         try:

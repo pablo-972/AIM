@@ -198,7 +198,7 @@ Important files:
 | --- | --- |
 | `static.py` | Static inference schema, parser, and fallback response |
 | `dynamic.py` | Dynamic behavior inference schema, parser, and fallback response |
-| `reversing.py` | Reversing finding schema used by the model-callable finding tool |
+| `reversing.py` | Reversing finding schema and fallback response helpers |
 | `report.py` | Structured report schema and final assessment validation |
 
 Each schema file owns the parser for the response it describes. This keeps the
@@ -275,32 +275,29 @@ core/utils/postprocessing/reversing/model_output.py
 ```
 
 `ReversingAgentMemory` stores steps, findings, queue events, errors, final
-status, and a compact summary. `ReversingTraceFormatter` owns the JSON shape for
-step input, decision, action, findings, follow-ups, queue validation, and
-origin fields.
+status, compact factual state, and the latest model hypothesis.
+`ReversingTraceFormatter` owns the JSON shape for step input, decision,
+findings, tool calls, queue validation, and origin fields.
 
 `ReversingEvidenceAnalyzer` owns model-call policy for one reversing evidence
-chunk. If a chunk fails with enrichment context, it retries with the enrichment
-removed before returning a failed decision. This retry is intentionally in the
-reversing runtime because it changes the model input; provider transport
-retries only repeat equivalent HTTP/model requests.
+chunk. The local analysis prompt receives only the current target, current tool
+output summary, and current bounded raw output chunk. Enrichment is used only
+to create initial targets, and accumulated findings are reserved for global
+review.
 
 `ReversingDecisionEvaluator` coordinates the executed tool output: it chunks
 the output, asks the analyzer for a model decision, postprocesses findings, and
-queues follow-up targets.
+queues model-selected tool calls. When the queue becomes empty, it performs a
+separate global review call with factual state, recorded findings, and the
+latest model hypothesis. Any global-review tool calls are validated,
+deduplicated, and returned to the normal queue.
+Step `tool_calls` store the model-selected calls before queue validation; queue
+events show whether each call was added, corrected, or rejected.
 
 `ReversingModelOutputCleaner` is a conservative repair step for local models
-that sometimes write a finding JSON object inside `thought` instead of emitting
-the native `record_finding` tool call. It only recovers parseable JSON findings
-and replaces the noisy thought with a short fallback note. Non-JSON pseudo tool
-calls are not interpreted.
-
-Rejected model-selected follow-ups can be sent back to the model once as
-generic recovery context. The validator does not guess a replacement tool for
-ambiguous targets. Instead, the rejected tool, parameters, and validator message
-are shown to the model so it can choose a discovery/reference tool, try another
-valid target, or abandon that path. If the recovery action is also invalid, the
-second rejection is recorded and the runtime does not loop.
+that sometimes write a finding JSON object inside the summary text. It only
+recovers parseable JSON findings and replaces the noisy summary with a short
+fallback note.
 
 The reversing runtime adds the bounded agent loop:
 
@@ -308,13 +305,18 @@ The reversing runtime adds the bounded agent loop:
 flowchart TD
     Context[enrichment.md / discovery] --> Seed[Initial targets]
     Seed --> Queue[Priority queue]
-    Queue --> Tool[Execute reversing tool]
+    Queue -->|target available| Tool[Execute reversing tool]
     Tool --> Decision[Chunk and decision evaluation]
     Decision --> Agent[Reversing agent]
     Agent --> Finding[Finding]
-    Agent --> FollowUp[Model follow-up target]
-    FollowUp --> Queue
-    Finding --> Memory[reversing_agent.json]
+    Agent --> ToolCalls[Model tool calls]
+    ToolCalls --> Queue
+    ToolCalls --> Memory
+    Finding --> Memory[reversing_agent.json state and trace]
+    Queue -->|empty| Review[Global review]
+    Memory --> Review
+    Review -->|more evidence needed| ToolCalls
+    Review -->|enough evidence| End[End reversing]
 ```
 
 1. initialize targets from enrichment or focused discovery;
@@ -323,31 +325,71 @@ flowchart TD
 4. split large evidence into chunks;
 5. evaluate each chunk;
 6. clean model output and validate findings;
-7. recover one rejected model-selected follow-up when possible;
-8. enqueue model-selected follow-up targets when useful.
+7. enqueue model-selected tool calls when useful;
+8. run global review when the queue is empty.
 
-The reversing trace is written to `reversing_agent.json`. Each step keeps the
-model decision separate from the executed action:
+The reversing trace is written to `reversing_agent.json`. Runtime state is
+factual and separate from the model-generated hypothesis:
+
+```json
+{
+  "state": {
+    "steps": 17,
+    "findings": 7,
+    "errors": 0,
+    "discovery": {
+      "entrypoints": true,
+      "functions": true,
+      "imports": true,
+      "sections": true
+    },
+    "explored": {
+      "functions": 2,
+      "imports": 1,
+      "sections": 1
+    },
+    "queue": {
+      "pending": 0
+    }
+  },
+  "hypothesis": {
+    "malware": true,
+    "type": null,
+    "confidence": "low"
+  }
+}
+```
+
+Each step records the executed tool directly in `input`. There is no separate
+`action` block. The `tool_calls` array records what the model asked for before
+queue validation:
 
 ```json
 {
   "input": {
-    "type": "code",
-    "target": "0x402068",
+    "tool": "disassembly",
+    "target": "entry0",
     "chunk": 1,
     "total_chunks": 2,
-    "total_instructions": 71
-  },
-  "decision": {
-    "thought": "The code region resolves APIs dynamically.",
-    "confidence": "high"
-  },
-  "action": {
-    "tool": "disassembly",
-    "target": "0x402068",
+    "total_instructions": 71,
     "status": "ok"
   },
-  "follow_ups": []
+  "decision": {
+    "thinking": [
+      "The call target controls the behavior of this branch."
+    ],
+    "summary": "The chunk needs one helper inspected to clarify the branch.",
+    "confidence": "high"
+  },
+  "finding": null,
+  "tool_calls": [
+    {
+      "tool": "disassembly",
+      "target": "fcn.004065e0",
+      "priority": 75
+    }
+  ],
+  "error": null
 }
 ```
 
@@ -355,7 +397,7 @@ Normal queue validations are serialized as `"VALID"`. Corrections and
 rejections keep compact details so analysts can see what the validator changed
 without reading the full internal target object.
 
-Follow-ups are compact targets:
+Model-selected tool calls are compact targets:
 
 ```json
 {
@@ -412,10 +454,10 @@ core/ai/agents/reversing.py
 
 The reversing agent differs from simple inference:
 
-- it can request tool actions;
+- it can request investigation `tool_calls`;
 - it works with an explicit queue;
 - it reads tool contracts;
-- it records queue events and tool decisions;
+- it records queue events and tool-call decisions;
 - it must ground findings in executable-code evidence.
 - when a finding is generated from disassembly, evidence should include at
   least one instruction address and instruction text.
@@ -427,11 +469,13 @@ core/tools/reversing/agent.py
 core/tools/reversing/agent_tools.json
 ```
 
-The AI runtime validates model actions against that JSON contract before any
-tool is executed.
+The AI runtime validates model-selected tool calls against that JSON contract
+before any tool is executed.
 
-The agent uses native tool calling from the configured provider. The internal
-target queue receives validated targets after target validation; the
+The agent reads native tool calls from the configured provider when present. For
+local models that express intended calls in text, the reversing agent also
+accepts a final `tool_calls:` JSON line in message content as a fallback. The
+internal target queue receives validated targets after target validation; the
 provider-specific transport is kept inside the provider layer.
 
 ## Adding an AI Task

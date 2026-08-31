@@ -15,11 +15,15 @@ You are a malware reverse-engineering analyst.
 Analyze the current reversing evidence conservatively using symbols, assembly,
 control flow and data flow.
 
-Base follow-up investigation primarily on the current tool output and accumulated
-reversing findings. Initialization context is guidance, not a reason to repeatedly
-revisit the same artifacts.
+Base local follow-up investigation on the current tool output. Initialization
+context is guidance, not a reason to repeatedly revisit the same artifacts.
 
 Record findings when direct reversing evidence supports meaningful behavior.
+A new finding must be supported by evidence present in the current tool output
+or current chunk.
+Explicit names in the current output are evidence: if a function, import,
+string, section, or symbol name directly states meaningful behavior, such as
+encryption or decryption, record that behavior as a finding.
 Prefer exact address: instruction evidence.
 Prefer these categories when they fit: file_encryption, crypto,
 defense_evasion, network, persistence, privilege_escalation, api_resolution,
@@ -30,26 +34,52 @@ Do not create a finding merely because a chunk can be described. Prologue,
 epilogue, stack/register manipulation, arithmetic, generic control flow, and
 unresolved calls are not findings by themselves.
 
-Use native tools when additional evidence would materially improve the analysis.
+Use tool_calls when additional evidence would materially improve the analysis.
 Do not continue merely because tools remain available.
 
-Prefer following a strong concrete lead before continuing unrelated broad output.
+If the current evidence depends on a concrete function, address or other target
+whose behavior is still unknown, and understanding it would materially clarify
+the current execution flow or behavior, investigate it with the appropriate
+tool_calls entry. Unknown behavior is a reason to investigate, not a reason to
+stop. Do not require a target to look malicious or suspicious before following
+it. Prioritize targets that help explain what the current code is actually
+doing, and avoid unrelated or low-value exploration.
 Pending work is preserved and may be resumed later.
 
-Discovery is candidate collection, not winner selection. Preserve multiple clearly
-promising independent targets when useful.
+Discovery is candidate collection, not winner selection. Preserve multiple
+independent targets when useful.
 Treat discovery outputs (list_functions, list_imports, list_sections,
 list_entrypoints) as candidate sources, not as evidence that must produce a
-finding. Evaluate each discovery chunk independently; do not wait for all
-chunks before acting. If the current discovery chunk contains concrete promising
-targets, emit the corresponding native tool calls immediately. For
-list_functions, inspect promising functions with disassembly(function=...). For
-imports, use import_xrefs(...) when useful. Do not return no tool calls merely
-because a discovery output does not support a finding.
+finding. Do not emit findings for discovery outputs unless the current discovery
+output itself contains direct behavioral evidence, which is uncommon. Evaluate
+each discovery chunk independently; do not wait for all chunks before acting. If
+the current discovery chunk contains concrete targets
+that would reduce uncertainty about the code behavior, emit the corresponding
+tool_calls entries immediately. For list_functions, inspect useful functions with
+disassembly(function=...). For
+imports, if interesting imports appear, call import_xrefs(...) to see where they
+are used; if those xrefs identify promising code, inspect it with disassembly.
+For list_imports output, DLL/library entries are useful targets for
+import_xrefs(import_name=...) when their imported APIs may explain the current
+program behavior. For import_xrefs output, xref functions and xref source
+addresses are concrete code targets; if their behavior is unknown and they
+clarify how the import is used, emit disassembly(function=...) or
+disassembly(address=...) in the same response.
+Do not return no tool calls merely because a discovery output does not support
+a finding.
 If your reasoning says that a concrete function, address, import, section or
-entrypoint should be inspected next, you MUST issue the corresponding native
-tool call in the same response. Do not describe a next investigation without
-performing it.
+entrypoint should be inspected next, you MUST emit a tool_calls: JSON line in
+message content for that target. Do not describe a next investigation without
+including it in tool_calls.
+Before finalizing your response, check your own reasoning and summary: if you
+mentioned that you will, should, would, or need to inspect a concrete target,
+the response is invalid unless the matching target is present in the content
+tool_calls line.
+When analyzing disassembly, treat concrete call and jump targets as follow-up
+candidates. If the current code's behavior depends on a called or jumped-to
+function whose behavior is still unknown, include a disassembly entry in
+tool_calls for that function or address. Do not merely say that a callee may
+need deeper inspection; include it in tool_calls in the same response.
 
 Do not call tools merely to keep the investigation moving.
 Avoid work that has already been executed or is already pending.
@@ -58,16 +88,20 @@ When semantics remain unclear, prefer further evidence or a structural
 interpretation over unsupported conclusions.
 
 When writing message content, start with a short summary. Do not include labels
-such as message.content.
-Detailed reasoning belongs in Ollama thinking. Message content must be only a
-short decision summary.
+such as message.content. Detailed reasoning belongs in Ollama thinking. Message
+content should contain only a short decision summary plus optional final
+machine-readable finding, hypothesis, or fallback tool_calls lines.
 
-Do not use tool calls for findings. Native tool calls are only for investigation
+Do not use tool calls for findings. Tool calls are only for investigation
 targets.
 Findings and tool calls are independent: recording a finding does not terminate
 the branch. If there is a valid finding and promising targets remain, produce
-both the finding in message content and native investigation tool calls in the
-same response.
+both the finding and a tool_calls line in message content in the same response.
+
+Temporary fallback format for investigation calls: when concrete follow-up
+investigation is needed, append one final line beginning with tool_calls:
+followed by a JSON array of objects using tool and parameters, for example
+tool_calls: [{"tool":"disassembly","parameters":{"function":"fcn.004065e0"}}]
 """
 
 class ReversingAgent:
@@ -80,9 +114,10 @@ class ReversingAgent:
         available_tools: dict[str, Any],
     ) -> dict[str, Any]:
         prompt = f"""
-        Select the initial reversing targets and emit them as native tool calls.
-        You may emit multiple independent tool calls. Message content must be
-        only a short decision summary.
+        Select the initial reversing targets and emit them in message content as
+        one tool_calls: JSON line. You may include multiple independent tool
+        calls. Message content must contain only a short decision summary plus
+        the tool_calls line.
 
         Enrichment context:
         {enrichment or "No enrichment is available."}
@@ -118,7 +153,8 @@ class ReversingAgent:
         )
 
         summary = self._response_summary(response.content, response.tool_calls)
-        targets = tool_calls_to_targets(
+        targets = self._response_tool_call_targets(
+            response.content,
             response.tool_calls,
             priority=70,
         )
@@ -141,10 +177,8 @@ class ReversingAgent:
     ) -> dict[str, Any]:
         compact_target = self._compact_target(target)
         chunk_text = self._format_chunk_for_prompt(chunk)
-        context_text = self._format_analysis_context(analysis_context)
-
         prompt = f"""
-        Analyze this evidence chunk.
+        Analyze this tool output chunk.
 
         Current input target:
         {json.dumps(compact_target, ensure_ascii=False, default=str)}
@@ -155,17 +189,37 @@ class ReversingAgent:
         Bounded raw tool chunk {chunk_index} of {total_chunks}:
         {chunk_text}
 
-        Local reversing context:
-        {context_text}
+        Base this decision only on the current input target, tool output
+        summary, and bounded raw tool chunk above. Use only that current
+        evidence for findings.
 
-        Use native tool calls only for additional investigation tools. Do not use
-        tool calls for findings. If direct evidence supports one meaningful
-        finding, append one final line beginning with finding: followed by a JSON
-        object with summary, category, confidence, evidence as an array of
-        strings, function and address_range. If a finding and additional
+        Use tool_calls only for additional investigation tools. Do not use tool
+        calls for findings. If direct evidence in this tool output chunk
+        supports one meaningful finding, append one final line beginning with
+        finding: followed by a JSON object with summary, category, confidence,
+        evidence as an array of strings, function and address_range. If a
+        finding and additional
         investigation are both useful, emit both the finding line in message
-        content and native investigation tool calls in the same response. If no
-        further local action is useful, emit no tool calls.
+        content and a tool_calls line in the same response. If no
+        further local action is useful, emit no tool_calls line.
+
+        If you identify a concrete function, address, import, section, or
+        entrypoint whose unknown behavior prevents a clear explanation of this
+        chunk, you must append a tool_calls: JSON line now. Do not summarize a
+        possible next investigation without adding it to tool_calls.
+        If your thinking or summary says a target should be inspected, the same
+        response must include that target in tool_calls.
+        If this chunk is list_imports and a library or import name matters for
+        understanding behavior, call import_xrefs for it. If this chunk is
+        import_xrefs and it returns xref functions or source addresses, call
+        disassembly for the most useful unknown xref targets. If this chunk is
+        disassembly and it contains call or jump targets needed to explain the
+        current function, call disassembly for those targets.
+
+        Update the investigation hypothesis from this tool output only. Append
+        one final line beginning with hypothesis: followed by a JSON object with
+        malware, type, and confidence. malware must be true, false, or null.
+        type may be null. Keep it tentative when evidence is still weak.
         """
 
         reversing_tool_definitions = build_reversing_tool_definitions(
@@ -179,7 +233,8 @@ class ReversingAgent:
         )
 
         finding = self._response_finding(response.content)
-        tool_calls = tool_calls_to_targets(
+        tool_calls = self._response_tool_call_targets(
+            response.content,
             response.tool_calls,
             priority=self._default_tool_call_priority(target),
         )
@@ -202,11 +257,13 @@ class ReversingAgent:
             "confidence": confidence,
             "tool_calls": tool_calls,
             "finding": finding,
+            "hypothesis": self._response_hypothesis(response.content),
         }
 
     def review_global_state(
         self,
         state: dict[str, Any],
+        findings: list[dict[str, Any]],
         hypothesis: dict[str, Any],
         available_tools: dict[str, Any],
     ) -> dict[str, Any]:
@@ -217,20 +274,30 @@ class ReversingAgent:
         Factual global state:
         {json.dumps(state, ensure_ascii=False, default=str)}
 
+        Recorded reversing findings:
+        {json.dumps(findings, ensure_ascii=False, default=str)}
+
         Current model hypothesis:
         {json.dumps(hypothesis, ensure_ascii=False, default=str)}
 
         Decide whether there is still a reasonable path to materially improve
-        the analysis. If yes, emit native investigation tool calls. Consider
+        the analysis. If yes, emit investigation calls in message content as one
+        tool_calls: JSON line. Consider
         list_functions, list_imports, list_sections, or list_entrypoints when
         structural areas remain undiscovered and they are likely to add useful
         evidence. Do not force discovery tools mechanically. If no further local
-        action is useful, emit no tool calls. Message content must start with a
+        action is useful, emit no tool_calls line. Message content must start with a
         short decision summary.
+        If your reasoning or summary says that you will list or inspect
+        something, the same response must include a tool_calls: JSON line with
+        those calls. Do not say you will perform structural discovery without
+        emitting list_functions, list_imports, list_sections, or list_entrypoints
+        in tool_calls.
 
-        Update the global hypothesis from the investigation evidence during this
-        review. Append one final line beginning with hypothesis: followed by a
-        JSON object with malware, type, and confidence. malware must be true,
+        Use the recorded findings to judge what has been established, update the
+        final hypothesis, and decide whether the investigation has enough useful
+        evidence. Append one final line beginning with hypothesis: followed by
+        a JSON object with malware, type, and confidence. malware must be true,
         false, or null. type may be null.
         """
 
@@ -239,7 +306,11 @@ class ReversingAgent:
             prompt,
             build_reversing_tool_definitions(available_tools),
         )
-        tool_calls = tool_calls_to_targets(response.tool_calls, priority=50)
+        tool_calls = self._response_tool_call_targets(
+            response.content,
+            response.tool_calls,
+            priority=50,
+        )
 
         return {
             "summary": self._response_summary(response.content, response.tool_calls),
@@ -323,6 +394,13 @@ class ReversingAgent:
             if position > 0:
                 cleaned = cleaned[:position].rstrip()
 
+        for marker in self._tool_call_markers():
+            position = cleaned.lower().find(marker)
+            if position == 0:
+                return ""
+            if position > 0:
+                cleaned = cleaned[:position].rstrip()
+
         for marker in self._hypothesis_markers():
             position = cleaned.lower().find(marker)
             if position == 0:
@@ -358,6 +436,105 @@ class ReversingAgent:
             )
 
         return tuple(markers)
+
+    def _response_tool_call_targets(
+        self,
+        content: str,
+        tool_calls: Any,
+        priority: int,
+    ) -> list[dict[str, Any]]:
+        targets = tool_calls_to_targets(tool_calls, priority=priority)
+        if targets:
+            return targets
+
+        return self._fallback_tool_call_targets(content, priority)
+
+    def _fallback_tool_call_targets(
+        self,
+        content: str,
+        priority: int,
+    ) -> list[dict[str, Any]]:
+        targets = []
+        for decoded in self._response_tool_calls(content):
+            for item in self._fallback_tool_call_items(decoded):
+                target = self._fallback_tool_call_target(item, priority)
+                if target is not None:
+                    targets.append(target)
+
+        return targets
+
+    def _fallback_tool_call_items(self, decoded: Any) -> list[Any]:
+        if isinstance(decoded, dict):
+            value = decoded.get("tool_calls")
+            return value if isinstance(value, list) else [decoded]
+        if isinstance(decoded, list):
+            return decoded
+
+        return []
+
+    def _fallback_tool_call_target(
+        self,
+        item: Any,
+        priority: int,
+    ) -> dict[str, Any] | None:
+        if not isinstance(item, dict):
+            return None
+
+        function = item.get("function")
+        if isinstance(function, dict):
+            tool = function.get("name")
+            parameters = function.get("arguments")
+        else:
+            tool = item.get("tool") or item.get("name")
+            parameters = item.get("parameters")
+            if not isinstance(parameters, dict):
+                parameters = item.get("arguments")
+
+        if tool not in REVERSING_AGENT_TOOL_NAMES or not isinstance(parameters, dict):
+            return None
+
+        return {
+            "tool": tool,
+            "parameters": parameters,
+            "priority": priority,
+        }
+
+    def _response_tool_calls(self, content: str) -> list[Any]:
+        if not isinstance(content, str):
+            return []
+
+        lowered = content.lower()
+        decoded_values = []
+        seen_json_starts = set()
+        for marker in self._tool_call_markers():
+            start = 0
+            while True:
+                position = lowered.find(marker, start)
+                if position < 0:
+                    break
+                start = position + len(marker)
+
+                json_start = self._json_start(content[start:])
+                if json_start < 0:
+                    continue
+                absolute_json_start = start + json_start
+                if absolute_json_start in seen_json_starts:
+                    continue
+                seen_json_starts.add(absolute_json_start)
+
+                decoded = self._decode_first_json_value(content[absolute_json_start:])
+                if decoded is not None:
+                    decoded_values.append(decoded)
+
+        return decoded_values
+
+    def _tool_call_markers(self) -> tuple[str, ...]:
+        return (
+            "\ntool_calls:",
+            "\ntool_calls =",
+            "tool_calls:",
+            "tool_calls =",
+        )
 
     def _response_finding(self, content: str) -> dict[str, Any] | None:
         if not isinstance(content, str):
@@ -466,12 +643,3 @@ class ReversingAgent:
             priority = 50
 
         return min(100, priority + 10)
-
-    def _format_analysis_context(
-        self,
-        analysis_context: dict[str, Any] | None,
-    ) -> str:
-        if not isinstance(analysis_context, dict):
-            analysis_context = {}
-
-        return json.dumps(analysis_context, ensure_ascii=False, default=str)

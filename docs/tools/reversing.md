@@ -72,7 +72,18 @@ limits what the model can ask for and validates parameters before execution.
 Imported APIs are investigated with `import_xrefs`; the agent then follows a
 returned caller address into the sample's code.
 
-Model-proposed targets are validated and prepared before they enter the queue.
+Model-proposed `tool_calls` are validated and prepared before they enter the
+queue. `disassembly` accepts exactly one selector: either an `address` such as
+`0x4010a0`, or a real function/symbol name from reversing output such as
+`fcn.004010a0` or `entry0`. If both are provided accidentally, validation keeps
+the address and removes the function selector.
+
+Function-name validation first tries exact matching, then normalized matching,
+then one unambiguous partial-name match. For example,
+`Complex.LockedFiles.Islocked` can be corrected to
+`method.Complex.LockedFiles.Islocked` if that is the only matching function in
+the discovered function inventory.
+
 Address-like values are routed to code-address tools, section names to
 `inspect_section`, imports and DLL names to `import_xrefs`, and arbitrary text
 to `string_xrefs`.

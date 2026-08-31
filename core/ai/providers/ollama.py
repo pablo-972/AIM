@@ -113,9 +113,6 @@ class OllamaProvider(BaseLLMProvider):
             allow_empty_content,
         )
 
-        print(content)
-        print(tool_calls)
-
         return LLMResponse(
             content=content,
             tool_calls=tool_calls,

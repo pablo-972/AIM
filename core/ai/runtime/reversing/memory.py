@@ -187,6 +187,13 @@ class ReversingAgentMemory:
             "explored": state["explored"],
         }
 
+    def global_review_findings(self) -> list[dict[str, Any]]:
+        findings = self.data.get("findings", [])
+        if not isinstance(findings, list):
+            return []
+
+        return [finding for finding in findings if isinstance(finding, dict)]
+
     def _pending_queue_size(
         self,
         queue: Any,

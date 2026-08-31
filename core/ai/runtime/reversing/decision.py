@@ -58,6 +58,7 @@ class ReversingDecisionEvaluator:
     def review_global_state(self) -> int:
         analysis = self.analyzer.review_global_state(
             state=self.memory.global_review_state(),
+            findings=self.memory.global_review_findings(),
             hypothesis=self.memory.hypothesis(),
         )
         analysis = self.postprocessor.clean_analysis(analysis)
@@ -100,6 +101,7 @@ class ReversingDecisionEvaluator:
                 self._analysis_context(target, chunk_index, total_chunks),
             )
             analysis = self.postprocessor.clean_analysis(analysis)
+            self.memory.update_hypothesis(analysis.get("hypothesis"))
 
             finding = self.postprocessor.finding(
                 analysis.get("finding"),
@@ -133,7 +135,7 @@ class ReversingDecisionEvaluator:
                 tool_output=tool_output,
                 input_ref=input_ref,
                 finding=finding,
-                tool_calls=added_tool_calls,
+                tool_calls=tool_calls,
                 error=error,
             )
 
@@ -189,11 +191,4 @@ class ReversingDecisionEvaluator:
         chunk_index: int,
         total_chunks: int,
     ) -> dict[str, Any]:
-        return {
-            "findings": self.memory.data.get("findings", [])[-8:],
-            "current_chunk": {
-                "tool": target.get("tool"),
-                "index": chunk_index,
-                "total_chunks": total_chunks,
-            },
-        }
+        return {}
