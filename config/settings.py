@@ -46,3 +46,6 @@ ENRICHMENT_FILENAME = "enrichment.md"
 
 # Folders
 SHARED_FOLDER = "shared"
+
+# Global Variables 
+DEFAULT_REVERSING_MAX_TARGETS = 20

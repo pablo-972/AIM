@@ -1,11 +1,11 @@
 import argparse
 
 
-ENRICHMENT_AI_PROFILES = [
-    "local-enrichment", 
-    "openai-enrichment", 
+ENRICHMENT_AI_PROFILES = (
+    "local-enrichment",
+    "openai-enrichment",
     "gemini-enrichment",
-]
+)
 
 
 def add_enrichment_module(

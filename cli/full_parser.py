@@ -1,5 +1,6 @@
 import argparse
 
+from config import DEFAULT_REVERSING_MAX_TARGETS
 from core.exceptions import CLIValidationError
 from cli.static_parser import STATIC_AI_PROFILES
 from cli.dynamic_parser import DYNAMIC_AI_PROFILES
@@ -51,7 +52,7 @@ def add_full_module(
         "--max-targets",
         dest="reversing_max_targets",
         type=int,
-        default=20,
+        default=DEFAULT_REVERSING_MAX_TARGETS,
         help="Maximum number of unique targets executed by the reversing agent",
     )
     parser.add_argument(

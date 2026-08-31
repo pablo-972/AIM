@@ -2,6 +2,7 @@ import argparse
 from pathlib import Path
 from dataclasses import dataclass
 
+from config import DEFAULT_REVERSING_MAX_TARGETS
 from core.exceptions import CLIValidationError
 from core.utils.crypto import sha256_file
 
@@ -70,6 +71,8 @@ class AnalysisContext:
         dynamic_filter_path = None
         if dynamic_filter:
             dynamic_filter_path = _resolve_file(dynamic_filter, label="Procmon filter")
+
+        reversing_max_targets = getattr(args, "reversing_max_targets", None)
             
         return cls(
             sample=sample,
@@ -102,7 +105,11 @@ class AnalysisContext:
                 section=getattr(args, "section", None),
                 address=getattr(args, "address", None),
                 agent=getattr(args, "reversing_agent", False),
-                max_targets=getattr(args, "reversing_max_targets", 20),
+                max_targets=(
+                    DEFAULT_REVERSING_MAX_TARGETS
+                    if reversing_max_targets is None
+                    else reversing_max_targets
+                ),
             ),
             
             full=FullOptions(

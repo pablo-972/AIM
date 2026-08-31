@@ -3,7 +3,7 @@ import argparse
 from core.exceptions import CLIValidationError
 
 
-STATIC_TOOLS = [
+STATIC_TOOLS = (
     "file",
     "hash",
     "metadata",
@@ -12,27 +12,31 @@ STATIC_TOOLS = [
     "vt",
     "pe",
     "full",
-]
-STATIC_AI_PROFILES = [
+)
+STATIC_AI_PROFILES = (
     "local-static", 
     "openai-static", 
     "gemini-static",
-]
+)
+STATIC_AI_TOOLS = {
+    "strings", 
+    "full",
+}
 
 
 def validate_static_args(args: argparse.Namespace) -> None:
     selected_tools = set(args.static_tools)
 
-    if len(selected_tools) < 1:
+    if not selected_tools:
         raise CLIValidationError("Select at least one static tool with --tool")
 
     if "full" in selected_tools and len(selected_tools) > 1:
         raise CLIValidationError("'full' cannot be combined with other static modes")
 
-    if args.static_ai and not {"strings", "full"} & selected_tools:
+    if args.static_ai and selected_tools.isdisjoint(STATIC_AI_TOOLS):
         raise CLIValidationError("--ai is only valid with 'strings' or 'full'")
 
-    if args.profile != "local-static" and not args.static_ai:
+    if args.profile is not None and not args.static_ai:
         raise CLIValidationError("--profile can only be used together with --ai")
 
 
@@ -63,7 +67,7 @@ def add_static_module(
     parser.add_argument(
         "--profile",
         choices=STATIC_AI_PROFILES,
-        default="local-static",
+        default=None,
         help="Model profile to use with --ai",
     )
 
