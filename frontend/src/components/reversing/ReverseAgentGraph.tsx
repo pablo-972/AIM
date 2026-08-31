@@ -83,7 +83,7 @@ function ReverseAgentGraph({ trace }: ReverseAgentGraphProps) {
           <div className="grid gap-3">
             <JsonExpandable data={selected.input ?? null} label="Input" defaultOpen />
             <JsonExpandable data={selected.decision ?? null} label="Decision" defaultOpen />
-            <JsonExpandable data={selected.follow_ups ?? []} label="Follow-ups" />
+            <JsonExpandable data={selected.tool_calls ?? []} label="Tool calls" />
             <JsonExpandable data={selected.finding ?? null} label="Finding" />
             {selected.error && (
               <div className="rounded border border-danger/40 bg-red-950/30 p-3 text-sm text-red-100">

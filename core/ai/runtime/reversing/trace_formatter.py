@@ -2,6 +2,19 @@ from typing import Any
 
 from core.ai.runtime.reversing.parameters import display_target_value
 
+REVERSING_INVESTIGATION_TOOL_NAMES = {
+    "disassembly",
+    "callers",
+    "callees",
+    "inspect_section",
+    "string_xrefs",
+    "import_xrefs",
+    "list_imports",
+    "list_functions",
+    "list_sections",
+    "list_entrypoints",
+}
+
 
 class ReversingTraceFormatter:
     def step(
@@ -13,7 +26,7 @@ class ReversingTraceFormatter:
         tool_output: dict[str, Any] | None = None,
         input_ref: dict[str, Any] | None = None,
         finding: dict[str, Any] | None = None,
-        follow_ups: list[dict[str, Any]] | None = None,
+        tool_calls: list[dict[str, Any]] | None = None,
         error: str | None = None,
     ) -> dict[str, Any]:
         return {
@@ -26,7 +39,7 @@ class ReversingTraceFormatter:
             ),
             "decision": self.decision(decision),
             "finding": self.finding(finding),
-            "follow_ups": self.follow_ups(follow_ups),
+            "tool_calls": self.tool_calls(tool_calls),
             "error": error or self.tool_error(tool_output),
         }
 
@@ -216,16 +229,16 @@ class ReversingTraceFormatter:
             "evidence": list(dict.fromkeys(clean_evidence)),
         }
 
-    def follow_ups(
+    def tool_calls(
         self,
-        follow_ups: list[dict[str, Any]] | None,
+        tool_calls: list[dict[str, Any]] | None,
     ) -> list[dict[str, Any]]:
-        if not isinstance(follow_ups, list):
+        if not isinstance(tool_calls, list):
             return []
 
         compact = []
-        for follow_up in follow_ups:
-            item = self._compact_target(follow_up)
+        for tool_call in tool_calls:
+            item = self._compact_target(tool_call)
             if item is not None:
                 compact.append(item)
 
@@ -257,9 +270,12 @@ class ReversingTraceFormatter:
         return "unknown"
 
     def _compact_target(self, target: dict[str, Any]) -> dict[str, Any] | None:
+        if not isinstance(target, dict):
+            return None
+
         tool = target.get("tool")
         parameters = target.get("parameters")
-        if not isinstance(tool, str):
+        if tool not in REVERSING_INVESTIGATION_TOOL_NAMES:
             return None
         if not isinstance(parameters, dict):
             parameters = {}

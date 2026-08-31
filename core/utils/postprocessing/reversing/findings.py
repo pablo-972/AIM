@@ -28,6 +28,7 @@ class ReversingFindingValidator:
 
         normalized = dict(finding)
         code_targets = observation.get("code_targets")
+        self._normalize_evidence(normalized)
 
         if (
             normalized.get("type") == "critical_code_region"
@@ -59,6 +60,20 @@ class ReversingFindingValidator:
 
     def _has_code_evidence(self, code_targets: Any) -> bool:
         return isinstance(code_targets, list) and bool(code_targets)
+
+    def _normalize_evidence(self, finding: dict[str, Any]) -> None:
+        evidence = finding.get("evidence")
+        if isinstance(evidence, str):
+            evidence = [evidence]
+        if not isinstance(evidence, list):
+            finding["evidence"] = []
+            return
+
+        finding["evidence"] = [
+            item.strip()
+            for item in evidence
+            if isinstance(item, str) and item.strip()
+        ]
 
     def _normalize_location(
         self,
@@ -106,5 +121,5 @@ class ReversingFindingValidator:
                 "start": start_address,
                 "end": end_address,
             }
-        else:
+        elif "address_range" not in finding:
             finding["address_range"] = None

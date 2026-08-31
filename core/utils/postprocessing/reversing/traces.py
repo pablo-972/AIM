@@ -2,6 +2,19 @@ from typing import Any
 
 from core.utils.postprocessing.reversing.contracts import is_empty_code_observation
 
+REVERSING_INVESTIGATION_TOOL_NAMES = {
+    "disassembly",
+    "callers",
+    "callees",
+    "inspect_section",
+    "string_xrefs",
+    "import_xrefs",
+    "list_imports",
+    "list_functions",
+    "list_sections",
+    "list_entrypoints",
+}
+
 
 class ReversingTraceBuilder:
     def __init__(self) -> None:
@@ -25,7 +38,7 @@ class ReversingTraceBuilder:
             "confidence": confidence,
         }
 
-    def build_follow_ups(
+    def build_tool_calls(
         self,
         analysis: dict[str, Any],
         target: dict[str, Any],
@@ -35,27 +48,31 @@ class ReversingTraceBuilder:
         if not isinstance(tool_calls, list):
             return []
 
-        follow_ups = []
+        normalized_tool_calls = []
         for tool_call in tool_calls:
             if not isinstance(tool_call, dict):
                 continue
 
             tool = tool_call.get("tool")
             parameters = tool_call.get("parameters")
-            if not isinstance(tool, str) or not isinstance(parameters, dict):
+            if (
+                tool not in REVERSING_INVESTIGATION_TOOL_NAMES
+                or not isinstance(parameters, dict)
+            ):
                 continue
 
-            follow_up = {
+            normalized_tool_call = {
                 "tool": tool,
                 "parameters": parameters,
                 "priority": self._priority(tool_call, target),
             }
-            follow_ups.append(follow_up)
+            normalized_tool_calls.append(normalized_tool_call)
 
-        return follow_ups
+        return normalized_tool_calls
     
     def _summary(self, summary: Any, observation: dict[str, Any]) -> str:
         normalized = summary.strip() if isinstance(summary, str) else ""
+        normalized = self._strip_message_content_prefix(normalized)
 
         if not normalized:
             return "No decision summary was recorded."
@@ -132,4 +149,11 @@ class ReversingTraceBuilder:
 
     def _contains_any(self, text: str, phrases: tuple[str, ...]) -> bool:
         return any(phrase in text for phrase in phrases)
+
+    def _strip_message_content_prefix(self, summary: str) -> str:
+        prefix = "message.content:"
+        if summary.lower().startswith(prefix):
+            return summary[len(prefix):].lstrip()
+
+        return summary
 

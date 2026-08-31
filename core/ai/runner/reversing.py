@@ -64,6 +64,7 @@ class ReversingAgentRunner(BaseAIRunner):
                     "type": "initialization",
                     "value": initialization.input_source,
                 },
+                tool_calls=initialization.targets,
                 error=initialization.seed_error,
             )
 
@@ -79,7 +80,6 @@ class ReversingAgentRunner(BaseAIRunner):
             evaluator = ReversingDecisionEvaluator(
                 analyzer=ReversingEvidenceAnalyzer(
                     agent=agent,
-                    enrichment=initialization.enrichment,
                     available_tools=self.available_tools,
                 ),
                 postprocessor=self.postprocessor,

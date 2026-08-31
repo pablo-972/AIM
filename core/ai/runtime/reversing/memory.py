@@ -56,7 +56,7 @@ class ReversingAgentMemory:
         tool_output: dict[str, Any] | None = None,
         input_ref: dict[str, Any] | None = None,
         finding: dict[str, Any] | None = None,
-        follow_ups: list[dict[str, Any]] | None = None,
+        tool_calls: list[dict[str, Any]] | None = None,
         error: str | None = None,
     ) -> None:
         steps = self.data["steps"]
@@ -69,7 +69,7 @@ class ReversingAgentMemory:
             tool_output=tool_output,
             input_ref=input_ref,
             finding=finding,
-            follow_ups=follow_ups,
+            tool_calls=tool_calls,
             error=error,
         )
         steps.append(step)

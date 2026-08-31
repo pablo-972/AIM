@@ -4,10 +4,9 @@ from typing import Any
 from core.ai.providers.base import BaseLLMProvider
 from core.ai.agents.reversing_tools_definition import (
     build_reversing_tool_definitions,
-    tool_call_finish,
-    tool_call_finding,
     tool_calls_to_targets,
 )
+from core.tools.reversing.agent import REVERSING_AGENT_TOOL_NAMES
 
 
 SYSTEM_PROMPT = """
@@ -22,8 +21,14 @@ revisit the same artifacts.
 
 Record findings when direct reversing evidence supports meaningful behavior.
 Prefer exact address: instruction evidence.
+Prefer these categories when they fit: file_encryption, crypto,
+defense_evasion, network, persistence, privilege_escalation, api_resolution,
+anti_analysis, unknown.
 A finding must represent meaningful behavior. Generic UI code, register setup,
 stack manipulation or an unresolved call is normally context, not a finding.
+Do not create a finding merely because a chunk can be described. Prologue,
+epilogue, stack/register manipulation, arithmetic, generic control flow, and
+unresolved calls are not findings by themselves.
 
 Use native tools when additional evidence would materially improve the analysis.
 Use the global investigation state to judge whether additional reversing is
@@ -35,13 +40,25 @@ Prefer following a strong concrete lead before continuing unrelated broad output
 Pending work is preserved and may be resumed later.
 
 Discovery is candidate collection, not winner selection. Preserve multiple clearly
-promising independent targets when useful and express preference through priority.
+promising independent targets when useful.
 
 Do not call tools merely to keep the investigation moving.
 Avoid work that has already been executed or is already pending.
 
 When semantics remain unclear, prefer further evidence or a structural
 interpretation over unsupported conclusions.
+
+When writing message content, start with a short summary. Do not include labels
+such as message.content.
+Detailed reasoning belongs in Ollama thinking. Message content must be only a
+short decision summary.
+
+Do not use tool calls for findings. Native tool calls are only for investigation
+targets.
+Findings and tool calls are independent: recording a finding does not terminate
+the branch. If there is a valid finding and promising targets remain, produce
+both the finding in message content and native investigation tool calls in the
+same response.
 """
 
 class ReversingAgent:
@@ -54,7 +71,9 @@ class ReversingAgent:
         available_tools: dict[str, Any],
     ) -> dict[str, Any]:
         prompt = f"""
-        Create a small initial investigation queue.
+        Select the initial reversing targets and emit them as native tool calls.
+        You may emit multiple independent tool calls. Message content must be
+        only a short decision summary.
 
         Enrichment context:
         {enrichment or "No enrichment is available."}
@@ -76,14 +95,11 @@ class ReversingAgent:
         target extensions, or connected to stronger malware behavior evidence.
         Do not prioritize wallet, payment, contact, Session, or onion strings unless
         they are needed to locate ransom-note generation code. Do not invent addresses.
-        Keep the initial queue focused. Do not call record_finding or
-        finish_investigation during initial target selection.
-        Put a short decision summary in message.content.
+        Keep the initial queue focused.
         """
 
         reversing_tool_definitions = build_reversing_tool_definitions(
             available_tools,
-            include_finding_tools=False,
         )
 
         response = self.llm.chat_tools(
@@ -106,7 +122,6 @@ class ReversingAgent:
 
     def analyze_evidence(
         self,
-        enrichment: str,
         target: dict[str, Any],
         observation: dict[str, Any],
         chunk: Any,
@@ -134,18 +149,18 @@ class ReversingAgent:
         Global reversing context:
         {context_text}
 
-        Enrichment context:
-        {enrichment or "No enrichment is available."}
-
-        Use native tool calls only. You may call record_finding when the evidence
-        supports it and may call one or more investigation tools when useful.
-        Use finish_investigation when no further local action is useful.
-        Put a short decision summary in message.content.
+        Use native tool calls only for additional investigation tools. Do not use
+        tool calls for findings. If direct evidence supports one meaningful
+        finding, append one final line beginning with finding: followed by a JSON
+        object with summary, category, confidence, evidence as an array of
+        strings, function and address_range. If a finding and additional
+        investigation are both useful, emit both the finding line in message
+        content and native investigation tool calls in the same response. If no
+        further local action is useful, emit no tool calls.
         """
 
         reversing_tool_definitions = build_reversing_tool_definitions(
             available_tools,
-            include_finding_tools=True,
         )
 
         response = self.llm.chat_tools(
@@ -154,10 +169,10 @@ class ReversingAgent:
             reversing_tool_definitions,
         )
 
-        finding = tool_call_finding(response.tool_calls)
+        finding = self._response_finding(response.content)
         tool_calls = tool_calls_to_targets(
             response.tool_calls,
-            priority=self._default_follow_up_priority(target),
+            priority=self._default_tool_call_priority(target),
         )
         summary = self._response_summary(
             response.content,
@@ -177,7 +192,6 @@ class ReversingAgent:
             "thinking": list(response.thinking),
             "confidence": confidence,
             "tool_calls": tool_calls,
-            "finished": tool_call_finish(response.tool_calls),
             "finding": finding,
         }
 
@@ -185,7 +199,6 @@ class ReversingAgent:
         return {
             "tool": target["tool"],
             "parameters": target["parameters"],
-            "priority": target.get("priority"),
         }
 
     def _format_chunk_for_prompt(
@@ -209,7 +222,7 @@ class ReversingAgent:
         tool_calls: Any,
         finding: dict[str, Any] | None = None,
     ) -> str:
-        summary = content.strip()
+        summary = self._clean_message_content(content)
         if summary:
             return summary
 
@@ -228,12 +241,141 @@ class ReversingAgent:
             if tool_names:
                 return "Model requested further evidence with " + ", ".join(tool_names)
 
-        if tool_call_finish(tool_calls):
-            return "Model found no useful further local investigation for this branch."
-
         return "Model did not request additional reversing work for this chunk."
 
-    def _default_follow_up_priority(self, target: dict[str, Any]) -> int:
+    def _clean_message_content(self, content: str) -> str:
+        if not isinstance(content, str):
+            return ""
+
+        cleaned = content.strip()
+        prefix = "message.content:"
+        if cleaned.lower().startswith(prefix):
+            cleaned = cleaned[len(prefix):].lstrip()
+
+        if self._content_is_only_finding(cleaned):
+            return ""
+
+        for marker in self._text_tool_markers():
+            position = cleaned.find(marker)
+            if position == 0:
+                return ""
+            if position > 0:
+                cleaned = cleaned[:position].rstrip()
+
+        for marker in self._finding_markers():
+            position = cleaned.lower().find(marker)
+            if position == 0:
+                return ""
+            if position > 0:
+                cleaned = cleaned[:position].rstrip()
+
+        return cleaned
+
+    def _content_is_only_finding(self, content: str) -> bool:
+        stripped = content.lstrip()
+        if not stripped.startswith(("{", "[")):
+            return False
+
+        return self._finding_from_decoded(
+            self._decode_first_json_value(stripped)
+        ) is not None
+
+    def _text_tool_markers(self) -> tuple[str, ...]:
+        tool_names = [
+            "record_finding",
+            *REVERSING_AGENT_TOOL_NAMES,
+        ]
+        markers = []
+        for tool_name in tool_names:
+            markers.extend(
+                (
+                    f"\n{tool_name}{{",
+                    f"\n\n{tool_name}{{",
+                    f"\n{tool_name}(",
+                    f"\n\n{tool_name}(",
+                )
+            )
+
+        return tuple(markers)
+
+    def _response_finding(self, content: str) -> dict[str, Any] | None:
+        if not isinstance(content, str):
+            return None
+
+        for marker in self._finding_markers():
+            position = content.lower().find(marker)
+            if position < 0:
+                continue
+
+            decoded = self._decode_first_json_value(content[position + len(marker):])
+            finding = self._finding_from_decoded(decoded)
+            if finding is not None:
+                return finding
+
+        decoded = self._decode_first_json_value(content)
+        return self._finding_from_decoded(decoded)
+
+    def _finding_markers(self) -> tuple[str, ...]:
+        return (
+            "\nfinding:",
+            "\nfinding =",
+            "finding:",
+            "finding =",
+        )
+
+    def _decode_first_json_value(self, text: str) -> Any:
+        start = self._json_start(text)
+        if start < 0:
+            return None
+
+        try:
+            decoded, _ = json.JSONDecoder().raw_decode(text[start:])
+        except json.JSONDecodeError:
+            return None
+
+        return decoded
+
+    def _json_start(self, text: str) -> int:
+        starts = [
+            position
+            for position in (text.find("{"), text.find("["))
+            if position >= 0
+        ]
+        if not starts:
+            return -1
+
+        return min(starts)
+
+    def _finding_from_decoded(self, decoded: Any) -> dict[str, Any] | None:
+        if isinstance(decoded, list):
+            for item in decoded:
+                finding = self._finding_from_decoded(item)
+                if finding is not None:
+                    return finding
+
+            return None
+
+        if not isinstance(decoded, dict):
+            return None
+
+        nested_finding = decoded.get("finding")
+        if isinstance(nested_finding, dict):
+            return nested_finding
+
+        if self._looks_like_finding(decoded):
+            return decoded
+
+        return None
+
+    def _looks_like_finding(self, value: dict[str, Any]) -> bool:
+        evidence = value.get("evidence")
+        return (
+            isinstance(value.get("summary"), str)
+            and isinstance(value.get("confidence"), str)
+            and isinstance(evidence, (list, str))
+        )
+
+    def _default_tool_call_priority(self, target: dict[str, Any]) -> int:
         try:
             priority = int(target.get("priority", 50))
         except (TypeError, ValueError):

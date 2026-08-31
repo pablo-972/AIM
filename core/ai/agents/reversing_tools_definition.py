@@ -1,16 +1,10 @@
 from typing import Any
 
-from core.ai.schemas.reversing import REVERSING_FINDING_SCHEMA
 from core.tools.reversing.agent import REVERSING_AGENT_TOOL_NAMES
-
-
-RECORD_FINDING_TOOL = "record_finding"
-FINISH_INVESTIGATION_TOOL = "finish_investigation"
 
 
 def build_reversing_tool_definitions(
     available_tools: dict[str, Any],
-    include_finding_tools: bool,
 ) -> list[dict[str, Any]]:
     definitions = []
 
@@ -22,9 +16,6 @@ def build_reversing_tool_definitions(
         definition = _tool_definition(name, specification)
         if definition is not None:
             definitions.append(definition)
-
-    if include_finding_tools:
-        definitions.extend(_finding_tool_definitions())
 
     return definitions
 
@@ -56,36 +47,6 @@ def tool_calls_to_targets(
     return targets
 
 
-def tool_call_finding(tool_calls: Any) -> dict[str, Any] | None:
-    if not isinstance(tool_calls, (list, tuple)):
-        return None
-
-    for tool_call in tool_calls:
-        if getattr(tool_call, "name", None) != RECORD_FINDING_TOOL:
-            continue
-
-        arguments = getattr(tool_call, "arguments", None)
-        if not isinstance(arguments, dict):
-            continue
-
-        finding = arguments.get("finding")
-        if isinstance(finding, dict):
-            return finding
-
-    return None
-
-
-def tool_call_finish(tool_calls: Any) -> bool:
-    if not isinstance(tool_calls, (list, tuple)):
-        return False
-
-    for tool_call in tool_calls:
-        if getattr(tool_call, "name", None) == FINISH_INVESTIGATION_TOOL:
-            return True
-
-    return False
-
-
 def _tool_definition(
     name: str,
     specification: dict[str, Any],
@@ -111,16 +72,6 @@ def _tool_definition(
         
         if parameter.get("required") is True:
             required.append(parameter_name)
-
-    properties["priority"] = {
-        "type": "integer",
-        "minimum": 1,
-        "maximum": 100,
-        "description": (
-            "Optional scheduling priority for this investigation target. "
-            "Use higher values for stronger concrete leads."
-        ),
-    }
 
     return {
         "name": name,
@@ -148,25 +99,3 @@ def _target_priority(
     return max(1, min(priority, 100)), target_arguments
 
 
-def _finding_tool_definitions() -> list[dict[str, Any]]:
-    return [
-        {
-            "name": RECORD_FINDING_TOOL,
-            "description": "Record one evidence-backed reversing finding.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "finding": REVERSING_FINDING_SCHEMA,
-                },
-                "required": ["finding"],
-            },
-        },
-        {
-            "name": FINISH_INVESTIGATION_TOOL,
-            "description": "Finish this investigation when no further action is useful.",
-            "parameters": {
-                "type": "object",
-                "properties": {},
-            },
-        },
-    ]

@@ -11,11 +11,9 @@ class ReversingEvidenceAnalyzer:
     def __init__(
         self,
         agent: ReversingAgent,
-        enrichment: str,
         available_tools: dict[str, Any],
     ) -> None:
         self.agent = agent
-        self.enrichment = enrichment
         self.available_tools = available_tools
 
     def analyze_chunk(
@@ -31,10 +29,9 @@ class ReversingEvidenceAnalyzer:
         attempts = self._attempts()
 
         for index, attempt_data in enumerate(attempts):
-            enrichment, label, attempt, total_attempts = attempt_data
+            label, attempt, total_attempts = attempt_data
             try:
                 return self._request_analysis(
-                    enrichment,
                     target,
                     observation,
                     chunk,
@@ -58,30 +55,25 @@ class ReversingEvidenceAnalyzer:
         
         return self._failed_analysis(), error
 
-    def _attempts(self) -> list[tuple[str, str, int, int]]:
-        if self.enrichment:
-            attempts = [(self.enrichment, "with enrichment", 1, 1)]
-            attempts.extend(self._fallback_attempts())
-            return attempts
-
+    def _attempts(self) -> list[tuple[str, int, int]]:
         return self._fallback_attempts()
 
-    def _fallback_attempts(self) -> list[tuple[str, str, int, int]]:
+    def _fallback_attempts(self) -> list[tuple[str, int, int]]:
         return [
-            ("", "without enrichment", attempt, FALLBACK_ANALYSIS_ATTEMPTS)
+            ("without enrichment", attempt, FALLBACK_ANALYSIS_ATTEMPTS)
             for attempt in range(1, FALLBACK_ANALYSIS_ATTEMPTS + 1)
         ]
 
     def _next_attempt(
         self,
-        attempts: list[tuple[str, str, int, int]],
+        attempts: list[tuple[str, int, int]],
         current_index: int,
     ) -> tuple[str, int, int] | None:
         next_index = current_index + 1
         if next_index >= len(attempts):
             return None
 
-        _, label, attempt, total_attempts = attempts[next_index]
+        label, attempt, total_attempts = attempts[next_index]
         return label, attempt, total_attempts
 
     def _log_retry(
@@ -99,7 +91,6 @@ class ReversingEvidenceAnalyzer:
 
     def _request_analysis(
         self,
-        enrichment: str,
         target: dict[str, Any],
         observation: dict[str, Any],
         chunk: Any,
@@ -108,7 +99,6 @@ class ReversingEvidenceAnalyzer:
         analysis_context: dict[str, Any] | None,
     ) -> dict[str, Any]:
         return self.agent.analyze_evidence(
-            enrichment=enrichment,
             target=target,
             observation=observation,
             chunk=chunk,
@@ -124,6 +114,5 @@ class ReversingEvidenceAnalyzer:
             "thinking": [],
             "confidence": "low",
             "tool_calls": [],
-            "finished": False,
             "finding": None,
         }

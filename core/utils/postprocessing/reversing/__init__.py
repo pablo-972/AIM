@@ -46,13 +46,13 @@ class ReversingPostprocessor:
     ) -> dict[str, Any]:
         return self._traces.build_decision(analysis, target, observation)
 
-    def follow_up_targets(
+    def tool_call_targets(
         self,
         analysis: dict[str, Any],
         target: dict[str, Any],
         observation: dict[str, Any],
     ) -> list[dict[str, Any]]:
-        return self._traces.build_follow_ups(analysis, target, observation)
+        return self._traces.build_tool_calls(analysis, target, observation)
 
 
 __all__ = ["ReversingPostprocessor"]

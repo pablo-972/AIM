@@ -16,13 +16,7 @@ export type TraceInput = {
   status?: string;
 };
 
-export type TraceActionExecution = {
-  tool?: string;
-  target?: string;
-  status?: string;
-};
-
-export type TraceFollowUp = {
+export type TraceToolCall = {
   tool?: string;
   target?: string;
   priority?: number;
@@ -32,9 +26,8 @@ export type TraceStep = {
   step: number;
   input?: TraceInput;
   decision?: TraceDecision;
-  action?: TraceActionExecution | null;
   finding?: unknown;
-  follow_ups?: TraceFollowUp[];
+  tool_calls?: TraceToolCall[];
   error?: string | null;
 };
 

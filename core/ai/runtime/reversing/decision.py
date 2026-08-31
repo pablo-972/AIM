@@ -84,13 +84,13 @@ class ReversingDecisionEvaluator:
                 observation,
             )
 
-            follow_ups = self.postprocessor.follow_up_targets(
+            tool_calls = self.postprocessor.tool_call_targets(
                 analysis,
                 target,
                 observation,
             )
-            added_follow_ups = self.targets.enqueue_targets(
-                follow_ups,
+            added_tool_calls = self.targets.enqueue_targets(
+                tool_calls,
                 source="native_tool_call",
             )
 
@@ -110,11 +110,11 @@ class ReversingDecisionEvaluator:
                 tool_output=tool_output,
                 input_ref=input_ref,
                 finding=finding,
-                follow_ups=added_follow_ups,
+                tool_calls=added_tool_calls,
                 error=error,
             )
 
-            if added_follow_ups and chunk_index < total_chunks:
+            if added_tool_calls and chunk_index < total_chunks:
                 self._enqueue_resume(
                     target,
                     tool_output,
@@ -174,7 +174,6 @@ class ReversingDecisionEvaluator:
             "state": state,
             "current_chunk": {
                 "tool": target.get("tool"),
-                "priority": target.get("priority"),
                 "index": chunk_index,
                 "total_chunks": total_chunks,
             },
