@@ -1,6 +1,6 @@
 {
     "disassembly": {
-        "description": "Inspect disassembled code starting from one internal code address or one recognized internal function name. Provide exactly one of address or function. Use address for address-like labels such as fcn.00401000. Use function only for a real symbolic function name. If the address belongs to a recognized internal function, the complete containing function is returned. If no containing function is recognized, a configurable forward code region is returned instead. The result includes the requested address, the function name when available, the resolved function address when available, and readable instruction lines formatted as hexadecimal address followed by instruction.",
+        "description": "Inspect disassembled code starting from one internal code address or one recognized internal function name. Provide exactly one of address or function. function is the function name returned by reversing/discovery and may use any r2 symbol format such as fcn.00401000, entry0, or method.Main.Tools.Locker.EncryptFiles. If both address and function are accidentally provided, address is used. If the address belongs to a recognized internal function, the complete containing function is returned. If no containing function is recognized, a configurable forward code region is returned instead. The result includes the requested address or function, the resolved function address when available, and readable instruction lines formatted as hexadecimal address followed by instruction.",
         "parameters": {
             "address": {
                 "description": "Internal code address, for example 0x401000, 4427076, or fcn.00401000. Do not combine with function.",
@@ -8,7 +8,7 @@
                 "required": false
             },
             "function": {
-                "description": "Recognized symbolic internal function name, for example method.Main.Tools.Locker.EncryptFiles. Do not use fcn.00401000-style address labels here; put those in address. Do not combine with address.",
+                "description": "Recognized internal function name returned by reversing/discovery, for example fcn.00401000, entry0, or method.Main.Tools.Locker.EncryptFiles. Do not combine with address.",
                 "type": "string",
                 "required": false
             }
