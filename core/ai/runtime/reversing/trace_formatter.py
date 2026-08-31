@@ -38,7 +38,7 @@ class ReversingTraceFormatter:
                 tool_output,
             ),
             "decision": self.decision(decision),
-            "finding": self.finding(finding),
+            "finding": self.finding(finding, tool_name),
             "tool_calls": self.tool_calls(tool_calls),
             "error": error or self.tool_error(tool_output),
         }
@@ -196,7 +196,11 @@ class ReversingTraceFormatter:
 
         return None
 
-    def finding(self, finding: dict[str, Any] | None) -> dict[str, Any] | None:
+    def finding(
+        self,
+        finding: dict[str, Any] | None,
+        tool_name: str | None = None,
+    ) -> dict[str, Any] | None:
         if not isinstance(finding, dict):
             return None
 
@@ -212,7 +216,7 @@ class ReversingTraceFormatter:
         if not clean_evidence:
             return None
 
-        return {
+        formatted = {
             "type": self._string_or_default(
                 finding.get("type"),
                 "reverse_engineering",
@@ -226,8 +230,18 @@ class ReversingTraceFormatter:
                 finding.get("summary"),
                 "Reversing evidence identified a relevant code region.",
             ),
-            "evidence": list(dict.fromkeys(clean_evidence)),
         }
+
+        if tool_name == "disassembly":
+            function = finding.get("function")
+            address_range = finding.get("address_range")
+            if isinstance(function, str) and function.strip():
+                formatted["function"] = function.strip()
+            if address_range is not None:
+                formatted["address_range"] = address_range
+
+        formatted["evidence"] = list(dict.fromkeys(clean_evidence))
+        return formatted
 
     def tool_calls(
         self,
