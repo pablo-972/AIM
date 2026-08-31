@@ -73,14 +73,14 @@ class Orchestrator:
         self._emit_phase_completed(event_sink, "static")
         self._notify_phase_if_enabled(
             event_sink,
-            context.static_ai,
+            context.static.ai,
             "static_inference",
             "running",
         )
         self._run_static_inference(context, results)
         self._notify_phase_if_enabled(
             event_sink,
-            context.static_ai,
+            context.static.ai,
             "static_inference",
             "completed",
         )
@@ -106,14 +106,14 @@ class Orchestrator:
         self._emit_phase_completed(event_sink, "dynamic")
         self._notify_phase_if_enabled(
             event_sink,
-            context.dynamic_ai,
+            context.dynamic.ai,
             "dynamic_inference",
             "running",
         )
         self._run_dynamic_inference(context, results)
         self._notify_phase_if_enabled(
             event_sink,
-            context.dynamic_ai,
+            context.dynamic.ai,
             "dynamic_inference",
             "completed",
         )
@@ -135,7 +135,7 @@ class Orchestrator:
         Logger.info("Running reversing phase")
         context = context or self.context
 
-        if context.reversing_agent:
+        if context.reversing.agent:
             self._run_reversing_agent(context)
         else:
             self._run_tools(
@@ -178,9 +178,12 @@ class Orchestrator:
             self.context,
             phase="static",
             func="run_static",
-            static_tools=["full"],
-            static_ai=True,
-            profile=self.context.full_static_profile,
+            static=replace(
+                self.context.static,
+                tools=("full",),
+                ai=True,
+            ),
+            profile=self.context.full.static_profile,
         )
         self.run_static_phase(static_context, persist_json=True, event_sink=event_sink)
 
@@ -192,11 +195,14 @@ class Orchestrator:
             self.context,
             phase="dynamic",
             func="run_dynamic",
-            dynamic_tools=["full"],
-            dynamic_ai=True,
-            dynamic_start=False,
-            dynamic_stop=False,
-            profile=self.context.full_dynamic_profile,
+            dynamic=replace(
+                self.context.dynamic,
+                tools=("full",),
+                ai=True,
+                start=False,
+                stop=False,
+            ),
+            profile=self.context.full.dynamic_profile,
         )
         self.run_dynamic_phase(dynamic_context, persist_json=True, event_sink=event_sink)
 
@@ -208,7 +214,7 @@ class Orchestrator:
             self.context,
             phase="enrichment",
             func="run_enrichment",
-            profile=self.context.full_enrichment_profile,
+            profile=self.context.full.enrichment_profile,
         )
         self._emit_phase_started(event_sink, "enrichment")
         self.run_enrichment_phase(enrichment_context)
@@ -222,8 +228,11 @@ class Orchestrator:
             self.context,
             phase="reversing",
             func="run_reversing",
-            reversing_tools=["full"],
-            reversing_agent=False,
+            reversing=replace(
+                self.context.reversing,
+                tools=("full",),
+                agent=False,
+            ),
             profile=None,
         )
         self._emit_phase_started(event_sink, "reverse_info")
@@ -238,9 +247,12 @@ class Orchestrator:
             self.context,
             phase="reversing",
             func="run_reversing",
-            reversing_tools=[],
-            reversing_agent=True,
-            profile=self.context.full_reversing_profile,
+            reversing=replace(
+                self.context.reversing,
+                tools=(),
+                agent=True,
+            ),
+            profile=self.context.full.reversing_profile,
         )
         self._emit_phase_started(event_sink, "reverse_agent")
         self.run_reversing_phase(agent_reversing_context)
@@ -254,7 +266,7 @@ class Orchestrator:
             self.context,
             phase="report",
             func="run_report",
-            profile=self.context.full_report_profile,
+            profile=self.context.full.report_profile,
         )
         self._emit_phase_started(event_sink, "report")
         self.run_report_phase(report_context)
@@ -287,7 +299,7 @@ class Orchestrator:
         context: AnalysisContext,
         results: dict[str, Any],
     ) -> None:
-        if not context.static_ai:
+        if not context.static.ai:
             return
 
         strings = get_static_strings_from_tool_results(results)
@@ -307,7 +319,7 @@ class Orchestrator:
         context: AnalysisContext,
         results: dict[str, Any],
     ) -> None:
-        if not context.dynamic_ai:
+        if not context.dynamic.ai:
             return
 
         Logger.info("Running dynamic AI inference")
@@ -318,7 +330,7 @@ class Orchestrator:
         Logger.success("Dynamic AI inference finished")
 
     def _run_reversing_agent(self, context: AnalysisContext) -> None:
-        if not context.reversing_agent:
+        if not context.reversing.agent:
             return
 
         Logger.info("Running AI reversing agent")

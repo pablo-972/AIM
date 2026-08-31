@@ -28,8 +28,13 @@ from config.settings import (
     ENRICHMENT_FILENAME,
 
     SHARED_FOLDER,
-
+)
+from config.env import (
+    default_vboxmanage_path,
     get_env,
+    get_env_int,
+    get_optional_env,
+    is_wsl,
 )
 
 
@@ -59,5 +64,9 @@ __all__ = [
     "ASSESSMENT_FILENAME",
     "ENRICHMENT_FILENAME",
     "SHARED_FOLDER",
+    "default_vboxmanage_path",
     "get_env",
+    "get_env_int",
+    "get_optional_env",
+    "is_wsl",
 ]
