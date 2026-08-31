@@ -1,109 +1,214 @@
 from typing import Any
 
-from core.tools.reversing.analyzers.functions import resolve_function
+from core.tools.reversing.analyzers.common import (
+    architecture_bits,
+    find_containing_internal_function,
+    first_dict,
+    format_instruction_lines,
+    format_instruction as format_radare_instruction,
+    function_address,
+    normalize_instructions,
+    ops_from_pdfj,
+    ops_from_pdj,
+    parse_radare_address,
+    resolve_internal_function,
+    target_reference,
+)
 from core.tools.reversing.analyzers.session import R2Session
+from core.utils.address import parse_address
 
 
-def disassembly(sample: str, function: str) -> dict[str, Any]:
-    details = _function_analysis(sample, function)
+PD_INSTRUCTION_WINDOW = 80
 
-    return {
-        "function": function,
+
+def disassembly(
+    sample: str,
+    address: str | None = None,
+    function: str | None = None,
+) -> dict[str, Any]:
+    details = _code_analysis(sample, address, function)
+    target = target_reference(address, function)
+
+    result = {
+        **target,
         "resolved_function": details["resolved_function"],
         "function_info": details["info"],
-        "instructions_count": len(details["instructions"]),
+        "mode": details["mode"],
+        "instructions_count": details["instructions_count"],
         "start_address": details["start_address"],
         "end_address": details["end_address"],
+        "truncated": details["truncated"],
         "instructions": details["instructions"],
     }
+    function_name = details.get("function")
+    if isinstance(function_name, str) and function_name:
+        result["function"] = function_name
+    elif "function" in result:
+        del result["function"]
+
+    return result
 
 
-def _function_analysis(sample: str, function: str) -> dict[str, Any]:
-    if not function:
-        raise ValueError("function is required")
+def _code_analysis(
+    sample: str,
+    address: str | None,
+    function: str | None,
+) -> dict[str, Any]:
+    if address and function:
+        raise ValueError("address and function cannot be combined")
+    if address:
+        return _address_analysis(sample, address)
+    if function:
+        return _function_analysis(sample, function)
 
+    raise ValueError("address or function is required")
+
+
+def _address_analysis(
+    sample: str,
+    address: str,
+) -> dict[str, Any]:
     with R2Session(sample) as r2:
-        resolved_function = resolve_function(r2, function)
+        requested_address = parse_radare_address(address)
+        containing_function = find_containing_internal_function(
+            r2,
+            requested_address,
+        )
+
+        if containing_function is None:
+            return _region_analysis(r2, requested_address)
+
+        resolved_function = function_address(containing_function)
         info = r2.cmdj(f"afij @ {resolved_function}") or []
         disasm = r2.cmdj(f"pdfj @ {resolved_function}") or {}
 
-    instructions = []
-    for op in disasm.get("ops", []):
-        instruction = {
-            "address": op.get("addr") or op.get("offset"),
-            "type": op.get("type"),
-            "opcode": op.get("opcode"),
-            "disasm": op.get("disasm"),
-            "size": op.get("size"),
-            "bytes": op.get("bytes"),
-            "jump": op.get("jump"),
-            "fail": op.get("fail"),
-            "ptr": op.get("ptr"),
-            "refptr": op.get("refptr"),
-            "refs": op.get("refs", []),
-        }
+        function_info = first_dict(info) or {}
+        ops = ops_from_pdfj(disasm)
+        bits = architecture_bits(r2, function_info)
 
-        instructions.append(instruction)
+        return _build_analysis(
+            mode="function",
+            resolved_function=resolved_function,
+            info=function_info,
+            ops=ops,
+            bits=bits,
+            truncated=False,
+        )
 
-    addresses = []
-    for instruction in instructions:
-        address = instruction.get("address")
 
-        if isinstance(address, int):
-            addresses.append(address)
+def _function_analysis(
+    sample: str,
+    function: str,
+) -> dict[str, Any]:
+    with R2Session(sample) as r2:
+        resolved_function = resolve_internal_function(r2, function)
+        info = r2.cmdj(f"afij @ {resolved_function}") or []
+        disasm = r2.cmdj(f"pdfj @ {resolved_function}") or {}
 
+        function_info = first_dict(info) or {}
+        ops = ops_from_pdfj(disasm)
+        bits = architecture_bits(r2, function_info)
+
+        return _build_analysis(
+            mode="function",
+            resolved_function=resolved_function,
+            info=function_info,
+            ops=ops,
+            bits=bits,
+            truncated=False,
+        )
+
+
+def _region_analysis(
+    r2: Any,
+    requested_address: int,
+) -> dict[str, Any]:
+    address = hex(requested_address)
+    ops = r2.cmdj(f"pdj {PD_INSTRUCTION_WINDOW} @ {address}") or []
+
+    pd_ops = ops_from_pdj(ops)
+    bits = architecture_bits(r2, None)
+
+    return _build_analysis(
+        mode="region",
+        resolved_function=None,
+        info=None,
+        ops=pd_ops,
+        bits=bits,
+        truncated=True,
+    )
+
+
+def _build_analysis(
+    mode: str,
+    resolved_function: str | None,
+    info: dict[str, Any] | None,
+    ops: list[dict[str, Any]],
+    bits: int,
+    truncated: bool,
+) -> dict[str, Any]:
+    instructions = normalize_instructions(ops)
     start_address = None
     end_address = None
-    if addresses:
-        start_address = hex(min(addresses))
-        end_address = hex(max(addresses))
 
+    if instructions:
+        first_address = instructions[0]["address"]
+        last_instruction = instructions[-1]
+        last_address = last_instruction["address"]
+        last_size = last_instruction["size"]
+        start_address = hex(first_address)
+        end_address = hex(last_address + last_size)
 
     return {
+        "mode": mode,
+        "function": _function_name(info),
         "resolved_function": resolved_function,
-        "info": info[0] if info else {},
-        "instructions": instructions,
+        "info": info,
+        "instructions_count": len(instructions),
+        "instructions": format_instruction_lines(instructions, bits),
         "start_address": start_address,
         "end_address": end_address,
+        "truncated": truncated,
     }
 
 
-# def text_disassembly(
-#     sample: str,
-#     function: str,
-# ) -> dict[str, Any]:
-#     details = _function_analysis(sample, function)
-#     ops = details["instructions"]
+def _function_name(info: dict[str, Any] | None) -> str | None:
+    if not isinstance(info, dict):
+        return None
 
-#     text_lines = []
-#     addresses = []  
+    name = info.get("name")
+    if not isinstance(name, str) or not name.strip():
+        return None
 
-#     for op in ops:
-#         address = op.get("address")
-#         disasm = op.get("disasm")
+    name = name.strip()
+    if _looks_like_generated_address_label(name):
+        return None
 
-#         if address is not None and disasm:
-#             text_lines.append(f"{address:#x}: {disasm}")
+    return name
 
-#         if isinstance(address, int):
-#             addresses.append(address)
 
-#     text = "\n".join(text_lines)
+def _looks_like_generated_address_label(name: str) -> bool:
+    if parse_address(name) is not None:
+        return True
 
-#     if addresses:
-#         start_address = hex(min(addresses))
-#         end_address = hex(max(addresses))
-#     else:
-#         start_address = details["start_address"]
-#         end_address = details["end_address"]
+    lowered = name.lower()
+    for prefix in ("fcn.", "sub."):
+        if lowered.startswith(prefix) and _is_hex_text(name[len(prefix):]):
+            return True
 
-#     return {
-#         "function": function,
-#         "resolved_function": details["resolved_function"],
-#         "function_info": details["info"],
-#         "instructions_count": len(ops),
-#         "returned_instructions": len(ops),
-#         "start_address": start_address,
-#         "end_address": end_address,
-#         "disassembly": text,
-#     }
+    return False
+
+
+def _is_hex_text(value: str) -> bool:
+    normalized = value.strip().lower()
+    if normalized.startswith("0x"):
+        normalized = normalized[2:]
+
+    return bool(normalized) and all(
+        character in "0123456789abcdef"
+        for character in normalized
+    )
+
+
+def format_instruction(address: int, instruction: str, bits: int) -> str:
+    return format_radare_instruction(address, instruction, bits)

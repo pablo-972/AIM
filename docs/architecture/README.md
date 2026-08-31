@@ -87,7 +87,7 @@ The full pipeline is explicit and sequential:
 
 ```text
 static tools
-  -> static strings inference
+  -> static inference
   -> dynamic tools
   -> dynamic inference
   -> enrichment
@@ -156,11 +156,11 @@ core/ai/runner/
 
 | Runner | Output |
 | --- | --- |
-| `StaticInferenceRunner` | `static_strings_inference.json` |
+| `StaticInferenceRunner` | `static_inference.json` |
 | `DynamicInferenceRunner` | `dynamic_inference.json` |
 | `EnrichmentAIRunner` | `enrichment.md` |
 | `ReportAIRunner` | `report.md`, `assessment.json` |
-| `ReversingAgentRunner` | `reverse_agent.json` |
+| `ReversingAgentRunner` | `reversing_agent.json` |
 
 AI runners own workflow state and persistence for their specific task. They use
 preprocessing helpers to select model inputs, call an inference/generator/agent,
@@ -278,9 +278,9 @@ evidence references, queue events, and generated prose:
 
 | Artifact | Source |
 | --- | --- |
-| `static_strings_inference.json` | Static strings inference |
+| `static_inference.json` | Static inference |
 | `dynamic_inference.json` | Dynamic behavior inference |
-| `reverse_agent.json` | Reversing agent |
+| `reversing_agent.json` | Reversing agent |
 | `enrichment.md` | Enrichment runner |
 | `report.md` | Report runner |
 | `assessment.json` | Report runner structured final assessment |

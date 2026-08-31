@@ -108,9 +108,16 @@ class OllamaProvider(BaseLLMProvider):
     ) -> LLMResponse:
         payload = self._build_payload(messages, schema, tools)
         data = self.transport.post(f"{self.base_url}/api/chat", payload)
-        content, tool_calls = self._extract_response(data, allow_empty_content)
+        content, tool_calls, thinking = self._extract_response(
+            data,
+            allow_empty_content,
+        )
 
-        return LLMResponse(content=content, tool_calls=tool_calls)
+        return LLMResponse(
+            content=content,
+            tool_calls=tool_calls,
+            thinking=thinking,
+        )
     
 
     def _build_payload(
@@ -140,6 +147,7 @@ class OllamaProvider(BaseLLMProvider):
 
         if tools:
             payload["tools"] = self._tool_payload(tools)
+            payload["think"] = True
 
         return payload
 
@@ -156,7 +164,7 @@ class OllamaProvider(BaseLLMProvider):
         self,
         data: Any,
         allow_empty_content: bool,
-    ) -> tuple[str, tuple[ToolCall, ...]]:
+    ) -> tuple[str, tuple[ToolCall, ...], tuple[str, ...]]:
         if not isinstance(data, dict):
             raise ProviderError("Ollama response must be a JSON object")
 
@@ -169,14 +177,29 @@ class OllamaProvider(BaseLLMProvider):
                 content = value
 
         tool_calls = self._extract_tool_calls(message)
+        thinking = self._extract_thinking(message) or self._extract_thinking(data)
 
-        if content.strip() or (allow_empty_content and tool_calls):
-            return content, tool_calls
+        if content.strip() or allow_empty_content:
+            return content, tool_calls, thinking
         
         diagnostics = self._response_diagnostics(data, message)
         raise ProviderError(
             "Ollama response does not contain message.content. "
             f"Diagnostics: {diagnostics}"
+        )
+
+    def _extract_thinking(self, message: Any) -> tuple[str, ...]:
+        if not isinstance(message, dict):
+            return ()
+
+        value = message.get("thinking")
+        if not isinstance(value, str):
+            return ()
+
+        return tuple(
+            line.strip()
+            for line in value.splitlines()
+            if line.strip()
         )
 
     def _extract_tool_calls(self, message: Any) -> tuple[ToolCall, ...]:

@@ -1,15 +1,24 @@
 from typing import Any
 
-from core.utils.postprocessing.reversing.actions import ReversingActionPolicy
-from core.utils.postprocessing.reversing.contracts import (
-    NO_TOOL_ACTIONS,
-    is_empty_code_observation,
-)
+from core.utils.postprocessing.reversing.contracts import is_empty_code_observation
+
+REVERSING_INVESTIGATION_TOOL_NAMES = {
+    "disassembly",
+    "callers",
+    "callees",
+    "inspect_section",
+    "string_xrefs",
+    "import_xrefs",
+    "list_imports",
+    "list_functions",
+    "list_sections",
+    "list_entrypoints",
+}
 
 
 class ReversingTraceBuilder:
-    def __init__(self, action_policy: ReversingActionPolicy) -> None:
-        self.action_policy = action_policy
+    def __init__(self) -> None:
+        pass
 
     def build_decision(
         self,
@@ -17,65 +26,61 @@ class ReversingTraceBuilder:
         target: dict[str, Any],
         observation: dict[str, Any],
     ) -> dict[str, Any]:
-        next_action, _ = self.action_policy.next_action(
-            analysis,
-            target,
-            observation,
-        )
-
-        trace_action = (
-            next_action
-            if next_action in NO_TOOL_ACTIONS
-            else target.get("tool")
-        )
-
-        parameters = {}
-        if trace_action not in NO_TOOL_ACTIONS:
-            parameters = target.get("parameters")
-
-        thought = self._thought(analysis.get("thought"), observation)
+        summary = self._summary(analysis.get("summary"), observation)
+        thinking = analysis.get("thinking")
+        if not isinstance(thinking, list):
+            thinking = []
         confidence = analysis.get("confidence", "low")
 
         return {
-            "thought": thought,
+            "thinking": thinking,
+            "summary": summary,
             "confidence": confidence,
-            "action": trace_action,
-            "parameters": parameters,
         }
 
-    def build_follow_up(
+    def build_tool_calls(
         self,
         analysis: dict[str, Any],
         target: dict[str, Any],
         observation: dict[str, Any],
-    ) -> dict[str, Any] | None:
-        action, parameters = self.action_policy.next_action(
-            analysis,
-            target,
+    ) -> list[dict[str, Any]]:
+        tool_calls = analysis.get("tool_calls")
+        if not isinstance(tool_calls, list):
+            return []
+
+        normalized_tool_calls = []
+        for tool_call in tool_calls:
+            if not isinstance(tool_call, dict):
+                continue
+
+            tool = tool_call.get("tool")
+            parameters = tool_call.get("parameters")
+            if (
+                tool not in REVERSING_INVESTIGATION_TOOL_NAMES
+                or not isinstance(parameters, dict)
+            ):
+                continue
+
+            normalized_tool_call = {
+                "tool": tool,
+                "parameters": parameters,
+                "priority": self._priority(tool_call, target),
+            }
+            normalized_tool_calls.append(normalized_tool_call)
+
+        return normalized_tool_calls
+    
+    def _summary(self, summary: Any, observation: dict[str, Any]) -> str:
+        normalized = summary.strip() if isinstance(summary, str) else ""
+        normalized = self._strip_message_content_prefix(normalized)
+
+        if not normalized:
+            return "No decision summary was recorded."
+
+        correction = self._correct_contradictory_summary(
+            normalized,
             observation,
         )
-
-        if action in NO_TOOL_ACTIONS:
-            return None
-
-        thought = analysis.get("thought")
-        reason = self._thought(thought, observation)
-        
-        if not reason:
-            tool = target.get("tool")
-            reason = f"Follow code evidence from {tool}."
-
-        return {
-            "tool": action,
-            "parameters": parameters,
-            "priority": min(100, target["priority"] + 5),
-            "reason": reason
-        }
-    
-    def _thought(self, thought: Any, observation: dict[str, Any]) -> str:
-        normalized = str(thought or "").strip()
-
-        correction = self._correct_contradictory_thought(normalized, observation)
         if correction:
             return correction
 
@@ -83,13 +88,32 @@ class ReversingTraceBuilder:
             return "No instructions were returned; no code conclusion was made."
 
         return normalized
-    
-    def _correct_contradictory_thought(
+
+    def _priority(
         self,
-        thought: str,
+        tool_call: dict[str, Any],
+        target: dict[str, Any],
+    ) -> int:
+        try:
+            current_priority = int(target.get("priority", 50))
+        except (TypeError, ValueError):
+            current_priority = 50
+
+        default = min(100, current_priority + 10)
+
+        try:
+            priority = int(tool_call.get("priority", default))
+        except (TypeError, ValueError):
+            priority = default
+
+        return max(1, min(priority, 100))
+    
+    def _correct_contradictory_summary(
+        self,
+        summary: str,
         observation: dict[str, Any],
     ) -> str | None:
-        lower = thought.lower()
+        lower = summary.lower()
 
         if self._contradicts_matches(lower, observation):
             return (
@@ -105,24 +129,31 @@ class ReversingTraceBuilder:
 
         return None
 
-    def _contradicts_matches(self, thought: str, observation: dict[str, Any]) -> bool:
+    def _contradicts_matches(self, summary: str, observation: dict[str, Any]) -> bool:
         matches_count = observation.get("matches_count")
 
         return (
             isinstance(matches_count, int)
             and matches_count > 0
-            and self._contains_any(thought, ("no match", "none were found"))
+            and self._contains_any(summary, ("no match", "none were found"))
         )
 
-    def _contradicts_xrefs(self, thought: str, observation: dict[str, Any]) -> bool:
+    def _contradicts_xrefs(self, summary: str, observation: dict[str, Any]) -> bool:
         xrefs_count = observation.get("xrefs_count")
 
         return (
             isinstance(xrefs_count, int)
             and xrefs_count > 0
-            and self._contains_any(thought, ("no cross-reference", "no xref"))
+            and self._contains_any(summary, ("no cross-reference", "no xref"))
         )
 
     def _contains_any(self, text: str, phrases: tuple[str, ...]) -> bool:
         return any(phrase in text for phrase in phrases)
+
+    def _strip_message_content_prefix(self, summary: str) -> str:
+        prefix = "message.content:"
+        if summary.lower().startswith(prefix):
+            return summary[len(prefix):].lstrip()
+
+        return summary
 

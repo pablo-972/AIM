@@ -1,11 +1,13 @@
 from typing import Any
 
 from core.utils.postprocessing.reversing.contracts import CODE_FOLLOW_UP_TOOLS
+from core.utils.address import format_address
 
 
 class ReversingObservationBuilder:
     SCALAR_FIELDS = (
         "query",
+        "address",
         "function",
         "resolved_function",
         "start_address",
@@ -29,8 +31,8 @@ class ReversingObservationBuilder:
             parameters = {}
 
         if tool_name in CODE_FOLLOW_UP_TOOLS:
-            input_type = "function"
-            value = parameters.get("function")
+            input_type = "code_address"
+            value = parameters.get("address") or parameters.get("function")
         elif tool_name == "string_xrefs":
             input_type = "string_xref"
             value = parameters.get("value")
@@ -73,8 +75,7 @@ class ReversingObservationBuilder:
         code_targets.extend(self._summarize_callees(data, summary))
 
         if tool_name == "disassembly":
-            function = data.get("resolved_function") or data.get("function")
-            candidate = self._format_address(function)
+            candidate = format_address(data.get("resolved_function"))
 
             if candidate:
                 code_targets.append(candidate)
@@ -83,14 +84,22 @@ class ReversingObservationBuilder:
         return summary
 
 
-    def _copy_scalar_fields(self, data: dict[str, Any], summary: dict[str, Any]) -> None:
+    def _copy_scalar_fields(
+        self, 
+        data: dict[str, Any], 
+        summary: dict[str, Any],
+    ) -> None:
         for key in self.SCALAR_FIELDS:
             value = data.get(key)
 
             if value is not None and not isinstance(value, (dict, list)):
                 summary[key] = value
 
-    def _summarize_matches(self, data: dict[str, Any], summary: dict[str, Any]) -> list[str]:
+    def _summarize_matches(
+        self, 
+        data: dict[str, Any], 
+        summary: dict[str, Any],
+    ) -> list[str]:
         matches = data.get("matches")
         if not isinstance(matches, list):
             return []
@@ -113,12 +122,35 @@ class ReversingObservationBuilder:
 
         return code_targets
 
-    def _summarize_instructions(self, data: dict[str, Any], summary: dict[str, Any]) -> None:
+    def _summarize_instructions(
+        self, 
+        data: dict[str, Any], 
+        summary: dict[str, Any],
+    ) -> None:
         instructions = data.get("instructions")
+        if isinstance(instructions, str):
+            lines = []
+            
+            for line in instructions.splitlines():
+                if line.strip():
+                    lines.append(line)
+
+            summary.setdefault("instructions_count", len(lines))
+            return
+
         if not isinstance(instructions, list):
             return
 
         summary.setdefault("instructions_count", len(instructions))
+
+        invalid_instruction = False
+        for instruction in instructions:
+            if not isinstance(instruction, str):
+                invalid_instruction = True
+                break
+
+        if not invalid_instruction:
+            return
 
         addresses = []
         for instruction in instructions:
@@ -132,7 +164,11 @@ class ReversingObservationBuilder:
             summary["start_address"] = hex(min(addresses))
             summary["end_address"] = hex(max(addresses))
 
-    def _summarize_callers(self, data: dict[str, Any], summary: dict[str, Any]) -> list[str]:
+    def _summarize_callers(
+        self, 
+        data: dict[str, Any], 
+        summary: dict[str, Any],
+    ) -> list[str]:
         callers = data.get("callers")
         if not isinstance(callers, list):
             return []
@@ -141,7 +177,11 @@ class ReversingObservationBuilder:
         
         return self._code_targets_from_xrefs(callers)
 
-    def _summarize_callees(self, data: dict[str, Any], summary: dict[str, Any]) -> list[str]:
+    def _summarize_callees(
+        self, 
+        data: dict[str, Any], 
+        summary: dict[str, Any],
+    ) -> list[str]:
         callees = data.get("callees")
         if not isinstance(callees, list):
             return []
@@ -154,7 +194,7 @@ class ReversingObservationBuilder:
                 continue
             
             address = callee.get("target_address") or callee.get("callee")
-            candidate = self._format_address(address)
+            candidate = format_address(address)
 
             if candidate:
                 targets.append(candidate)
@@ -171,23 +211,13 @@ class ReversingObservationBuilder:
             if not isinstance(value, dict):
                 continue
 
-            function = value.get("fcn_name") or value.get("function")
             address = value.get("from") or value.get("address")
-            target = self._format_address(function) or self._format_address(address)
+            target = format_address(address)
 
             if target and target not in targets:
                 targets.append(target)
 
         return targets
-
-    def _format_address(self, value: Any) -> str | None:
-        if isinstance(value, int):
-            return hex(value)
-        
-        if isinstance(value, str) and value:
-            return value
-        
-        return None
 
     def _unique(self, values: list[str]) -> list[str]:
         return list(dict.fromkeys(values))

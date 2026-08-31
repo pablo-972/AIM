@@ -69,7 +69,7 @@ VBOXMANAGE_PATH = get_env("AIM_VBOXMANAGE_PATH") or default_vboxmanage_path()
 
 # Filenames
 RESULT_FILENAME = "analysis.json"
-STATIC_STRINGS_INFERENCE_RESULT_FILENAME = "static_strings_inference.json"
+STATIC_INFERENCE_RESULT_FILENAME = "static_inference.json"
 DYNAMIC_INFERENCE_RESULT_FILENAME = "dynamic_inference.json"
 DYNAMIC_JOB_FILENAME = "job.json"
 REVERSING_AGENT_RESULT_FILENAME = "reversing_agent.json"
@@ -79,4 +79,3 @@ ENRICHMENT_FILENAME = "enrichment.md"
 
 # Folders
 SHARED_FOLDER = "shared"
-

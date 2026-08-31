@@ -1,28 +1,40 @@
 export type TraceDecision = {
-  thought?: string;
+  thought?: string | null;
+  thinking?: string[];
+  summary?: string;
   confidence?: string;
   action?: string;
   parameters?: Record<string, unknown>;
 };
 
-export type TraceToolExecution = {
-  name?: string;
+export type TraceInput = {
+  type?: string;
+  tool?: string;
+  target?: string;
+  chunk?: number;
+  total_chunks?: number;
   status?: string;
-  output?: unknown;
+};
+
+export type TraceToolCall = {
+  tool?: string;
+  target?: string;
+  priority?: number;
 };
 
 export type TraceStep = {
   step: number;
-  input?: unknown;
+  input?: TraceInput;
   decision?: TraceDecision;
-  tool?: TraceToolExecution;
   finding?: unknown;
+  tool_calls?: TraceToolCall[];
   error?: string | null;
 };
 
 export type AgentTrace = {
   agent?: string;
   status?: string;
+  state?: unknown;
   steps?: TraceStep[];
   findings?: unknown[];
   queue?: unknown[];

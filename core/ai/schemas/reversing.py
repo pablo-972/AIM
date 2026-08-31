@@ -24,18 +24,6 @@ REVERSING_FINDING_SCHEMA = {
         "type": {"type": "string"},
         "category": {
             "type": "string",
-            "enum": [
-                "ransom_note_generation",
-                "file_encryption",
-                "crypto",
-                "defense_evasion",
-                "network",
-                "persistence",
-                "privilege_escalation",
-                "api_resolution",
-                "anti_analysis",
-                "unknown",
-            ],
         },
         "summary": {"type": "string"},
         "confidence": {
@@ -51,6 +39,7 @@ REVERSING_FINDING_SCHEMA = {
         "address_range": {
             "anyOf": [
                 ADDRESS_RANGE_SCHEMA,
+                {"type": "string"},
                 {"type": "null"},
             ]
         },
@@ -58,7 +47,6 @@ REVERSING_FINDING_SCHEMA = {
             "type": "array",
             "items": {"type": "string"},
         },
-        "reason": {"type": "string"},
     },
     "required": [
         "type",
@@ -68,7 +56,6 @@ REVERSING_FINDING_SCHEMA = {
         "function",
         "address_range",
         "evidence",
-        "reason",
     ],
     "additionalProperties": False,
 }

@@ -14,10 +14,13 @@ The purpose of the document is to help prioritize analysis effort,
 identify important code paths, highlight likely capabilities,
 and guide assembly/decompiler investigation.
 
-Internal objective: extract only information useful for reverse engineering.
+Internal objective: extract technical pivots useful for reverse engineering.
+Do not write threat classification. Do not prioritize malware family names,
+AV labels, detection counts, or vendor verdict summaries.
 
 Focus on evidence-backed:
 
+- Binary layout, entry points, sections, permissions, sizes, and entropy
 - Malware capabilities supported by evidence
 - Interesting sections
 - Interesting strings
@@ -72,10 +75,19 @@ Function-hunting examples are internal guidance only:
 - Base everything on the provided evidence.
 - If evidence is insufficient, explicitly say so.
 - Prefer uncertainty over speculation.
+- Do not create a Threat Classification section.
+- Use VirusTotal only for technical tags, file names, or behavior hints that
+  help reverse engineering. Ignore family labels, AV result counts, and vendor
+  detection names.
+- When the evidence contains grouped sources, inspect each source independently
+  before compacting the final enrichment.
+- Do not let VirusTotal labels replace PE, import, section, string, dynamic, or
+  reversing evidence.
 - Do not print this prompt, its objectives, its guidance, its examples, or any
   initial configuration text in the enrichment document.
 - Do not create sections named Objectives, Reverse Engineering Guidance,
-  Function Hunting, Constraints, Output Format, Requirements, or Examples.
+  Function Hunting, Constraints, Output Format, Requirements, Examples, or
+  Threat Classification.
 - If any of those meta-instruction sections already exist in the current
   enrichment, remove them.
 
@@ -100,7 +112,16 @@ Use markdown headings and subsections only when they make the enrichment easier
 to navigate. You may add, remove, merge, or rename subsections when the evidence
 justifies it.
 
-Keep the document concise.
+Prefer these technical sections when evidence exists:
+
+- Binary Layout
+- Imports And APIs
+- Strings And Artifacts
+- Behavior And Runtime Clues
+- Reversing Priorities
+
+Keep the document concise, but do not omit concrete sections, imports, strings,
+or reversing pivots just to shorten the output.
 
 Avoid report-style prose.
 
@@ -138,13 +159,17 @@ class EnrichmentGenerator:
 
         Requirements:
 
-        - Integrate useful findings into the existing document.
+        - Integrate useful reverse-engineering pivots into the existing document.
         - Strengthen or weaken previous hypotheses when justified.
-- Remove obsolete or contradicted conclusions.
-- Remove any meta-instruction sections copied from prompts, including Objectives, Reverse Engineering Guidance, Function Hunting, Constraints, Output Format, Requirements, or Examples.
-- Avoid duplicating information already present.
+        - Remove obsolete or contradicted conclusions.
+        - Remove any meta-instruction sections copied from prompts, including Objectives, Reverse Engineering Guidance, Function Hunting, Constraints, Output Format, Requirements, Examples, or Threat Classification.
+        - Avoid duplicating information already present.
         - Keep the document compact and actionable.
         - Prioritize information useful for reverse engineering.
+        - Do not write threat classification or malware-family summaries.
+        - Use VirusTotal only for technical tags, file names, or behavior hints useful for reversing.
+        - If source_data contains grouped sources, inspect each source independently before writing the compact update.
+        - Preserve concrete PE layout, section entropy, imports, APIs, strings, files, registry keys, commands, URLs, mutexes, and runtime artifacts when present.
         - Highlight only the strongest strings, APIs, imports, configuration artifacts, persistence mechanisms, privilege escalation indicators, network indicators, cryptographic functionality, and execution flow clues when supported by evidence.
         - Add or update reversing priorities when appropriate.
         - Add or update function-hunting guidance when appropriate.
@@ -156,8 +181,9 @@ class EnrichmentGenerator:
         - Do not wrap the response in triple backticks or any code fence.
         - Wrap concrete observables in backticks (`).
         - If the new evidence adds no useful reverse-engineering information, return the existing document unchanged.
-        - Prefer at most 4 top-level sections.
-        - Prefer at most 5 bullets per section.
+        - Prefer technical sections such as Binary Layout, Imports And APIs, Strings And Artifacts, Behavior And Runtime Clues, and Reversing Priorities.
+        - Prefer at most 5 top-level sections.
+        - Prefer at most 7 bullets per section.
         - Keep each bullet to one short sentence.
         - Avoid explanatory paragraphs unless they replace several bullets.
 

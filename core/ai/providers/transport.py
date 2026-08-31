@@ -7,7 +7,7 @@ import requests
 from core.exceptions import ProviderError
 
 
-DEFAULT_TIMEOUT = 120
+DEFAULT_TIMEOUT = 300
 DEFAULT_MAX_RETRIES = 4
 DEFAULT_MIN_REQUEST_INTERVAL = 5.0
 MAX_RETRY_DELAY = 60.0

@@ -9,7 +9,7 @@ from config import (
     REPORT_FILENAME,
     RESULT_FILENAME,
     REVERSING_AGENT_RESULT_FILENAME,
-    STATIC_STRINGS_INFERENCE_RESULT_FILENAME,
+    STATIC_INFERENCE_RESULT_FILENAME,
 )
 from core.utils.crypto import sha256_file
 from backend.analysis.service import AnalysisService
@@ -170,7 +170,7 @@ def get_static_inference(sha256: str) -> dict[str, Any]:
     return json_artifact(
         service, 
         sha256, 
-        STATIC_STRINGS_INFERENCE_RESULT_FILENAME,
+        STATIC_INFERENCE_RESULT_FILENAME,
     )
 
 

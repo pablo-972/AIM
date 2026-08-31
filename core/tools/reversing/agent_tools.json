@@ -1,29 +1,44 @@
 {
     "disassembly": {
-        "description": "Return function details and complete structured disassembly instructions for one function.",
+        "description": "Inspect disassembled code starting from one internal code address or one recognized internal function name. Provide exactly one of address or function. function is the function name returned by reversing/discovery and may use any r2 symbol format such as fcn.00401000, entry0, or method.Main.Tools.Locker.EncryptFiles. If both address and function are accidentally provided, address is used. If the address belongs to a recognized internal function, the complete containing function is returned. If no containing function is recognized, a configurable forward code region is returned instead. The result includes the requested address or function, the resolved function address when available, and readable instruction lines formatted as hexadecimal address followed by instruction.",
         "parameters": {
-            "function": {
-                "description": "Function name or address.",
+            "address": {
+                "description": "Internal code address, for example 0x401000, 4427076, or fcn.00401000. Do not combine with function.",
                 "type": "string",
-                "required": true
+                "required": false
+            },
+            "function": {
+                "description": "Recognized internal function name returned by reversing/discovery, for example fcn.00401000, entry0, or method.Main.Tools.Locker.EncryptFiles. Do not combine with address.",
+                "type": "string",
+                "required": false
             }
         }
     },
     "callers": {
-        "description": "Return callers of one function.",
+        "description": "Return callers of one internal code address.",
         "parameters": {
-            "function": {
-                "description": "Function name or address.",
+            "address": {
+                "description": "Internal code address, for example 0x401000, 4427076, or fcn.00401000.",
                 "type": "string",
                 "required": true
             }
         }
     },
     "callees": {
-        "description": "Return callees of one function.",
+        "description": "Return callees of one internal code address.",
         "parameters": {
-            "function": {
-                "description": "Function name or address.",
+            "address": {
+                "description": "Internal code address, for example 0x401000, 4427076, or fcn.00401000.",
+                "type": "string",
+                "required": true
+            }
+        }
+    },
+    "inspect_section": {
+        "description": "Inspect one binary section and return a bounded overview of its metadata, counts, and previews.",
+        "parameters": {
+            "section": {
+                "description": "Section name, for example .text, .rdata, .data, or .rsrc.",
                 "type": "string",
                 "required": true
             }
@@ -48,5 +63,21 @@
                 "required": true
             }
         }
+    },
+    "list_imports": {
+        "description": "List available imports compactly. Use this for discovery when available APIs are unknown or enrichment is weak.",
+        "parameters": {}
+    },
+    "list_functions": {
+        "description": "List recognized internal functions compactly without disassembly. Use this for discovery when internal code candidates are needed.",
+        "parameters": {}
+    },
+    "list_sections": {
+        "description": "List binary sections compactly with address, size, and permissions. Use this for discovery when binary layout is needed.",
+        "parameters": {}
+    },
+    "list_entrypoints": {
+        "description": "List recognized entrypoints compactly. Use this for discovery when additional execution starts are needed.",
+        "parameters": {}
     }
 }

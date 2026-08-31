@@ -5,12 +5,15 @@ from core.exceptions import CLIValidationError
 
 REVERSING_TOOLS = [
     "info",
+    "entrypoints",
     "imports",
+    "sections",
+    "inspect-section",
     "functions",
     "details",
     "strings",
     "disasm",
-    "xrefs",
+    "address-xrefs",
     "string-xrefs",
     "import-xrefs",
     "callers",
@@ -42,14 +45,24 @@ def validate_reversing_args(args: argparse.Namespace) -> None:
     function_tools = {
         "details",
         "disasm",
-        "xrefs",
         "callers",
         "callees",
     }
 
+    if args.function and args.address:
+        raise CLIValidationError("--function and --address cannot be combined")
+
     for tool in function_tools:
-        if tool in selected_tools and not args.function:
-            raise CLIValidationError(f"reversing {tool} requires --function")
+        if tool in selected_tools and not (args.function or args.address):
+            raise CLIValidationError(
+                f"reversing {tool} requires --function or --address"
+            )
+
+    if "address-xrefs" in selected_tools and not args.address:
+        raise CLIValidationError("reversing address-xrefs requires --address")
+
+    if "inspect-section" in selected_tools and not args.section:
+        raise CLIValidationError("reversing inspect-section requires --section")
     
     if "string-xrefs" in selected_tools and not args.value:
         raise CLIValidationError("reversing string-xrefs requires --value")
@@ -78,11 +91,19 @@ def add_reversing_module(
     )
     parser.add_argument(
         "--function",
-        help="Function name or address",
+        help="Internal function name from the analyzed sample",
+    )
+    parser.add_argument(
+        "--address",
+        help="Radare2 code address, for example 0x401000 or fcn.00401000",
     )
     parser.add_argument(
         "--value",
         help="String/import/address value used by xref-style modes",
+    )
+    parser.add_argument(
+        "--section",
+        help="Section name used by section inspection modes, for example .text",
     )
     parser.add_argument(
         "--agent",
@@ -100,7 +121,7 @@ def add_reversing_module(
         "--max-targets",
         dest="reversing_max_targets",
         type=int,
-        default=12,
+        default=20,
         help="Maximum number of unique targets executed by the reversing agent",
     )
 

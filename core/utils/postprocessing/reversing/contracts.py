@@ -2,8 +2,14 @@ from typing import Any
 
 
 NO_TOOL_ACTIONS = {"none", "finish"}
-CODE_FOLLOW_UP_TOOLS = {"disassembly", "callers", "callees"}
-XREF_TOOLS = {"string_xrefs", "import_xrefs"}
+CODE_FOLLOW_UP_TOOLS = {
+    "disassembly",
+    "callers",
+    "callees",
+    "inspect_section",
+    "import_xrefs",
+    "string_xrefs",
+}
 
 
 def is_empty_code_observation(observation: dict[str, Any]) -> bool:

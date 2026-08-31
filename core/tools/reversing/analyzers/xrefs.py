@@ -1,17 +1,19 @@
 from typing import Any
 
+from core.tools.reversing.analyzers.common import parse_radare_address
 from core.tools.reversing.analyzers.session import R2Session
 
 
-def xrefs(sample: str, function: str) -> dict[str, Any]:
-    if not function:
-        raise ValueError("function is required")
+def address_xrefs(sample: str, address: str) -> dict[str, Any]:
+    parsed_address = parse_radare_address(address)
+    resolved_address = hex(parsed_address)
 
     with R2Session(sample) as r2:
-        refs = r2.cmdj(f"axtj @ {function}") or []
+        refs = r2.cmdj(f"axtj @ {resolved_address}") or []
 
     return {
-        "function": function,
+        "address": address,
+        "resolved_address": resolved_address,
         "xrefs": _normalize_xrefs(refs),
     }
 
@@ -30,12 +32,12 @@ def string_xrefs(
 
     with R2Session(sample) as r2:
         items = r2.cmdj(command) or []
-        
-        matches = [
-            item
-            for item in items
-            if query in str(item.get("string", "")).lower()
-        ]
+        matches: list[dict[str, Any]] = []
+
+        for item in items:
+            text = str(item.get("string", "")).lower()
+            if query in text:
+                matches.append(item)
 
         for item in matches:
             address = item.get("vaddr") or item.get("paddr")
@@ -68,13 +70,14 @@ def import_xrefs(sample: str, import_name: str) -> dict[str, Any]:
 
     with R2Session(sample) as r2:
         items = r2.cmdj("iij") or []
+        matches: list[dict[str, Any]] = []
 
-        matches = [
-            item
-            for item in items
-            if query in str(item.get("name", "")).lower()
-            or query in str(item.get("libname", "")).lower()
-        ]
+        for item in items:
+            name = str(item.get("name", "")).lower()
+            library = str(item.get("libname", "")).lower()
+
+            if query in name or query in library:
+                matches.append(item)
 
         for item in matches:
             address = item.get("plt") or item.get("vaddr") or item.get("offset")
@@ -99,13 +102,17 @@ def import_xrefs(sample: str, import_name: str) -> dict[str, Any]:
 
 
 def _normalize_xrefs(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    return [
-        {
+    normalized_items: list[dict[str, Any]] = []
+
+    for item in items:
+        normalized_item = {
             "from": item.get("from"),
             "to": item.get("to"),
             "type": item.get("type"),
             "opcode": item.get("opcode"),
             "function": item.get("fcn_name"),
         }
-        for item in items
-    ]
+
+        normalized_items.append(normalized_item)
+
+    return normalized_items

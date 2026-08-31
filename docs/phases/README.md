@@ -9,7 +9,7 @@ guidance, or the final report.
 
 ```mermaid
 flowchart LR
-    Static[Static analysis] --> StaticAI[Static strings inference]
+    Static[Static analysis] --> StaticAI[Static inference]
     StaticAI --> Dynamic[Dynamic analysis]
     Dynamic --> DynamicAI[Dynamic behavior inference]
     DynamicAI --> Enrichment[Enrichment]
@@ -36,9 +36,9 @@ For the tool implementation pattern and the tools available in each phase, see
 | Artifact | Produced by |
 | --- | --- |
 | `analysis.json` | Deterministic static, dynamic, and reversing evidence |
-| `static_strings_inference.json` | Static strings inference |
+| `static_inference.json` | Static inference |
 | `dynamic_inference.json` | Dynamic behavior inference |
 | `enrichment.md` | Enrichment phase |
-| `reverse_agent.json` | Agentic reverse engineering |
+| `reversing_agent.json` | Agentic reverse engineering |
 | `report.md` | Report phase |
 | `assessment.json` | Structured report assessment |

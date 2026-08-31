@@ -1,43 +1,21 @@
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import Any
 
 from core.utils.logger import Logger
 from core.utils.postprocessing.reversing import ReversingPostprocessor
 from core.ai.runtime.executor import AgentStepExecutor
-
-if TYPE_CHECKING:
-    from core.ai.runtime.memory import TraceMemory
-    from core.ai.runtime.reversing.targets import ReversingTargetQueue
-
-
-class ReversingToolExecutor(Protocol):
-    def execute(
-        self,
-        tool_name: str,
-        parameters: dict[str, Any] | None = None,
-        context: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
-        ...
-
-
-class EvidenceEvaluator(Protocol):
-    def evaluate(
-        self,
-        target: dict[str, Any],
-        tool_output: dict[str, Any],
-    ) -> None:
-        ...
+from core.utils.address import parse_address
 
 
 class ReversingExplorationLoop:
     def __init__(
         self,
         max_targets: int,
-        targets: "ReversingTargetQueue",
-        tool_runner: ReversingToolExecutor,
+        targets: Any,
+        tool_runner: Any,
         step_executor: AgentStepExecutor,
-        evaluator: EvidenceEvaluator,
+        evaluator: Any,
         postprocessor: ReversingPostprocessor,
-        memory: "TraceMemory",
+        memory: Any,
     ) -> None:
         self.max_targets = max_targets
         self.targets = targets
@@ -46,27 +24,95 @@ class ReversingExplorationLoop:
         self.evaluator = evaluator
         self.postprocessor = postprocessor
         self.memory = memory
+        self.analyzed_functions: set[str] = set()
 
     def run(self) -> None:
-        while (
-            self.targets.has_items()
-            and self.targets.visited_count() < self.max_targets
-        ):
-            target = self.targets.pop()
+        global_review_targets = 0
+
+        while True:
+            if not self.targets.has_items():
+                added_targets = self.evaluator.review_global_state()
+                if added_targets:
+                    global_review_targets += added_targets
+                    continue
+                break
+
+            if (
+                self.targets.visited_count() >= self.max_targets
+                and global_review_targets <= 0
+            ):
+                if not self.targets.has_resume():
+                    break
+
+                target = self.targets.pop_resume()
+                if target is None:
+                    break
+            else:
+                target = self.targets.pop()
+                if global_review_targets > 0:
+                    global_review_targets -= 1
+
+            if target.get("_resume") is True:
+                self.evaluator.resume(target)
+                continue
+
             Logger.info(
                 f"Reversing agent target: {target['tool']} "
                 f"({self.targets.visited_count()}/{self.max_targets})"
             )
+
             tool_output = self.step_executor.execute_tool(
                 target["tool"],
                 target["parameters"],
                 self.tool_runner.execute,
             )
 
-            if tool_output.get("success") is True:
-                self.evaluator.evaluate(target, tool_output)
-            else:
+            if tool_output.get("success") is not True:
                 self._record_failure(target, tool_output)
+                continue
+
+            if self._already_analyzed_function(target, tool_output):
+                continue
+
+            self.evaluator.evaluate(target, tool_output)
+
+    def _already_analyzed_function(
+        self,
+        target: dict[str, Any],
+        tool_output: dict[str, Any],
+    ) -> bool:
+        if target.get("tool") != "disassembly":
+            return False
+
+        function_key = self._resolved_function_key(tool_output)
+        if function_key is None:
+            return False
+
+        if function_key not in self.analyzed_functions:
+            self.analyzed_functions.add(function_key)
+            return False
+
+        parameters = target.get("parameters", {})
+        requested_address = parameters.get("address")
+
+        Logger.info(
+            "Skipping disassembly analysis for "
+            f"{requested_address}: function {function_key} was already analyzed"
+        )
+
+        return True
+
+    def _resolved_function_key(self, tool_output: dict[str, Any]) -> str | None:
+        data = tool_output.get("data")
+        if not isinstance(data, dict):
+            return None
+
+        function = data.get("resolved_function") or data.get("function")
+        address = parse_address(function)
+        if address is None:
+            return None
+
+        return hex(address)
 
     def _record_failure(
         self,
@@ -75,12 +121,12 @@ class ReversingExplorationLoop:
     ) -> None:
         self.memory.record(
             decision={
-                "thought": target["reason"],
+                "summary": "Tool execution failed for the selected reversing target.",
+                "thinking": [],
                 "confidence": "low",
-                "action": target["tool"],
-                "parameters": target["parameters"],
             },
             tool_name=target["tool"],
+            tool_parameters=target["parameters"],
             tool_output=tool_output,
             input_ref=self.postprocessor.input_ref(target),
         )

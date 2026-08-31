@@ -77,7 +77,7 @@ class Orchestrator:
             "static_inference",
             "running",
         )
-        self._run_static_strings_inference(context, results)
+        self._run_static_inference(context, results)
         self._notify_phase_if_enabled(
             event_sink,
             context.static_ai,
@@ -282,7 +282,7 @@ class Orchestrator:
         Logger.success("Tools executed successfully")
         return results
 
-    def _run_static_strings_inference(
+    def _run_static_inference(
         self,
         context: AnalysisContext,
         results: dict[str, Any],
@@ -295,12 +295,12 @@ class Orchestrator:
             Logger.warning("No parsed strings found. Skipping static AI inference.")
             return
 
-        Logger.info("Running static strings AI inference")
+        Logger.info("Running static AI inference")
         model = self._get_model_registry()
         static_inference_runner = StaticInferenceRunner(context, model, strings)
         static_inference_runner.run()
 
-        Logger.success("Static strings AI inference finished")
+        Logger.success("Static AI inference finished")
 
     def _run_dynamic_inference(
         self,

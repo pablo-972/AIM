@@ -115,6 +115,17 @@ with:
   "decryption_instruction", "extortion_warning", or "contact_instruction".
 - tone: a concise label such as "extortion", "threatening", "instructional",
   "coercive", or "neutral".
+- summary: one short sentence explaining the finding.
+- evidence: only the minimal exact input strings that directly support the
+  finding.
+
+When producing a finding, include only strings copied verbatim from the supplied
+input chunk.
+Do not copy the complete input chunk.
+Do not include unrelated surrounding strings.
+Do not include technical/runtime strings that do not directly support the
+finding.
+Evidence must be verbatim evidence from the supplied input, not a paraphrase.
 
 If the block is not relevant, return finding=null.
 
@@ -133,7 +144,7 @@ class StaticInference:
         Task:
         Inspect this strings chunk and decide whether the chunk contains
         victim-facing threat actor messages. If it does, classify the message.
-        Do not extract or return individual lines.
+        Return only the exact strings that directly support the finding.
 
         Strings chunk:
         {json.dumps(strings_chunk, ensure_ascii=False)}

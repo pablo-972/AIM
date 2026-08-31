@@ -10,29 +10,41 @@ from core.ai.agents.reversing import ReversingAgent
 from core.ai.model_registry import ModelRegistry
 from core.ai.runner.base import BaseAIRunner
 from core.ai.runtime.executor import AgentStepExecutor
-from core.ai.runtime.memory import TraceMemory
-from core.ai.runtime.reversing.evidence import ReversingEvidenceEvaluator
+from core.ai.runtime.reversing.analysis import ReversingEvidenceAnalyzer
+from core.ai.runtime.reversing.memory import ReversingAgentMemory
+from core.ai.runtime.reversing.decision import ReversingDecisionEvaluator
 from core.ai.runtime.reversing.exploration import ReversingExplorationLoop
 from core.ai.runtime.reversing.initialization import ReversingInvestigationInitializer
 from core.ai.runtime.reversing.targets import ReversingTargetQueue
+from core.ai.runtime.reversing.target_validation import ReversingTargetValidator
+from core.tools.reversing.analyzers.metadata import functions
+from core.tools.reversing.analyzers.sections import sections
 
 
 class ReversingAgentRunner(BaseAIRunner):
-    def __init__(self, context: AnalysisContext, model_registry: ModelRegistry) -> None:
+    def __init__(
+        self, 
+        context: AnalysisContext, 
+        model_registry: ModelRegistry,
+    ) -> None:
         super().__init__(context)
         self.model_registry = model_registry
         self.available_tools: dict[str, Any] = load_json(
             REVERSING_AGENT_TOOLS_PATH.parent,
             REVERSING_AGENT_TOOLS_PATH.name,
         ) or {}
-        self.memory = TraceMemory(
+        self.memory = ReversingAgentMemory(
             output_dir=self.context.output,
             filename=REVERSING_AGENT_RESULT_FILENAME,
-            agent_name="reversing_agent",
+            name="reversing_agent",
         )
         self.targets = ReversingTargetQueue(
             available_tools=self.available_tools,
             memory=self.memory,
+            validator=ReversingTargetValidator(
+                functions=self._function_inventory(),
+                section_names=self._section_names(),
+            ),
         )
         self.postprocessor = ReversingPostprocessor(self.available_tools)
 
@@ -52,21 +64,29 @@ class ReversingAgentRunner(BaseAIRunner):
                     "type": "initialization",
                     "value": initialization.input_source,
                 },
+                tool_calls=initialization.requested_targets,
                 error=initialization.seed_error,
             )
+
             self.targets.enqueue(
                 initialization.targets,
                 source=initialization.source,
             )
+            self.targets.enqueue(
+                initialization.baseline_targets,
+                source="baseline_entrypoint",
+            )
 
-            evaluator = ReversingEvidenceEvaluator(
-                agent=agent,
-                enrichment=initialization.enrichment,
-                available_tools=self.available_tools,
+            evaluator = ReversingDecisionEvaluator(
+                analyzer=ReversingEvidenceAnalyzer(
+                    agent=agent,
+                    available_tools=self.available_tools,
+                ),
                 postprocessor=self.postprocessor,
                 memory=self.memory,
                 targets=self.targets,
             )
+
             ReversingExplorationLoop(
                 max_targets=self.context.reversing_max_targets,
                 targets=self.targets,
@@ -76,6 +96,7 @@ class ReversingAgentRunner(BaseAIRunner):
                 postprocessor=self.postprocessor,
                 memory=self.memory,
             ).run()
+
         except KeyboardInterrupt:
             self.memory.close(status="interrupted")
             raise
@@ -86,10 +107,27 @@ class ReversingAgentRunner(BaseAIRunner):
             self.memory.close()
 
         
-
     def _create_agent(self) -> ReversingAgent:
         llm = self.model_registry.create_agent_client(
             "reversing",
             profile_override=self.context.profile,
         )
         return ReversingAgent(llm)
+
+    def _function_inventory(self) -> list[dict[str, Any]]:
+        try:
+            return functions(str(self.context.sample))
+        except Exception as exc:
+            Logger.warning(f"Failed to collect reversing function inventory: {exc}")
+            return []
+
+    def _section_names(self) -> list[str]:
+        try:
+            return [
+                item["name"]
+                for item in sections(str(self.context.sample))
+                if isinstance(item, dict) and isinstance(item.get("name"), str)
+            ]
+        except Exception as exc:
+            Logger.warning(f"Failed to collect reversing section inventory: {exc}")
+            return []

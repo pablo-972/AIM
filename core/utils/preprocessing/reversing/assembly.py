@@ -3,6 +3,11 @@ from typing import Any
 from core.utils.chunks import json_size, make_report_chunk
 
 MAX_REVERSING_EVIDENCE_SIZE = 4500
+MAX_DISASSEMBLY_INSTRUCTIONS_PER_CHUNK = 50
+DIRECT_LIST_KEYS = {
+    "list_functions": "functions",
+    "list_imports": "imports",
+}
 
 
 def chunk_reversing_evidence(
@@ -10,6 +15,14 @@ def chunk_reversing_evidence(
     value: Any,
     chunk_size: int = MAX_REVERSING_EVIDENCE_SIZE,
 ) -> list[dict[str, Any]]:
+    direct_list_chunks = _chunk_direct_listing(section, value, chunk_size)
+    if direct_list_chunks:
+        return direct_list_chunks
+
+    disassembly_chunks = _chunk_disassembly_instructions(section, value)
+    if disassembly_chunks:
+        return disassembly_chunks
+
     if _fits_in_chunk(value, chunk_size):
         return [make_report_chunk(section, value)]
 
@@ -23,6 +36,101 @@ def chunk_reversing_evidence(
         return _chunk_text(section, value, chunk_size)
 
     return [make_report_chunk(section, str(value))]
+
+
+def _chunk_direct_listing(
+    section: str,
+    value: Any,
+    chunk_size: int,
+) -> list[dict[str, Any]]:
+    item_key = DIRECT_LIST_KEYS.get(section)
+    if item_key is None or not isinstance(value, dict):
+        return []
+
+    items = value.get(item_key)
+    if not isinstance(items, list):
+        return []
+
+    count = value.get("count")
+    if not isinstance(count, int):
+        count = len(items)
+
+    base = {
+        "tool": section,
+        "count": count,
+    }
+    full_chunk = {
+        **base,
+        item_key: items,
+    }
+    if _fits_in_chunk(full_chunk, chunk_size):
+        return [full_chunk]
+
+    chunks = []
+    current = []
+    for item in items:
+        candidate = {
+            **base,
+            item_key: [*current, item],
+        }
+
+        if current and not _fits_in_chunk(candidate, chunk_size):
+            chunks.append({
+                **base,
+                item_key: current,
+            })
+            current = [item]
+        else:
+            current = [*current, item]
+
+        single_item_chunk = {
+            **base,
+            item_key: current,
+        }
+        if not _fits_in_chunk(single_item_chunk, chunk_size):
+            chunks.append(single_item_chunk)
+            current = []
+
+    if current:
+        chunks.append({
+            **base,
+            item_key: current,
+        })
+
+    return chunks
+
+
+def _chunk_disassembly_instructions(
+    section: str,
+    value: Any,
+) -> list[dict[str, Any]]:
+    if section != "disassembly" or not isinstance(value, dict):
+        return []
+
+    instructions = value.get("instructions")
+    if not _is_instruction_lines(instructions):
+        return []
+
+    chunks = []
+    lines = list(instructions)
+    
+    for offset in range(0, len(lines), MAX_DISASSEMBLY_INSTRUCTIONS_PER_CHUNK):
+        chunk_lines = lines[offset:offset + MAX_DISASSEMBLY_INSTRUCTIONS_PER_CHUNK]
+        chunks.append(
+            make_report_chunk(
+                f"{section}.instructions.{len(chunks) + 1}",
+                "\n".join(chunk_lines),
+            )
+        )
+
+    return chunks
+
+
+def _is_instruction_lines(value: Any) -> bool:
+    return (
+        isinstance(value, list)
+        and all(isinstance(item, str) for item in value)
+    )
 
 
 def _fits_in_chunk(value: Any, chunk_size: int) -> bool:

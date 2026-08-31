@@ -7,7 +7,7 @@ from config import (
     REPORT_FILENAME,
     RESULT_FILENAME,
     REVERSING_AGENT_RESULT_FILENAME,
-    STATIC_STRINGS_INFERENCE_RESULT_FILENAME,
+    STATIC_INFERENCE_RESULT_FILENAME,
 )
 from core.utils.artifacts.extractor import JsonExtractor, batched_findings
 from core.utils.artifacts.documents import (
@@ -176,7 +176,7 @@ class ReportAIRunner(BaseAIRunner):
         return sources
         
     def _get_static_inference_sources(self) -> list[tuple[str, Any]]:
-        data = load_json(self.context.output, STATIC_STRINGS_INFERENCE_RESULT_FILENAME)
+        data = load_json(self.context.output, STATIC_INFERENCE_RESULT_FILENAME)
         findings = prepare_static_inference_sources(data or {})
 
         return findings

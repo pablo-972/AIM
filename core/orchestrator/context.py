@@ -30,6 +30,7 @@ class AnalysisContext:
     reversing_tools: list[str]
     value: str | None
     function: str | None
+    section: str | None
     reversing_agent: bool
     reversing_max_targets: int
 
@@ -38,6 +39,7 @@ class AnalysisContext:
     full_enrichment_profile: str | None
     full_reversing_profile: str | None
     full_report_profile: str | None
+    address: str | None = None
 
     @classmethod
     def from_args(cls, args: argparse.Namespace) -> "AnalysisContext":
@@ -86,8 +88,10 @@ class AnalysisContext:
             reversing_tools=getattr(args, "reversing_tools", []),
             value=getattr(args, "value", None),
             function=getattr(args, "function", None),
+            section=getattr(args, "section", None),
+            address=getattr(args, "address", None),
             reversing_agent=getattr(args, "reversing_agent", False),
-            reversing_max_targets=getattr(args, "reversing_max_targets", 12),
+            reversing_max_targets=getattr(args, "reversing_max_targets", 20),
             
             full_static_profile=getattr(args, "static_profile", None),
             full_dynamic_profile=getattr(args, "dynamic_profile", None),

@@ -10,7 +10,7 @@ from config import (
     REPORT_FILENAME,
     RESULT_FILENAME,
     REVERSING_AGENT_RESULT_FILENAME,
-    STATIC_STRINGS_INFERENCE_RESULT_FILENAME,
+    STATIC_INFERENCE_RESULT_FILENAME,
 )
 from core.utils.io.files import load_json
 from backend.artifacts.files import format_modified_at, is_path_inside
@@ -21,7 +21,7 @@ from backend.storage import WEB_ANALYSES_PATH
 
 ARTIFACT_FILENAMES = (
     RESULT_FILENAME,
-    STATIC_STRINGS_INFERENCE_RESULT_FILENAME,
+    STATIC_INFERENCE_RESULT_FILENAME,
     DYNAMIC_INFERENCE_RESULT_FILENAME,
     ENRICHMENT_FILENAME,
     REVERSING_AGENT_RESULT_FILENAME,
@@ -110,7 +110,7 @@ def _complete_artifact_phases(
     artifact_dir: Path,
 ) -> None:
     phase_files = (
-        ("static_inference", STATIC_STRINGS_INFERENCE_RESULT_FILENAME),
+        ("static_inference", STATIC_INFERENCE_RESULT_FILENAME),
         ("dynamic_inference", DYNAMIC_INFERENCE_RESULT_FILENAME),
         ("enrichment", ENRICHMENT_FILENAME),
         ("reverse_agent", REVERSING_AGENT_RESULT_FILENAME),

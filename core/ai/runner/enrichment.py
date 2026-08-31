@@ -4,8 +4,9 @@ from config import (
     DYNAMIC_INFERENCE_RESULT_FILENAME,
     ENRICHMENT_FILENAME,
     RESULT_FILENAME,
-    STATIC_STRINGS_INFERENCE_RESULT_FILENAME,
+    STATIC_INFERENCE_RESULT_FILENAME,
 )
+from core.utils.artifacts.extractor import JsonExtractor
 from core.utils.logger import Logger
 from core.utils.io.files import load_json
 from core.utils.artifacts.documents import ENRICHMENT_TITLE, MarkdownDocument
@@ -13,6 +14,7 @@ from core.utils.preprocessing import (
     group_sources_by_phase,
     prepare_dynamic_artifact_sources,
     prepare_dynamic_inference_sources,
+    prepare_report_sources,
     prepare_static_enrichment_sources,
     prepare_static_inference_sources,
 )
@@ -99,15 +101,22 @@ class EnrichmentAIRunner(BaseAIRunner):
 
     def _get_sources(self) -> list[tuple[str, Any]]:
         result = load_json(self.context.output, RESULT_FILENAME) or {}
-        
         static_inference_data = (
-            load_json(self.context.output, STATIC_STRINGS_INFERENCE_RESULT_FILENAME)
+            load_json(self.context.output, STATIC_INFERENCE_RESULT_FILENAME)
             or {}
         )
         dynamic_inference_data = (
             load_json(self.context.output, DYNAMIC_INFERENCE_RESULT_FILENAME)
             or {}
         )
+
+        if not self._uses_cloud_profile():
+            return self._get_local_phase_sources(
+                result,
+                static_inference_data,
+                dynamic_inference_data,
+            )
+
         sources = [
             *prepare_static_enrichment_sources(result),
             *prepare_static_inference_sources(static_inference_data),
@@ -115,10 +124,68 @@ class EnrichmentAIRunner(BaseAIRunner):
             *prepare_dynamic_inference_sources(dynamic_inference_data),
         ]
 
-        if self._uses_cloud_profile():
-            return group_sources_by_phase(sources)
+        return group_sources_by_phase(sources)
+
+    def _get_local_phase_sources(
+        self,
+        result: dict[str, Any],
+        static_inference_data: dict[str, Any],
+        dynamic_inference_data: dict[str, Any],
+    ) -> list[tuple[str, dict[str, Any]]]:
+        phases = [
+            ("static.tools", self._get_static_tool_sources(result)),
+            (
+                "static.inference",
+                prepare_static_inference_sources(static_inference_data),
+            ),
+            ("dynamic.tools", prepare_dynamic_artifact_sources(result)),
+            (
+                "dynamic.inference",
+                prepare_dynamic_inference_sources(dynamic_inference_data),
+            ),
+        ]
+
+        return [
+            self._phase_source(phase_name, sources)
+            for phase_name, sources in phases
+            if sources
+        ]
+
+    def _get_static_tool_sources(
+        self,
+        result: dict[str, Any],
+    ) -> list[tuple[str, Any]]:
+        extractor = JsonExtractor(result)
+        sources: list[tuple[str, Any]] = []
+
+        for tool_name in extractor.get_phase_tools("static"):
+            tool_data = extractor.get_phase_tool_data("static", tool_name)
+            if tool_data is None:
+                continue
+
+            sources.extend(prepare_report_sources(tool_name, tool_data))
 
         return sources
+
+    def _phase_source(
+        self,
+        phase_name: str,
+        sources: list[tuple[str, Any]],
+    ) -> tuple[str, dict[str, Any]]:
+        return (
+            phase_name,
+            {
+                "phase": phase_name,
+                "source_count": len(sources),
+                "sources": [
+                    {
+                        "source": source_name,
+                        "data": source_data,
+                    }
+                    for source_name, source_data in sources
+                ],
+            },
+        )
     
     
     def _create_generator(self) -> EnrichmentGenerator:

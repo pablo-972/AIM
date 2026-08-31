@@ -76,7 +76,7 @@ def create_full_pipeline_orchestrator(
         dynamic_profile="local-dynamic",
         enrichment_profile="local-enrichment",
         reversing_profile="local-reversing",
-        reversing_max_targets=12,
+        reversing_max_targets=20,
         report_profile="gemini-report",
     )
 

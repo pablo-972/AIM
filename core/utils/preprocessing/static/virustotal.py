@@ -45,10 +45,8 @@ VT_DIRECT_SECTION_KEYS = [
     "sandbox_verdicts",
 ]
 VT_ENRICHMENT_KEYS = [
-    "popular_threat_classification",
     "sandbox_verdicts",
     "tags",
-    "meaningful_name",
     "last_analysis_stats",
 ]
 VT_ENGINE_CATEGORY_ORDER = [

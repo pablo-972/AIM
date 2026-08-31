@@ -17,6 +17,7 @@ class ToolCall:
 class LLMResponse:
     content: str
     tool_calls: tuple[ToolCall, ...] = ()
+    thinking: tuple[str, ...] = ()
 
 
 class BaseLLMProvider(ABC):

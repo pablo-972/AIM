@@ -36,7 +36,7 @@ class ReversingToolRunner(BaseToolRunner):
     def _resolve_tools(self) -> list[str]:
         tools = list(self.context.reversing_tools)
         if "full" in tools:
-            return ["info", "imports"]
+            return ["info", "entrypoints", "sections", "imports"]
 
         unknown_tools = []
         for tool in tools:
@@ -44,16 +44,25 @@ class ReversingToolRunner(BaseToolRunner):
                 unknown_tools.append(tool)
 
         if unknown_tools:
-            raise ValueError(f"Unknown reversing mode(s): {', '.join(unknown_tools)}")
+            raise ValueError(
+                f"Unknown reversing mode(s): {', '.join(unknown_tools)}"
+            )
 
         return tools
 
     def _build_tool_kwargs(self, mode: str) -> dict[str, Any]:
-        if mode in {"details", "disasm", "xrefs", "callers", "callees"}:
+        if mode in {"details", "disasm", "callers", "callees"}:
+            if self.context.address:
+                return {"address": self.context.address}
             return {"function": self.context.function}
-        elif mode == "string-xrefs":
+
+        if mode == "inspect-section":
+            return {"section": self.context.section}
+        if mode == "address-xrefs":
+            return {"address": self.context.address}
+        if mode == "string-xrefs":
             return {"string_value": self.context.value}
-        elif mode == "import-xrefs":
+        if mode == "import-xrefs":
             return {"import_name": self.context.value}
 
         return {}
