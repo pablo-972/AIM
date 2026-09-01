@@ -45,24 +45,26 @@ fallback note.
 
 ```mermaid
 flowchart TD
-    Context[enrichment.md / discovery] --> Seed[Initial targets]
-    Seed --> Queue[Priority queue]
-    Entry[Entrypoint baseline] --> Queue
-    Queue -->|target available| Tool[Execute reversing tool]
-    Tool --> Decision[Chunk and decision evaluation]
-    Decision --> Agent[Reversing agent]
-    Agent --> Finding[Finding]
-    Agent --> Hypothesis[Latest hypothesis]
-    Agent --> ToolCalls[Model tool calls]
-    ToolCalls --> Queue
-    ToolCalls --> Memory
-    Finding --> Memory[reversing_agent.json state and trace]
-    Hypothesis --> Memory
-    Queue -->|empty| Review[Global review]
-    Memory --> Review
-    Review -->|more evidence needed| ToolCalls
-    Review --> Hypothesis
-    Review -->|enough evidence| End[End reversing]
+    Start[Initialize from enrichment and entrypoint baseline]
+    Queue[Validate targets and fill priority queue]
+    Execute[Execute next reversing tool]
+    Analyze[Analyze current bounded output chunk]
+    Persist[Record step, finding, tool calls, state, and hypothesis]
+    Continue{More local targets?}
+    Review[Global review of factual state and findings]
+    Improve{More evidence useful?}
+    End[End reversing]
+
+    Start --> Queue
+    Queue --> Execute
+    Execute --> Analyze
+    Analyze --> Persist
+    Persist --> Continue
+    Continue -->|yes| Queue
+    Continue -->|no| Review
+    Review --> Improve
+    Improve -->|yes| Queue
+    Improve -->|no| End
 ```
 
 1. Initialize targets from enrichment or focused discovery.
