@@ -1,6 +1,6 @@
 import argparse
 from pathlib import Path
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from config import DEFAULT_REVERSING_MAX_TARGETS
 from core.exceptions import CLIValidationError
@@ -119,6 +119,76 @@ class AnalysisContext:
                 reversing_profile=getattr(args, "reversing_profile", None),
                 report_profile=getattr(args, "report_profile", None),
             ),
+        )
+
+    def for_full_static(self) -> "AnalysisContext":
+        return replace(
+            self,
+            phase="static",
+            func="run_static",
+            static=replace(
+                self.static,
+                tools=("full",),
+                ai=True,
+            ),
+            profile=self.full.static_profile,
+        )
+
+    def for_full_dynamic(self) -> "AnalysisContext":
+        return replace(
+            self,
+            phase="dynamic",
+            func="run_dynamic",
+            dynamic=replace(
+                self.dynamic,
+                tools=("full",),
+                ai=True,
+                start=False,
+                stop=False,
+            ),
+            profile=self.full.dynamic_profile,
+        )
+
+    def for_full_enrichment(self) -> "AnalysisContext":
+        return replace(
+            self,
+            phase="enrichment",
+            func="run_enrichment",
+            profile=self.full.enrichment_profile,
+        )
+
+    def for_full_reverse_info(self) -> "AnalysisContext":
+        return replace(
+            self,
+            phase="reversing",
+            func="run_reversing",
+            reversing=replace(
+                self.reversing,
+                tools=("full",),
+                agent=False,
+            ),
+            profile=None,
+        )
+
+    def for_full_reverse_agent(self) -> "AnalysisContext":
+        return replace(
+            self,
+            phase="reversing",
+            func="run_reversing",
+            reversing=replace(
+                self.reversing,
+                tools=(),
+                agent=True,
+            ),
+            profile=self.full.reversing_profile,
+        )
+
+    def for_full_report(self) -> "AnalysisContext":
+        return replace(
+            self,
+            phase="report",
+            func="run_report",
+            profile=self.full.report_profile,
         )
 
 
