@@ -56,7 +56,7 @@ resource sections focus on metadata and string previews.
 
 | Tool | Purpose |
 | --- | --- |
-| `disassembly` | Return structured disassembly instructions for one internal code address |
+| `disassembly` | Return structured disassembly instructions for one internal code address or function name |
 | `callers` | Return incoming calls for one internal code address |
 | `callees` | Return outgoing calls for one internal code address |
 | `inspect_section` | Inspect one binary section without dumping it fully |
@@ -71,6 +71,12 @@ The reversing agent uses these tools through a priority queue. The JSON contract
 limits what the model can ask for and validates parameters before execution.
 Imported APIs are investigated with `import_xrefs`; the agent then follows a
 returned caller address into the sample's code.
+
+Discovery tools return direct candidate lists. `list_functions` entries can be
+followed with `disassembly(function=...)` when the function name is useful, or
+`disassembly(address=...)` when the address is the better selector.
+`list_imports` entries can be followed with `import_xrefs(import_name=...)` to
+locate caller code before disassembly.
 
 Model-proposed `tool_calls` are validated and prepared before they enter the
 queue. `disassembly` accepts exactly one selector: either an `address` such as

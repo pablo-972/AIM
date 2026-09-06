@@ -1,11 +1,11 @@
 import argparse
 
 
-REPORT_AI_PROFILES = [
+REPORT_AI_PROFILES = (
     "local-report", 
     "openai-report", 
     "gemini-report",
-]
+)
 
 
 def add_report_module(

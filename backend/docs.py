@@ -22,6 +22,11 @@ DOCS: dict[str, tuple[str, Path]] = {
     "tools/dynamic": ("Dynamic Tools", DOCS_PATH / "tools" / "dynamic.md"),
     "tools/reversing": ("Reversing Tools", DOCS_PATH / "tools" / "reversing.md"),
     "ai": ("AI", DOCS_PATH / "ai" / "README.md"),
+    "ai/static": ("Static AI", DOCS_PATH / "ai" / "static.md"),
+    "ai/dynamic": ("Dynamic AI", DOCS_PATH / "ai" / "dynamic.md"),
+    "ai/enrichment": ("Enrichment AI", DOCS_PATH / "ai" / "enrichment.md"),
+    "ai/report": ("Report AI", DOCS_PATH / "ai" / "report.md"),
+    "ai/reversing-agent": ("Reversing Agent", DOCS_PATH / "ai" / "reversing-agent.md"),
     "architecture": ("Architecture", DOCS_PATH / "architecture" / "README.md"),
     "troubleshooting": ("Troubleshooting", DOCS_PATH / "troubleshooting" / "README.md"),
 }

@@ -39,8 +39,18 @@ const docsSections = [
     title: "Project",
     links: [
       { slug: "architecture", label: "Architecture" },
-      { slug: "ai", label: "AI" },
       { slug: "troubleshooting", label: "Troubleshooting" },
+    ],
+  },
+  {
+    title: "AI",
+    links: [
+      { slug: "ai", label: "Overview" },
+      { slug: "ai/static", label: "Static" },
+      { slug: "ai/dynamic", label: "Dynamic" },
+      { slug: "ai/enrichment", label: "Enrichment" },
+      { slug: "ai/report", label: "Report" },
+      { slug: "ai/reversing-agent", label: "Reversing agent" },
     ],
   },
 ] as const;

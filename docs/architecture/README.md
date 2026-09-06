@@ -57,7 +57,9 @@ Important files:
 `AnalysisContext` is the normalized execution contract. It resolves the sample
 path, calculates the sample SHA-256, creates the output directory, and stores
 phase options such as selected tools, model profile, dynamic filter, reversing
-target, and full-pipeline profile overrides.
+target, and full-pipeline profile overrides. Common fields stay on the context;
+domain-specific options are grouped under `static`, `dynamic`, `reversing`, and
+`full` frozen option objects.
 
 For the end-to-end phase order and what each phase produces, see
 [Phases](../phases/README.md).

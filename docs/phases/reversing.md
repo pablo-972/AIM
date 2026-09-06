@@ -22,6 +22,10 @@ If enrichment is unavailable or weak, the agent uses focused discovery tools
 such as `list_imports`, `list_sections`, `list_entrypoints`, and
 `list_functions` instead of guessing broad strings or addresses.
 
+The initialization step records the model-selected initial `tool_calls`. AIM also
+adds a small entrypoint baseline when a valid entrypoint can be resolved, so the
+agent can still inspect code when the seed decision is weak.
+
 When xrefs or discovery results identify an interesting code address, the agent
 uses `disassembly` directly to retrieve the containing function body. Imports
 are first explored with `import_xrefs`, so the agent follows callers in the
@@ -36,20 +40,24 @@ The agent is queue-driven:
 ```mermaid
 flowchart TD
     Seed[Enrichment or discovery] --> Queue[Priority queue]
+    Entry[Entrypoint baseline] --> Queue
     Queue -->|target available| Target[Execute highest-priority target]
     Target --> Output[Evidence output]
     Output --> Chunks[Split large output into chunks]
     Chunks --> Evaluate[Evaluate each chunk]
     Evaluate --> Finding[Record finding when grounded]
+    Evaluate --> Hypothesis[Update latest hypothesis]
     Evaluate --> ToolCalls[Queue model tool calls when useful]
     ToolCalls --> Queue
     ToolCalls --> Memory
     Evaluate --> Next[Continue until target chunks are done]
     Next --> Queue
     Finding --> Memory[State, hypothesis, findings and tool calls]
+    Hypothesis --> Memory
     Queue -->|empty| Review[Global review]
     Memory --> Review
     Review -->|more evidence needed| ToolCalls
+    Review --> Hypothesis
     Review -->|enough evidence| Done[End reversing]
 ```
 
@@ -67,10 +75,18 @@ before queueing them. Step `tool_calls` show the model-selected calls before
 queue validation; queue events record whether they were added, corrected, or
 rejected.
 
+Provider-native tool calls are accepted when the provider returns them. The
+current reversing prompts also ask local models to emit a final `tool_calls:`
+JSON line in message content because some local tool-calling models express the
+intended calls more reliably in text. Both sources are normalized into the same
+compact target format before validation.
+
 The local `analyze_evidence()` prompt is intentionally narrow. It receives the
 current target, a compact summary of the current tool output, and the current
 bounded raw output chunk. It does not receive enrichment, global state, previous
-hypotheses, or accumulated findings as local evidence.
+hypotheses, or accumulated findings as local evidence. It may update the latest
+hypothesis from the current output only; that hypothesis is tentative and is
+revisited by global review.
 
 When the queue becomes empty, AIM performs a separate global review model call.
 That call receives factual state, recorded findings, and the current model
@@ -78,9 +94,15 @@ hypothesis. It decides whether more investigation is likely to materially
 improve the result. If so, its `tool_calls` are validated, deduplicated, and
 returned to the normal queue. If not, reversing ends.
 
-Model decision retries are handled inside the reversing runtime.
-Transport-level retries remain separate and only repeat equivalent
-HTTP/provider requests.
+The persisted runtime `state` includes queue size for the analyst-facing trace.
+The compact state passed to global review includes only `steps`, `findings`,
+`errors`, `discovery`, and `explored`; the queue is already empty at that point.
+
+Local chunk analysis uses bounded model-decision retries inside the reversing
+runtime. These retries repeat the same local evidence request; they do not
+reintroduce enrichment, add a planner, or perform recovery-specific exploration.
+Transport-level retries remain separate and only repeat equivalent HTTP/provider
+requests.
 
 Large disassembly output is split into instruction chunks. The agent still sees
 the current function as one queued target, but each chunk becomes a separate
@@ -97,8 +119,8 @@ but local findings must be grounded in the current tool output.
 Detailed model reasoning from Ollama is stored as `decision.thinking`, split
 into one list item per thinking line. `decision.summary` is the short readable
 decision summary from model content. Machine-readable `finding:`,
-`hypothesis:`, and fallback `tool_calls:` lines are parsed out of the summary
-before the trace is written.
+`hypothesis:`, and `tool_calls:` lines are parsed out of the summary before the
+trace is written.
 
 `--max-targets` limits unique queued targets executed by the agent. It does not
 count evidence chunks as separate targets.

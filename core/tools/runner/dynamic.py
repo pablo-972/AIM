@@ -29,13 +29,13 @@ class DynamicToolRunner(BaseToolRunner):
                 "session": result
             }
 
-        if self.context.dynamic_start:
+        if self.context.dynamic.start:
             return self._start(session)
 
-        if self.context.dynamic_stop:
+        if self.context.dynamic.stop:
             return self._stop(session)
         
-        if self.context.dynamic_tools:
+        if self.context.dynamic.tools:
             return self._run_tools(session)
 
 
@@ -90,13 +90,13 @@ class DynamicToolRunner(BaseToolRunner):
                 sample=self.sample,
                 sha256=self.context.sample_sha256,
                 selected_tools=selected_tools,
-                procmon_filter=self.context.dynamic_filter,
+                procmon_filter=self.context.dynamic.filter,
             )
 
             files_data = prepare_dynamic_files(
                 sample=self.sample,
                 config=config,
-                procmon_filter=self.context.dynamic_filter,
+                procmon_filter=self.context.dynamic.filter,
             )
             results["config"] = ToolResult.ok(files_data).to_dict()
 
@@ -130,7 +130,7 @@ class DynamicToolRunner(BaseToolRunner):
         return results
 
     def _resolve_tools(self) -> list[str]:
-        tools = list(self.context.dynamic_tools)
+        tools = list(self.context.dynamic.tools)
         if "full" in tools:
             return list(DYNAMIC_MANUAL_TOOLS)
 

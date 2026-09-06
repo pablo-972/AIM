@@ -32,7 +32,7 @@ class StaticToolRunner(BaseToolRunner):
         return ToolResult.ok(data).to_dict()
 
     def _resolve_tools(self) -> list[str]:
-        tools = list(self.context.static_tools)
+        tools = list(self.context.static.tools)
         if "full" in tools:
             return list(STATIC_MANUAL_TOOLS)
 

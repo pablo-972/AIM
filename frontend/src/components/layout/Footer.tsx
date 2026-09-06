@@ -36,6 +36,11 @@ function Footer() {
       links: [
         { label: "Architecture", href: "/docs/architecture" },
         { label: "AI", href: "/docs/ai" },
+        { label: "Static AI", href: "/docs/ai/static" },
+        { label: "Dynamic AI", href: "/docs/ai/dynamic" },
+        { label: "Enrichment AI", href: "/docs/ai/enrichment" },
+        { label: "Report AI", href: "/docs/ai/report" },
+        { label: "Reversing agent", href: "/docs/ai/reversing-agent" },
         { label: "Troubleshooting", href: "/docs/troubleshooting" },
       ],
     },

@@ -1,7 +1,7 @@
 # AI
 
 AIM's AI layer reads evidence produced by deterministic phases and turns it into
-structured findings, enrichment notes, reverse engineering decisions, and final
+structured findings, enrichment notes, reverse-engineering decisions, and final
 report text.
 
 The AI layer is intentionally separated from tools:
@@ -9,7 +9,7 @@ The AI layer is intentionally separated from tools:
 - tools collect and parse evidence;
 - preprocessing selects model inputs;
 - AI runners control workflow state;
-- inference or agent classes build prompts and parse decisions;
+- inference, generator, or agent classes build prompts and parse decisions;
 - providers handle model API differences.
 
 ## Flow
@@ -24,10 +24,10 @@ flowchart TD
     Registry --> Factory[ProviderFactory]
     Factory --> Provider[LLM provider]
 
-    Runner --> Inference[Inference / generator / agent]
-    Provider -- injected into --> Inference
+    Runner --> ModelLogic[Inference / generator / agent]
+    Provider -- injected into --> ModelLogic
 
-    Inference --> Request[Prompt + selected evidence + optional schema]
+    ModelLogic --> Request[Prompt + selected evidence + optional schema]
     Request --> Provider
 
     Provider --> Response[Model response]
@@ -92,7 +92,7 @@ model:
 This allows the same code to run against local Ollama, OpenAI-compatible APIs,
 or the native Gemini API.
 
-## Registry and Factory
+## Registry And Factory
 
 `ModelRegistry` lives in:
 
@@ -122,7 +122,7 @@ It converts a profile and provider config into a concrete provider:
 | `gemini` | `GeminiProvider` |
 
 The rest of the AI layer receives only the shared provider interface, so runners
-and inference classes do not need provider-specific branches.
+and model logic do not need provider-specific branches.
 
 Runners may still adapt how evidence is batched before it reaches the model.
 Local SLM profiles favor smaller chunks. Cloud profiles such as `openai` and
@@ -143,41 +143,19 @@ The shared interface is defined in `base.py`:
 - `chat_json`
 - `chat_with_assistant`
 - `chat_json_with_assistant`
+- `chat_tools`
 
-`OllamaProvider` sends requests to:
+`OllamaProvider` sends requests to `/api/chat`. When a JSON schema is supplied,
+Ollama receives it in the `format` field. Ollama also exposes native tool calls
+and thinking when the selected model/provider response includes them.
 
-```text
-/api/chat
-```
+`OpenAICompatibleProvider` sends requests to `/chat/completions`. When a JSON
+schema is supplied, it is sent through `response_format` using strict
+`json_schema` formatting.
 
-When a JSON schema is supplied, Ollama receives it in the `format` field. This
-is why schemas matter for local SLM execution: they give Ollama a concrete JSON
-shape to produce.
-
-`OpenAICompatibleProvider` sends requests to:
-
-```text
-/chat/completions
-```
-
-When a JSON schema is supplied, it is sent through `response_format`.
-OpenAI-compatible providers use strict `json_schema` formatting.
-
-`GeminiProvider` sends requests to the native Gemini Interactions API:
-
-```text
-/interactions
-```
-
-Gemini receives the system prompt through `system_instruction`, the user-facing
-prompt through `input`, and JSON schemas through its native `response_format`
-shape:
-
-```text
-type: text
-mime_type: application/json
-schema: ...
-```
+`GeminiProvider` sends requests to the native Gemini Interactions API. Gemini
+receives the system prompt through `system_instruction`, the user-facing prompt
+through `input`, and JSON schemas through its native `response_format` shape.
 
 ## Schemas
 
@@ -202,26 +180,7 @@ Important files:
 | `report.py` | Structured report schema and final assessment validation |
 
 Each schema file owns the parser for the response it describes. This keeps the
-contract, validation, and fallback behavior together. If a static, dynamic, or
-reversing model returns empty text, invalid JSON, missing keys, or wrong
-confidence values, AIM records a low-confidence fallback instead of crashing the
-whole run.
-
-The report schema is stricter. Its final structured response must contain
-`report_markdown` and `assessment`. AIM validates the assessment fields before
-writing `report.md` and `assessment.json`; invalid structured report responses
-are retried once and are not persisted if validation still fails.
-
-In the report assessment, `family` and `categories` have different meanings.
-`family` is only for a concrete malware family or malicious tool name, such as
-`AgentTesla`, `Emotet`, `TrickBot`, `QakBot`, `RedLine`, `AsyncRAT`, `LockBit`,
-or `DarkGate`. If the evidence only supports a broad type, `family` stays
-`null`.
-
-`categories` stores the broad malware type, objective, or capability labels,
-such as `ransomware`, `credential_stealer`, `information_stealer`, `keylogger`,
-`remote_access_trojan`, `downloader`, `dropper`, `backdoor`, `spyware`, `bot`,
-`banking_trojan`, `wiper`, `cryptominer`, or `loader`.
+contract, validation, and fallback behavior together.
 
 ## Runtime
 
@@ -231,8 +190,6 @@ Runtime helpers live in:
 core/ai/runtime/
 ```
 
-They are shared by AI runners and agents.
-
 | File | Purpose |
 | --- | --- |
 | `executor.py` | Executes validated agent tool calls |
@@ -240,245 +197,29 @@ They are shared by AI runners and agents.
 | `inference/` | Static and dynamic inference memory writers |
 | `reversing/` | Reversing agent analysis, memory, queue, initialization, exploration, target validation, and trace formatting |
 
-Inference memories are intentionally small and task-specific:
-
-- `runtime/inference/memory.py` contains the shared inference trace writer;
-- `runtime/inference/static_memory.py` writes `static_inference.json`;
-- `runtime/inference/dynamic_memory.py` writes `dynamic_inference.json`.
-
-Both store compact `steps`, global `findings`, `findings_count`, and `errors`.
-Each step contains:
-
-```json
-{
-  "step": 1,
-  "input": {},
-  "analysis": {
-    "thought": "...",
-    "confidence": "high"
-  },
-  "finding": null,
-  "error": null
-}
-```
-
-They do not store agent-style tool blocks or priority queues.
-
-The reversing agent has its own memory and formatter:
-
-```text
-core/ai/runtime/reversing/memory.py
-core/ai/runtime/reversing/analysis.py
-core/ai/runtime/reversing/decision.py
-core/ai/runtime/reversing/trace_formatter.py
-core/utils/postprocessing/reversing/model_output.py
-```
-
-`ReversingAgentMemory` stores steps, findings, queue events, errors, final
-status, compact factual state, and the latest model hypothesis.
-`ReversingTraceFormatter` owns the JSON shape for step input, decision,
-findings, tool calls, queue validation, and origin fields.
-
-`ReversingEvidenceAnalyzer` owns model-call policy for one reversing evidence
-chunk. The local analysis prompt receives only the current target, current tool
-output summary, and current bounded raw output chunk. Enrichment is used only
-to create initial targets, and accumulated findings are reserved for global
-review.
-
-`ReversingDecisionEvaluator` coordinates the executed tool output: it chunks
-the output, asks the analyzer for a model decision, postprocesses findings, and
-queues model-selected tool calls. When the queue becomes empty, it performs a
-separate global review call with factual state, recorded findings, and the
-latest model hypothesis. Any global-review tool calls are validated,
-deduplicated, and returned to the normal queue.
-Step `tool_calls` store the model-selected calls before queue validation; queue
-events show whether each call was added, corrected, or rejected.
-
-`ReversingModelOutputCleaner` is a conservative repair step for local models
-that sometimes write a finding JSON object inside the summary text. It only
-recovers parseable JSON findings and replaces the noisy summary with a short
-fallback note.
-
-The reversing runtime adds the bounded agent loop:
-
-```mermaid
-flowchart TD
-    Context[enrichment.md / discovery] --> Seed[Initial targets]
-    Seed --> Queue[Priority queue]
-    Queue -->|target available| Tool[Execute reversing tool]
-    Tool --> Decision[Chunk and decision evaluation]
-    Decision --> Agent[Reversing agent]
-    Agent --> Finding[Finding]
-    Agent --> ToolCalls[Model tool calls]
-    ToolCalls --> Queue
-    ToolCalls --> Memory
-    Finding --> Memory[reversing_agent.json state and trace]
-    Queue -->|empty| Review[Global review]
-    Memory --> Review
-    Review -->|more evidence needed| ToolCalls
-    Review -->|enough evidence| End[End reversing]
-```
-
-1. initialize targets from enrichment or focused discovery;
-2. push targets into a priority queue;
-3. execute the highest-priority unvisited target;
-4. split large evidence into chunks;
-5. evaluate each chunk;
-6. clean model output and validate findings;
-7. enqueue model-selected tool calls when useful;
-8. run global review when the queue is empty.
-
-The reversing trace is written to `reversing_agent.json`. Runtime state is
-factual and separate from the model-generated hypothesis:
-
-```json
-{
-  "state": {
-    "steps": 17,
-    "findings": 7,
-    "errors": 0,
-    "discovery": {
-      "entrypoints": true,
-      "functions": true,
-      "imports": true,
-      "sections": true
-    },
-    "explored": {
-      "functions": 2,
-      "imports": 1,
-      "sections": 1
-    },
-    "queue": {
-      "pending": 0
-    }
-  },
-  "hypothesis": {
-    "malware": true,
-    "type": null,
-    "confidence": "low"
-  }
-}
-```
-
-Each step records the executed tool directly in `input`. There is no separate
-`action` block. The `tool_calls` array records what the model asked for before
-queue validation:
-
-```json
-{
-  "input": {
-    "tool": "disassembly",
-    "target": "entry0",
-    "chunk": 1,
-    "total_chunks": 2,
-    "total_instructions": 71,
-    "status": "ok"
-  },
-  "decision": {
-    "thinking": [
-      "The call target controls the behavior of this branch."
-    ],
-    "summary": "The chunk needs one helper inspected to clarify the branch.",
-    "confidence": "high"
-  },
-  "finding": null,
-  "tool_calls": [
-    {
-      "tool": "disassembly",
-      "target": "fcn.004065e0",
-      "priority": 75
-    }
-  ],
-  "error": null
-}
-```
-
-Normal queue validations are serialized as `"VALID"`. Corrections and
-rejections keep compact details so analysts can see what the validator changed
-without reading the full internal target object.
-
-Model-selected tool calls are compact targets:
-
-```json
-{
-  "tool": "disassembly",
-  "target": "0x4068d0",
-  "priority": 75
-}
-```
-
-The full queue event keeps validation metadata separately.
+Inference memories are intentionally small and task-specific. They store compact
+`steps`, global `findings`, `findings_count`, and `errors`. The reversing agent
+uses its own runtime because it owns a queue, tool validation, trace formatting,
+and global review.
 
 ## Inference Models
 
-Inference classes live in:
+Inference and generator behavior is documented by phase:
 
-```text
-core/ai/inferences/
-```
-
-They are responsible for prompt construction and response parsing. They do not
-own persistence or pipeline state.
-
-| Class | Purpose |
-| --- | --- |
-| `StaticInference` | Looks for natural-language threat messages in strings |
-| `DynamicInference` | Looks for behavioral findings in dynamic evidence sections |
-| `EnrichmentGenerator` | Updates the enrichment document from prior outputs |
-| `ReportGenerator` | Updates the final report and produces the final structured assessment |
-
-The matching runners live in `core/ai/runner/` and own the workflow around each
-inference class.
-
-`ReportGenerator` uses separate prompt modes:
-
-- incremental updates return Markdown only;
-- the final pass returns structured JSON with `report_markdown` and `assessment`.
-
-This prevents JSON-only structured-output instructions from leaking into normal
-Markdown report updates.
+| Phase | Model logic | Runner | Output |
+| --- | --- | --- | --- |
+| [Static](static.md) | `StaticInference` | `StaticInferenceRunner` | `static_inference.json` |
+| [Dynamic](dynamic.md) | `DynamicInference` | `DynamicInferenceRunner` | `dynamic_inference.json` |
+| [Enrichment](enrichment.md) | `EnrichmentGenerator` | `EnrichmentAIRunner` | `enrichment.md` |
+| [Report](report.md) | `ReportGenerator` | `ReportAIRunner` | `report.md`, `assessment.json` |
 
 ## Agents
 
-Agents live in:
+| Agent | Model logic | Runner | Output |
+| --- | --- | --- | --- |
+| [Reversing Agent](reversing-agent.md) | `ReversingAgent` | `ReversingAgentRunner` | `reversing_agent.json` |
 
-```text
-core/ai/agents/
-```
-
-The current agent is:
-
-```text
-core/ai/agents/reversing.py
-```
-
-The reversing agent differs from simple inference:
-
-- it can request investigation `tool_calls`;
-- it works with an explicit queue;
-- it reads tool contracts;
-- it records queue events and tool-call decisions;
-- it must ground findings in executable-code evidence.
-- when a finding is generated from disassembly, evidence should include at
-  least one instruction address and instruction text.
-
-The model-callable reversing tools are defined outside the AI layer:
-
-```text
-core/tools/reversing/agent.py
-core/tools/reversing/agent_tools.json
-```
-
-The AI runtime validates model-selected tool calls against that JSON contract
-before any tool is executed.
-
-The agent reads native tool calls from the configured provider when present. For
-local models that express intended calls in text, the reversing agent also
-accepts a final `tool_calls:` JSON line in message content as a fallback. The
-internal target queue receives validated targets after target validation; the
-provider-specific transport is kept inside the provider layer.
-
-## Adding an AI Task
+## Adding An AI Task
 
 To add a new model-backed task:
 
@@ -490,7 +231,7 @@ To add a new model-backed task:
 5. Register a default task profile in `core/ai/model_profiles.yaml`.
 6. Call the runner from the orchestrator or from an existing phase.
 
-## Adding an Agent
+## Adding An Agent
 
 To add an agent:
 
@@ -501,7 +242,7 @@ To add an agent:
 5. Register the default agent profile in `core/ai/model_profiles.yaml`.
 6. Ensure findings are postprocessed and grounded before being persisted.
 
-## Adding a Provider
+## Adding A Provider
 
 To add a provider:
 

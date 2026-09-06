@@ -1,9 +1,45 @@
 import argparse
-from dataclasses import dataclass
 from pathlib import Path
+from dataclasses import dataclass, replace
 
+from config import DEFAULT_REVERSING_MAX_TARGETS
 from core.exceptions import CLIValidationError
 from core.utils.crypto import sha256_file
+
+
+@dataclass(frozen=True)
+class StaticOptions:
+    tools: tuple[str, ...]
+    ai: bool
+
+
+@dataclass(frozen=True)
+class DynamicOptions:
+    tools: tuple[str, ...]
+    ai: bool
+    start: bool
+    stop: bool
+    filter: Path | None
+
+
+@dataclass(frozen=True)
+class ReversingOptions:
+    tools: tuple[str, ...]
+    value: str | None
+    address: str | None
+    function: str | None
+    section: str | None
+    agent: bool
+    max_targets: int
+
+
+@dataclass(frozen=True)
+class FullOptions:
+    static_profile: str | None
+    dynamic_profile: str | None
+    enrichment_profile: str | None
+    reversing_profile: str | None
+    report_profile: str | None
 
 
 @dataclass(frozen=True)
@@ -18,53 +54,26 @@ class AnalysisContext:
     func: str | None
     profile: str | None
 
-    static_tools: list[str]
-    static_ai: bool
-
-    dynamic_tools: list[str]
-    dynamic_ai: bool
-    dynamic_start: bool
-    dynamic_stop: bool
-    dynamic_filter: Path | None
-
-    reversing_tools: list[str]
-    value: str | None
-    function: str | None
-    section: str | None
-    reversing_agent: bool
-    reversing_max_targets: int
-
-    full_static_profile: str | None
-    full_dynamic_profile: str | None
-    full_enrichment_profile: str | None
-    full_reversing_profile: str | None
-    full_report_profile: str | None
-    address: str | None = None
+    static: StaticOptions
+    dynamic: DynamicOptions
+    reversing: ReversingOptions
+    full: FullOptions
 
     @classmethod
     def from_args(cls, args: argparse.Namespace) -> "AnalysisContext":
-        sample = Path(args.sample).expanduser().resolve()
-
-        if not sample.exists():
-            raise CLIValidationError(f"Sample does not exist: {sample}")
-        if not sample.is_file():
-            raise CLIValidationError(f"Sample is not a file: {sample}")
-
+        sample = _resolve_file(args.sample, label="Sample")
         sample_sha256 = sha256_file(sample)
         sample_filename = getattr(args, "sample_filename", None) or sample.name
+
         base_output = Path(args.output).expanduser().resolve()
 
         dynamic_filter = getattr(args, "dynamic_filter", None)
         dynamic_filter_path = None
         if dynamic_filter:
-            dynamic_filter_path = Path(dynamic_filter).expanduser().resolve() 
+            dynamic_filter_path = _resolve_file(dynamic_filter, label="Procmon filter")
 
-        if dynamic_filter_path is not None:
-            if not dynamic_filter_path.exists():
-                raise CLIValidationError(f"Procmon filter does not exist: {dynamic_filter_path}")
-            if not dynamic_filter_path.is_file():
-                raise CLIValidationError(f"Procmon filter is not a file: {dynamic_filter_path}")
-
+        reversing_max_targets = getattr(args, "reversing_max_targets", None)
+            
         return cls(
             sample=sample,
             sample_filename=str(sample_filename),
@@ -73,29 +82,122 @@ class AnalysisContext:
             output_format=args.format,
 
             phase=args.phase,
-            func=getattr(args, "func", None),
+            func=args.func,
             profile=getattr(args, "profile", None),
 
-            static_tools=getattr(args, "static_tools", []),
-            static_ai=getattr(args, "static_ai", False),
+            static=StaticOptions(
+                tools=tuple(getattr(args, "static_tools", [])),
+                ai=getattr(args, "static_ai", False),
+            ),
 
-            dynamic_tools=getattr(args, "dynamic_tools", []),
-            dynamic_ai=getattr(args, "dynamic_ai", False),
-            dynamic_start=getattr(args, "dynamic_start", False),
-            dynamic_stop=getattr(args, "dynamic_stop", False),
-            dynamic_filter=dynamic_filter_path,
+            dynamic=DynamicOptions(
+                tools=tuple(getattr(args, "dynamic_tools", [])),
+                ai=getattr(args, "dynamic_ai", False),
+                start=getattr(args, "dynamic_start", False),
+                stop=getattr(args, "dynamic_stop", False),
+                filter=dynamic_filter_path,
+            ),
 
-            reversing_tools=getattr(args, "reversing_tools", []),
-            value=getattr(args, "value", None),
-            function=getattr(args, "function", None),
-            section=getattr(args, "section", None),
-            address=getattr(args, "address", None),
-            reversing_agent=getattr(args, "reversing_agent", False),
-            reversing_max_targets=getattr(args, "reversing_max_targets", 20),
+            reversing=ReversingOptions(
+                tools=tuple(getattr(args, "reversing_tools", [])),
+                value=getattr(args, "value", None),
+                function=getattr(args, "function", None),
+                section=getattr(args, "section", None),
+                address=getattr(args, "address", None),
+                agent=getattr(args, "reversing_agent", False),
+                max_targets=(
+                    DEFAULT_REVERSING_MAX_TARGETS
+                    if reversing_max_targets is None
+                    else reversing_max_targets
+                ),
+            ),
             
-            full_static_profile=getattr(args, "static_profile", None),
-            full_dynamic_profile=getattr(args, "dynamic_profile", None),
-            full_enrichment_profile=getattr(args, "enrichment_profile", None),
-            full_reversing_profile=getattr(args, "reversing_profile", None),
-            full_report_profile=getattr(args, "report_profile", None),
+            full=FullOptions(
+                static_profile=getattr(args, "static_profile", None),
+                dynamic_profile=getattr(args, "dynamic_profile", None),
+                enrichment_profile=getattr(args, "enrichment_profile", None),
+                reversing_profile=getattr(args, "reversing_profile", None),
+                report_profile=getattr(args, "report_profile", None),
+            ),
         )
+
+    def for_full_static(self) -> "AnalysisContext":
+        return replace(
+            self,
+            phase="static",
+            func="run_static",
+            static=replace(
+                self.static,
+                tools=("full",),
+                ai=True,
+            ),
+            profile=self.full.static_profile,
+        )
+
+    def for_full_dynamic(self) -> "AnalysisContext":
+        return replace(
+            self,
+            phase="dynamic",
+            func="run_dynamic",
+            dynamic=replace(
+                self.dynamic,
+                tools=("full",),
+                ai=True,
+                start=False,
+                stop=False,
+            ),
+            profile=self.full.dynamic_profile,
+        )
+
+    def for_full_enrichment(self) -> "AnalysisContext":
+        return replace(
+            self,
+            phase="enrichment",
+            func="run_enrichment",
+            profile=self.full.enrichment_profile,
+        )
+
+    def for_full_reverse_info(self) -> "AnalysisContext":
+        return replace(
+            self,
+            phase="reversing",
+            func="run_reversing",
+            reversing=replace(
+                self.reversing,
+                tools=("full",),
+                agent=False,
+            ),
+            profile=None,
+        )
+
+    def for_full_reverse_agent(self) -> "AnalysisContext":
+        return replace(
+            self,
+            phase="reversing",
+            func="run_reversing",
+            reversing=replace(
+                self.reversing,
+                tools=(),
+                agent=True,
+            ),
+            profile=self.full.reversing_profile,
+        )
+
+    def for_full_report(self) -> "AnalysisContext":
+        return replace(
+            self,
+            phase="report",
+            func="run_report",
+            profile=self.full.report_profile,
+        )
+
+
+def _resolve_file(path: str | Path, *, label: str) -> Path:
+    resolved = Path(path).expanduser().resolve()
+
+    if not resolved.exists():
+        raise CLIValidationError(f"{label} does not exist: {resolved}")
+    if not resolved.is_file():
+        raise CLIValidationError(f"{label} is not a file: {resolved}")
+
+    return resolved

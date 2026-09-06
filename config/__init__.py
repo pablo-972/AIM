@@ -10,6 +10,7 @@ from config.settings import (
     DYNAMIC_EXECUTION_PATH,
     DYNAMIC_ARTIFACTS_PATH,
     VBOXMANAGE_PATH,
+    DEFAULT_REVERSING_MAX_TARGETS,
     
     VICTIM_WORKING_PATH,
 
@@ -28,8 +29,13 @@ from config.settings import (
     ENRICHMENT_FILENAME,
 
     SHARED_FOLDER,
-
+)
+from config.env import (
+    default_vboxmanage_path,
     get_env,
+    get_env_int,
+    get_optional_env,
+    is_wsl,
 )
 
 
@@ -44,6 +50,7 @@ __all__ = [
     "DYNAMIC_EXECUTION_PATH",
     "DYNAMIC_ARTIFACTS_PATH",
     "VBOXMANAGE_PATH",
+    "DEFAULT_REVERSING_MAX_TARGETS",
     "SHARED_PATH",
     "VICTIM_WORKING_PATH",
     "TOOLS_PATH",
@@ -59,5 +66,9 @@ __all__ = [
     "ASSESSMENT_FILENAME",
     "ENRICHMENT_FILENAME",
     "SHARED_FOLDER",
+    "default_vboxmanage_path",
     "get_env",
+    "get_env_int",
+    "get_optional_env",
+    "is_wsl",
 ]

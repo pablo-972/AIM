@@ -34,7 +34,7 @@ class ReversingToolRunner(BaseToolRunner):
         return ToolResult.ok(data).to_dict()
 
     def _resolve_tools(self) -> list[str]:
-        tools = list(self.context.reversing_tools)
+        tools = list(self.context.reversing.tools)
         if "full" in tools:
             return ["info", "entrypoints", "sections", "imports"]
 
@@ -52,18 +52,18 @@ class ReversingToolRunner(BaseToolRunner):
 
     def _build_tool_kwargs(self, mode: str) -> dict[str, Any]:
         if mode in {"details", "disasm", "callers", "callees"}:
-            if self.context.address:
-                return {"address": self.context.address}
-            return {"function": self.context.function}
+            if self.context.reversing.address:
+                return {"address": self.context.reversing.address}
+            return {"function": self.context.reversing.function}
 
         if mode == "inspect-section":
-            return {"section": self.context.section}
+            return {"section": self.context.reversing.section}
         if mode == "address-xrefs":
-            return {"address": self.context.address}
+            return {"address": self.context.reversing.address}
         if mode == "string-xrefs":
-            return {"string_value": self.context.value}
+            return {"string_value": self.context.reversing.value}
         if mode == "import-xrefs":
-            return {"import_name": self.context.value}
+            return {"import_name": self.context.reversing.value}
 
         return {}
 

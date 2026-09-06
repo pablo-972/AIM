@@ -1,50 +1,15 @@
-import os
-import platform
 from pathlib import Path
 
 from dotenv import load_dotenv
 
+from config.env import default_vboxmanage_path, get_optional_env
 
-# Paths
+
+# Root path & Load .env file
 ROOT_PATH = Path(__file__).resolve().parent.parent
-
-
-# Load .env file
 load_dotenv(ROOT_PATH / ".env")
 
-
-# Get .env variable
-def get_env(name: str) -> str:
-    value = os.getenv(name)
-
-    if value is None:
-        raise RuntimeError(f"Environment variable '{name}' is required")
-    
-    return value
-
-
-# Check if it is running in WSL
-def is_wsl() -> bool:
-    release = platform.release().lower()
-    if "microsoft" in release or "wsl" in release:
-        return True
-
-    version = platform.version().lower()
-
-    return "microsoft" in version or "wsl" in version
-
-
-# Returns default vboxmanage path depending OS
-def default_vboxmanage_path() -> str:
-    if platform.system().lower() == "windows":
-        return r"C:\Program Files\Oracle\VirtualBox\VBoxManage.exe"
-
-    if is_wsl():
-        return "/mnt/c/Program Files/Oracle/VirtualBox/VBoxManage.exe"
-
-    return "VBoxManage"
-
-
+# Paths
 CONFIG_PATH = ROOT_PATH / "config"
 CORE_PATH = ROOT_PATH / "core"
 OUTPUT_PATH = ROOT_PATH / "output"
@@ -65,7 +30,9 @@ REVERSING_AGENT_TOOLS_PATH = REVERSING_TOOLS_PATH / "agent_tools.json"
 MODEL_PROFILES_PATH = AI_PATH / "model_profiles.yaml"
 
 VICTIM_WORKING_PATH = "C:\\AIM"
-VBOXMANAGE_PATH = get_env("AIM_VBOXMANAGE_PATH") or default_vboxmanage_path()
+VBOXMANAGE_PATH = get_optional_env("AIM_VBOXMANAGE_PATH")
+if VBOXMANAGE_PATH is None:
+    VBOXMANAGE_PATH = default_vboxmanage_path()
 
 # Filenames
 RESULT_FILENAME = "analysis.json"
@@ -79,3 +46,6 @@ ENRICHMENT_FILENAME = "enrichment.md"
 
 # Folders
 SHARED_FOLDER = "shared"
+
+# Global Variables 
+DEFAULT_REVERSING_MAX_TARGETS = 20

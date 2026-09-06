@@ -3,7 +3,7 @@ import argparse
 from core.exceptions import CLIValidationError
 
 
-REVERSING_TOOLS = [
+REVERSING_TOOLS = (
     "info",
     "entrypoints",
     "imports",
@@ -19,56 +19,79 @@ REVERSING_TOOLS = [
     "callers",
     "callees",
     "full"
-]
-REVERSING_AI_PROFILES = [
+)
+REVERSING_AI_PROFILES = (
     "local-reversing",
     "openai-reversing",
     "gemini-reversing",
-]
+)
+
+FUNCTION_OR_ADDRESS_TOOLS = frozenset({
+    "details",
+    "disasm",
+    "callers",
+    "callees",
+})
+VALUE_TOOLS = frozenset({
+    "string-xrefs",
+    "import-xrefs",
+})
 
 
 def validate_reversing_args(args: argparse.Namespace) -> None:
     selected_tools = set(args.reversing_tools)
 
+    if args.profile is not None and not args.reversing_agent:
+        raise CLIValidationError(
+            "--profile can only be used together with --agent"
+        )
+
+    if args.reversing_max_targets is not None:
+        if not args.reversing_agent:
+            raise CLIValidationError(
+                "--max-targets can only be used together with --agent"
+            )
+        if args.reversing_max_targets < 1:
+            raise CLIValidationError(
+                "--max-targets must be greater than zero"
+            )
+
     if "full" in selected_tools and len(selected_tools) > 1:
-        raise CLIValidationError("'full' cannot be combined with other reversing modes")
+        raise CLIValidationError(
+            "'full' cannot be combined with other reversing modes"
+        )
 
     if args.reversing_agent and selected_tools:
-        raise CLIValidationError("--agent cannot be combined with manual reversing modes")
+        raise CLIValidationError(
+            "--agent cannot be combined with manual reversing modes"
+        )
 
     if not args.reversing_agent and not selected_tools:
-        raise CLIValidationError("Select at least one reversing mode or use --agent")
+        raise CLIValidationError(
+            "Select at least one reversing mode or use --agent"
+        )
 
-    if args.reversing_max_targets < 1:
-        raise CLIValidationError("--max-targets must be greater than zero")
-
-    function_tools = {
-        "details",
-        "disasm",
-        "callers",
-        "callees",
-    }
-
-    if args.function and args.address:
-        raise CLIValidationError("--function and --address cannot be combined")
-
-    for tool in function_tools:
+    for tool in FUNCTION_OR_ADDRESS_TOOLS:
         if tool in selected_tools and not (args.function or args.address):
             raise CLIValidationError(
                 f"reversing {tool} requires --function or --address"
             )
 
     if "address-xrefs" in selected_tools and not args.address:
-        raise CLIValidationError("reversing address-xrefs requires --address")
+        raise CLIValidationError(
+            "reversing address-xrefs requires --address"
+        )
 
     if "inspect-section" in selected_tools and not args.section:
-        raise CLIValidationError("reversing inspect-section requires --section")
+        raise CLIValidationError(
+            "reversing inspect-section requires --section"
+        )
     
-    if "string-xrefs" in selected_tools and not args.value:
-        raise CLIValidationError("reversing string-xrefs requires --value")
-
-    if "import-xrefs" in selected_tools and not args.value:
-        raise CLIValidationError("reversing import-xrefs requires --value")
+    for tool in VALUE_TOOLS:
+        if tool in selected_tools and not args.value:
+            raise CLIValidationError(
+                f"reversing {tool} requires --value"
+            )
 
 
 def add_reversing_module(
@@ -89,11 +112,12 @@ def add_reversing_module(
         default=[],
         help="Reverse tool to run. Can be used multiple times",
     )
-    parser.add_argument(
+    target_group = parser.add_mutually_exclusive_group()
+    target_group.add_argument(
         "--function",
         help="Internal function name from the analyzed sample",
     )
-    parser.add_argument(
+    target_group.add_argument(
         "--address",
         help="Radare2 code address, for example 0x401000 or fcn.00401000",
     )
@@ -121,7 +145,7 @@ def add_reversing_module(
         "--max-targets",
         dest="reversing_max_targets",
         type=int,
-        default=20,
+        default=None,
         help="Maximum number of unique targets executed by the reversing agent",
     )
 
