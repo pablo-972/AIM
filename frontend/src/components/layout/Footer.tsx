@@ -31,16 +31,21 @@ function Footer() {
       ],
     },
     {
+      title: "AI",
+      href: "/docs/ai",
+      links: [
+        { label: "Static", href: "/docs/ai/static" },
+        { label: "Dynamic", href: "/docs/ai/dynamic" },
+        { label: "Enrichment", href: "/docs/ai/enrichment" },
+        { label: "Report", href: "/docs/ai/report" },
+        { label: "Reversing agent", href: "/docs/ai/reversing-agent" },
+      ]
+    },
+    {
       title: "Project",
       href: "/docs/architecture",
       links: [
         { label: "Architecture", href: "/docs/architecture" },
-        { label: "AI", href: "/docs/ai" },
-        { label: "Static AI", href: "/docs/ai/static" },
-        { label: "Dynamic AI", href: "/docs/ai/dynamic" },
-        { label: "Enrichment AI", href: "/docs/ai/enrichment" },
-        { label: "Report AI", href: "/docs/ai/report" },
-        { label: "Reversing agent", href: "/docs/ai/reversing-agent" },
         { label: "Troubleshooting", href: "/docs/troubleshooting" },
       ],
     },
@@ -48,7 +53,7 @@ function Footer() {
 
   return (
     <footer className="border-t border-line bg-page">
-      <div className="mx-auto grid w-full max-w-7xl justify-items-center gap-5 px-5 py-5 sm:grid-cols-2 sm:px-8 lg:grid-cols-4 lg:px-10">
+      <div className="mx-auto grid w-full max-w-7xl justify-items-center gap-5 px-5 py-5 sm:grid-cols-2 sm:px-8 lg:grid-cols-5 lg:px-10">
         {columns.map((column) => (
           <div key={column.title} className="text-left">
             <h2 className="text-sm font-bold text-ink">
