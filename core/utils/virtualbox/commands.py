@@ -2,12 +2,13 @@ from pathlib import Path
 
 from core.exceptions import VirtualBoxError
 from core.utils.io.commands import run_command
+from core.utils.wsl import is_wsl
 
 
 def sanitize_path_for_windows(path: str | Path) -> Path:
     path_str = str(path)
 
-    if not path_str.startswith("/"):
+    if not path_str.startswith("/") or not is_wsl():
         return Path(path_str)
 
     command = ["wslpath", "-w", path_str]

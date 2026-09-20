@@ -1,6 +1,8 @@
 import os
 import platform
 
+from core.utils.wsl import is_wsl
+
 
 DEFAULT_WINDOWS_VBOXMANAGE_PATH = r"C:\Program Files\Oracle\VirtualBox\VBoxManage.exe"
 DEFAULT_WSL_VBOXMANAGE_PATH = "/mnt/c/Program Files/Oracle/VirtualBox/VBoxManage.exe"
@@ -35,18 +37,6 @@ def get_env_int(name: str, default: int | None = None) -> int:
         raise RuntimeError(
             f"Environment variable '{name}' must be an integer"
         ) from exc
-
-
-def is_wsl() -> bool:
-    release = platform.release().lower()
-    if "microsoft" in release or "wsl" in release:
-        return True
-
-    version = platform.version().lower()
-    if "microsoft" in version or "wsl" in version:
-        return True
-    
-    return False
 
 
 def default_vboxmanage_path() -> str:

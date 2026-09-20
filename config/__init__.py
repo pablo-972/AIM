@@ -35,7 +35,6 @@ from config.env import (
     get_env,
     get_env_int,
     get_optional_env,
-    is_wsl,
 )
 
 
@@ -70,5 +69,4 @@ __all__ = [
     "get_env",
     "get_env_int",
     "get_optional_env",
-    "is_wsl",
 ]
